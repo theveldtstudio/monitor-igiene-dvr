@@ -912,6 +912,83 @@ const exportSchemaBiologico: ExportSchema = {
   },
 }
 
+// ─── MMC ─────────────────────────────────────────────────────────────────────
+// Template: public/templates/mmc.xlsx — 4 pagine × 8 misure = 32 max
+// Colonne A-N: n°, carico(kg), h.mani(cm), dist.vert(cm), dist.peso/corpo(cm),
+//   disloc.(°), freq.gesti, giudizio presa, n.pers, f.manten.(kg), spinta(kg),
+//   traino(kg), dist.trasp(m), note
+// Un unico foglio per tutti i metodi (NIOSH/Snook): la modal non distingue metodo.
+const exportSchemaMmc: ExportSchema = {
+  templateUrl: '/templates/mmc.xlsx',
+
+  buildFilename: (ctx) => {
+    const safe = ctx.cantiere.nome.replace(/[^a-zA-Z0-9_-]/g, '_')
+    const data = ctx.campagna.data_ora ? new Date(ctx.campagna.data_ora).toISOString().slice(0, 10) : 'data'
+    return `${safe}_MMC_${data}.xlsx`
+  },
+
+  applyData: (ctx, workbook) => {
+    const ws = workbook.getWorksheet('Foglio1')
+    if (!ws) throw new Error("Foglio 'Foglio1' non trovato nel template MMC")
+
+    const blocchi = [
+      { headerRow: 1,  dataStartRow: 4,  footerRow: 12 },
+      { headerRow: 14, dataStartRow: 17, footerRow: 25 },
+      { headerRow: 27, dataStartRow: 30, footerRow: 38 },
+      { headerRow: 40, dataStartRow: 43, footerRow: 51 },
+    ]
+    const dataFormatted = ctx.campagna.data_ora ? new Date(ctx.campagna.data_ora).toLocaleDateString('it-IT') : ''
+    const committente = ctx.cantiere.committente ?? ''
+    const cantiereNome = ctx.cantiere.nome
+    const nomiTecnici = ctx.tecnici.map((t) => `${t.nome} ${t.cognome}`.trim()).join(', ')
+    const strumentoStr = ctx.strumento
+      ? `Strumentazione: ${ctx.strumento.nome} ${ctx.strumento.modello} (${ctx.strumento.matricola})`
+      : 'Strumentazione:'
+
+    blocchi.forEach((b) => {
+      const c = ws.getCell(`B${b.headerRow}`)
+      c.value = committente || null
+      c.alignment = { horizontal: 'center', vertical: 'middle' }
+      const d = ws.getCell(`D${b.headerRow}`)
+      d.value = dataFormatted ? `Data: ${dataFormatted}` : 'Data:'
+      d.alignment = { horizontal: 'center', vertical: 'middle' }
+      const k = ws.getCell(`F${b.headerRow}`)
+      k.value = cantiereNome
+      k.alignment = { horizontal: 'center', vertical: 'middle' }
+      if (nomiTecnici) ws.getCell(`C${b.footerRow}`).value = nomiTecnici
+      ws.getCell(`F${b.footerRow}`).value = strumentoStr
+    })
+
+    const misure = [...ctx.misure].sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0))
+    misure.forEach((m, idx) => {
+      const bi = Math.floor(idx / 8)
+      if (bi >= blocchi.length) { console.warn(`MMC: misura ${idx + 1} oltre 32 — ignorata`); return }
+      const r = blocchi[bi].dataStartRow + (idx % 8)
+      const dati = (m.dati ?? {}) as Record<string, unknown>
+
+      const freqGesti = toNumber(dati.frequenza_gesti)
+      const freqUnita = typeof dati.frequenza_unita === 'string' ? dati.frequenza_unita : 'atti/min'
+      const freqStr = freqGesti !== null ? `${freqGesti} ${freqUnita}` : null
+
+      ws.getCell(`B${r}`).value = toNumber(dati.carico)
+      ws.getCell(`C${r}`).value = toNumber(dati.altezza_mani)
+      ws.getCell(`D${r}`).value = toNumber(dati.distanza_verticale)
+      ws.getCell(`E${r}`).value = toNumber(dati.distanza_peso_corpo)
+      ws.getCell(`F${r}`).value = toNumber(dati.dislocazione_angolare)
+      ws.getCell(`G${r}`).value = freqStr
+      ws.getCell(`H${r}`).value = (dati.giudizio_presa as string | undefined) ?? null
+      ws.getCell(`I${r}`).value = toNumber(dati.n_persone)
+      ws.getCell(`J${r}`).value = toNumber(dati.forza_mantenimento)
+      ws.getCell(`K${r}`).value = toNumber(dati.spinta)
+      ws.getCell(`L${r}`).value = toNumber(dati.traino)
+      ws.getCell(`M${r}`).value = toNumber(dati.distanza_trasporto)
+      const n = ws.getCell(`N${r}`)
+      n.value = m.note ?? null
+      n.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
+    })
+  },
+}
+
 // ─── Gas ─────────────────────────────────────────────────────────────────────
 // Template: public/templates/gas.xlsx — 4 pagine × 8 misure = 32 max
 // Layout per ogni blocco (BASE_ROW = 1 | 16 | 31 | 46):
@@ -1397,7 +1474,7 @@ export const EXPORT_SCHEMAS: Record<string, ExportSchema> = {
   amianto: exportSchemaAmianto,
   'biologico-sas': exportSchemaBiologico,
   acqua: exportSchemaAcqua,
-  mmc: buildSchemaGenerico('mmc', 'MMC'),
+  mmc: exportSchemaMmc,
   owas: exportSchemaOwas,
   ocra: buildSchemaGenerico('ocra', 'OCRA'),
 }
