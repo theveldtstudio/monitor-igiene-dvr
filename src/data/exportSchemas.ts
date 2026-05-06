@@ -834,6 +834,84 @@ const exportSchemaRoa: ExportSchema = {
   },
 }
 
+// ─── Biologico SAS ───────────────────────────────────────────────────────────
+// Template: public/templates/biologico-sas.xlsx — 4 pagine × 8 misure = 32 max
+// Colonne A-K: n°, codice filtro, postazione, fase/mansione, macchine/impianti,
+//   t.prelievo, volume(L), conta22°C(UFC/m³), conta36°C(UFC/m³),
+//   muffe+lieviti(UFC/m³), note
+// I campi UFC esportano la stringa raw (es. "<10") se presente.
+const exportSchemaBiologico: ExportSchema = {
+  templateUrl: '/templates/biologico-sas.xlsx',
+
+  buildFilename: (ctx) => {
+    const safe = ctx.cantiere.nome.replace(/[^a-zA-Z0-9_-]/g, '_')
+    const data = ctx.campagna.data_ora ? new Date(ctx.campagna.data_ora).toISOString().slice(0, 10) : 'data'
+    return `${safe}_Biologico_${data}.xlsx`
+  },
+
+  applyData: (ctx, workbook) => {
+    const ws = workbook.getWorksheet('Foglio1')
+    if (!ws) throw new Error("Foglio 'Foglio1' non trovato nel template Biologico SAS")
+
+    const blocchi = [
+      { headerRow: 1,  dataStartRow: 4,  footerRow: 12 },
+      { headerRow: 14, dataStartRow: 17, footerRow: 25 },
+      { headerRow: 27, dataStartRow: 30, footerRow: 38 },
+      { headerRow: 40, dataStartRow: 43, footerRow: 51 },
+    ]
+    const dataFormatted = ctx.campagna.data_ora ? new Date(ctx.campagna.data_ora).toLocaleDateString('it-IT') : ''
+    const committente = ctx.cantiere.committente ?? ''
+    const cantiereNome = ctx.cantiere.nome
+    const nomiTecnici = ctx.tecnici.map((t) => `${t.nome} ${t.cognome}`.trim()).join(', ')
+    const strumentoStr = ctx.strumento
+      ? `Strumentazione: ${ctx.strumento.nome} ${ctx.strumento.modello} (${ctx.strumento.matricola})`
+      : 'Strumentazione:'
+
+    blocchi.forEach((b) => {
+      const c = ws.getCell(`B${b.headerRow}`)
+      c.value = committente || null
+      c.alignment = { horizontal: 'center', vertical: 'middle' }
+      const d = ws.getCell(`D${b.headerRow}`)
+      d.value = dataFormatted ? `Data: ${dataFormatted}` : 'Data:'
+      d.alignment = { horizontal: 'center', vertical: 'middle' }
+      const k = ws.getCell(`F${b.headerRow}`)
+      k.value = cantiereNome
+      k.alignment = { horizontal: 'center', vertical: 'middle' }
+      if (nomiTecnici) ws.getCell(`C${b.footerRow}`).value = nomiTecnici
+      ws.getCell(`F${b.footerRow}`).value = strumentoStr
+    })
+
+    const ufcVal = (raw: unknown, valore: unknown, sottoSoglia: unknown): string | number | null => {
+      if (typeof raw === 'string' && raw.trim()) return raw.trim()
+      const n = toNumber(valore)
+      if (n === null) return null
+      return sottoSoglia === true ? `<${n}` : n
+    }
+
+    const misure = [...ctx.misure].sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0))
+    misure.forEach((m, idx) => {
+      const bi = Math.floor(idx / 8)
+      if (bi >= blocchi.length) { console.warn(`Biologico: misura ${idx + 1} oltre 32 — ignorata`); return }
+      const r = blocchi[bi].dataStartRow + (idx % 8)
+      const dati = (m.dati ?? {}) as Record<string, unknown>
+      const macchine = (dati.macchine_nomi as string[] | undefined) ?? []
+
+      ws.getCell(`B${r}`).value = (dati.codice_filtro as string | undefined) ?? null
+      ws.getCell(`C${r}`).value = (dati.postazione_nome as string | undefined) ?? null
+      ws.getCell(`D${r}`).value = (dati.fase_nome as string | undefined) ?? null
+      ws.getCell(`E${r}`).value = macchine.length > 0 ? macchine.join(', ') : null
+      ws.getCell(`F${r}`).value = (dati.tempo_prelievo as string | undefined) ?? null
+      ws.getCell(`G${r}`).value = toNumber(dati.volume_aspirato)
+      ws.getCell(`H${r}`).value = ufcVal(dati.conta_22_raw, dati.conta_22, dati.conta_22_sotto_soglia)
+      ws.getCell(`I${r}`).value = ufcVal(dati.conta_36_raw, dati.conta_36, dati.conta_36_sotto_soglia)
+      ws.getCell(`J${r}`).value = ufcVal(dati.muffe_lieviti_raw, dati.muffe_lieviti, dati.muffe_lieviti_sotto_soglia)
+      const n = ws.getCell(`K${r}`)
+      n.value = m.note ?? null
+      n.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
+    })
+  },
+}
+
 // ─── Gas ─────────────────────────────────────────────────────────────────────
 // Template: public/templates/gas.xlsx — 4 pagine × 8 misure = 32 max
 // Layout per ogni blocco (BASE_ROW = 1 | 16 | 31 | 46):
@@ -1317,7 +1395,7 @@ export const EXPORT_SCHEMAS: Record<string, ExportSchema> = {
   'carbonio-elementare': exportSchemaCarbonio,
   ipa: exportSchemaIpa,
   amianto: exportSchemaAmianto,
-  'biologico-sas': buildSchemaGenerico('biologico-sas', 'Biologico SAS'),
+  'biologico-sas': exportSchemaBiologico,
   acqua: exportSchemaAcqua,
   mmc: buildSchemaGenerico('mmc', 'MMC'),
   owas: exportSchemaOwas,
