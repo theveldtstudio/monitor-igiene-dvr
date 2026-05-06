@@ -20,6 +20,7 @@ import CardMisuraGenerica from '../components/CardMisuraGenerica'
 import { getModuloEntry } from '../data/moduliRegistry'
 import { exportFromTemplate } from '../lib/exportExcel'
 import { getExportSchema } from '../data/exportSchemas'
+import Spinner from '../components/Spinner'
 
 const MESI = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic']
 
@@ -446,7 +447,7 @@ export default function FoglioCampagna() {
             style={styles.btnEsportaExcel}
             aria-label="Esporta in Excel"
           >
-            {exporting ? 'Esportazione…' : 'Esporta in Excel'}
+            {exporting ? <><Spinner /><span style={{ marginLeft: 6 }}>Esportazione…</span></> : 'Esporta in Excel'}
           </button>
           {exportError && (
             <div style={styles.exportErrorBox}>{exportError}</div>
