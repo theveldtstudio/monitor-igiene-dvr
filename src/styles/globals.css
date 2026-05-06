@@ -5,6 +5,11 @@
   --bg-toggle: #ECEAE2;
   --bg-badge-open: #E6F1FB;
 
+  /* Skeleton & error */
+  --skeleton-bg: #ECEAE2;
+  --error-bg: #FCEBEB;
+  --error-border: #F09595;
+
   /* Text */
   --text-primary: #1A1A1A;
   --text-secondary: #5F5E5A;

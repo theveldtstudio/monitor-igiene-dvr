@@ -6,6 +6,10 @@ import NuovoStrumentoModal from '../components/NuovoStrumentoModal'
 import type { Tecnico, Strumento } from '../types'
 import { useTecnici } from '../hooks/useTecnici'
 import { useStrumenti } from '../hooks/useStrumenti'
+import EmptyState from '../components/EmptyState'
+import { IconTecnico, IconStrumento } from '../components/icons/EmptyIcons'
+import Skeleton from '../components/Skeleton'
+import ErrorState from '../components/ErrorState'
 
 function iniziali(nome: string, cognome: string): string {
   const a = (nome ?? '').trim().charAt(0).toUpperCase()
@@ -56,22 +60,11 @@ function CardStrumento({ strumento }: { strumento: Strumento }) {
 function SkeletonRow({ avatar }: { avatar: 'tecnico' | 'strumento' }) {
   return (
     <div style={styles.card}>
-      <div style={{ ...(avatar === 'tecnico' ? styles.avatarTecnico : styles.iconStrumento), background: 'var(--bg-toggle)' }} />
+      <div style={{ ...(avatar === 'tecnico' ? styles.avatarTecnico : styles.iconStrumento), background: 'var(--skeleton-bg)' }} />
       <div style={{ flex: 1 }}>
-        <div style={{ ...styles.skeletonLine, width: '60%', height: 13, marginBottom: 6 }} />
-        <div style={{ ...styles.skeletonLine, width: '35%', height: 10 }} />
+        <Skeleton width="60%" height={13} marginBottom={6} />
+        <Skeleton width="35%" height={10} />
       </div>
-    </div>
-  )
-}
-
-function ErrorBox({ message, onRetry }: { message: string; onRetry: () => void }) {
-  return (
-    <div style={styles.errorBox}>
-      <div style={styles.errorIcon}>!</div>
-      <div style={styles.errorTitle}>Errore di caricamento</div>
-      <div style={styles.errorMessage}>{message}</div>
-      <button type="button" onClick={onRetry} style={styles.retryBtn}>Riprova</button>
     </div>
   )
 }
@@ -113,13 +106,17 @@ export default function Anagrafica() {
         </div>
       )}
 
-      {!loadingT && errorT && <ErrorBox message={errorT} onRetry={() => refetchT()} />}
+      {!loadingT && errorT && <ErrorState message={errorT} onRetry={() => refetchT()} />}
 
       {!loadingT && !errorT && tecnici.length === 0 && (
-        <div style={styles.emptyBox}>
-          <div style={styles.emptyTitle}>Nessun tecnico ancora</div>
-          <div style={styles.emptyMessage}>Aggiungi i tecnici che lavorano in cantiere per associarli alle campagne.</div>
-        </div>
+        <EmptyState
+          compact
+          icon={<IconTecnico size={32} />}
+          title="Nessun tecnico ancora"
+          message="Aggiungi i tecnici che lavorano in cantiere per associarli alle campagne."
+          actionLabel="Aggiungi tecnico"
+          onAction={() => setModaleTecnicoOpen(true)}
+        />
       )}
 
       {!loadingT && !errorT && tecnici.length > 0 && (
@@ -142,13 +139,17 @@ export default function Anagrafica() {
         </div>
       )}
 
-      {!loadingS && errorS && <ErrorBox message={errorS} onRetry={() => refetchS()} />}
+      {!loadingS && errorS && <ErrorState message={errorS} onRetry={() => refetchS()} />}
 
       {!loadingS && !errorS && strumenti.length === 0 && (
-        <div style={styles.emptyBox}>
-          <div style={styles.emptyTitle}>Nessuno strumento ancora</div>
-          <div style={styles.emptyMessage}>Aggiungi i tuoi strumenti di misura (fonometri, pompe, sonde) per associarli alle campagne.</div>
-        </div>
+        <EmptyState
+          compact
+          icon={<IconStrumento size={32} />}
+          title="Nessuno strumento ancora"
+          message="Aggiungi i tuoi strumenti di misura (fonometri, pompe, sonde) per associarli alle campagne."
+          actionLabel="Aggiungi strumento"
+          onAction={() => setModaleStrumentoOpen(true)}
+        />
       )}
 
       {!loadingS && !errorS && strumenti.length > 0 && (
@@ -303,64 +304,5 @@ const styles: Record<string, React.CSSProperties> = {
     color: 'var(--text-tertiary)',
     fontSize: 14,
     paddingLeft: 6,
-  },
-  skeletonLine: {
-    background: 'var(--bg-toggle)',
-    borderRadius: 4,
-    animation: 'skeleton-pulse 1.4s ease-in-out infinite',
-  },
-  emptyBox: {
-    background: 'var(--bg-card)',
-    border: '0.5px solid var(--border)',
-    borderRadius: 'var(--radius-card)',
-    padding: 24,
-    textAlign: 'center',
-  },
-  emptyTitle: {
-    fontSize: 14,
-    fontWeight: 500,
-    color: 'var(--text-primary)',
-    marginBottom: 6,
-  },
-  emptyMessage: {
-    fontSize: 12,
-    color: 'var(--text-secondary)',
-    lineHeight: 1.5,
-  },
-  errorBox: {
-    background: '#FCEBEB',
-    border: '0.5px solid #F09595',
-    borderRadius: 'var(--radius-card)',
-    padding: 20,
-    textAlign: 'center',
-  },
-  errorIcon: {
-    fontSize: 28,
-    color: '#A32D2D',
-    fontWeight: 500,
-    marginBottom: 6,
-  },
-  errorTitle: {
-    fontSize: 14,
-    fontWeight: 500,
-    color: '#501313',
-    marginBottom: 4,
-  },
-  errorMessage: {
-    fontSize: 11,
-    color: '#791F1F',
-    marginBottom: 14,
-    wordBreak: 'break-word',
-  },
-  retryBtn: {
-    background: 'var(--accent)',
-    color: 'var(--text-on-accent)',
-    border: 'none',
-    padding: '8px 16px',
-    borderRadius: 16,
-    fontSize: 12,
-    fontWeight: 500,
-    cursor: 'pointer',
-    fontFamily: 'inherit',
   },
 }

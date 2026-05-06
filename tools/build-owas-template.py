@@ -1,142 +1,165 @@
-import sys
-import openpyxl
-from openpyxl import load_workbook
-from openpyxl.styles import Alignment
-from openpyxl.utils import coordinate_to_tuple
+"""
+Build public/templates/owas.xlsx — Foglio di campagna ufficiale OWAS.
+Pattern: foglio unico "Foglio1", 8 misure (da 9 → 8).
 
-SOURCE_PATH = "tools/templates-source/owas-source.xlsm"
-OUTPUT_PATH = "public/templates/owas.xlsx"
+Layout:
+  Riga 1  : header anagrafica
+  Riga 2  : titolo "OWAS (Titolo VI D.Lgs 81/08)"
+  Riga 3-4: header colonne (con sub-header CODICE OWAS)
+  Righe 5-12: dati (max 8 misure)
+  Riga 13 : separatore vuoto
+  Riga 14 : footer tecnico rilevatore
 
-MERGES_FINAL = [
-    "E1:H1",   # Cantiere value space
-    "A2:J2",   # OWAS title
-    "A3:A4",   # REG vertical
-    "B3:B4",   # MANSIONE vertical
-    "C3:C4",   # ATTIVITA' vertical
-    "D3:D4",   # DURATA vertical
-    "E3:I3",   # CODICE OWAS horizontal
-    "J3:J4",   # NOTE vertical
-    "A16:B16", # Tecnico rilevatore label
-    "C16:J16", # Tecnico rilevatore value
-]
+Colonne (A..J):
+  A  REG [n°]
+  B  MANSIONE
+  C  ATTIVITA'
+  D  DURATA
+  E  SCHIENA  ─┐
+  F  BRACCIA   │ CODICE OWAS
+  G  GAMBE     │
+  H  CARICO    │
+  I  CLASSE   ─┘
+  J  NOTE
+"""
+from pathlib import Path
+from openpyxl import Workbook
+from openpyxl.styles import Alignment, Border, Side, Font, PatternFill
+from openpyxl.worksheet.page import PageMargins
 
-VERTICAL_HEADER_MERGES = [
-    "A3:A4", "B3:B4", "C3:C4", "D3:D4", "J3:J4",
-]
+OUT = Path(__file__).resolve().parent.parent / "public" / "templates" / "owas.xlsx"
 
 COL_WIDTHS = {
-    "A": 6,
-    "B": 22,
-    "C": 25,
-    "D": 12,
-    "E": 10,
-    "F": 10,
-    "G": 10,
-    "H": 10,
-    "I": 10,
-    "J": 30,
+    "A": 6.0,
+    "B": 22.0,
+    "C": 25.0,
+    "D": 12.0,
+    "E": 10.0,
+    "F": 10.0,
+    "G": 10.0,
+    "H": 10.0,
+    "I": 10.0,
+    "J": 30.0,
 }
+NUM_COLS = 10
+DATA_ROWS = 8
+DATA_START_ROW = 5
 
-CELL_TEXTS = {
-    "A1": "Impresa:",
-    "C1": "Data:",
-    "D1": "Cantiere:",
-    "I1": "Pag: 1",
-    "A2": "OWAS (Titolo VI D.Lgs 81/08)",
-    "A3": "REG\n[n°]",
-    "B3": "MANSIONE",
-    "C3": "ATTIVITA'",
-    "D3": "DURATA",
-    "E3": "CODICE OWAS",
-    "J3": "NOTE",
-    "E4": "SCHIENA",
-    "F4": "BRACCIA",
-    "G4": "GAMBE",
-    "H4": "CARICO",
-    "I4": "CLASSE",
-    "A16": "Tecnico rilevatore:",
-}
+THIN = Side(style="thin", color="000000")
+BORDER_ALL = Border(left=THIN, right=THIN, top=THIN, bottom=THIN)
+CENTER = Alignment(horizontal="center", vertical="center", wrap_text=True)
+LEFT   = Alignment(horizontal="left",   vertical="center", wrap_text=True)
+RIGHT  = Alignment(horizontal="right",  vertical="center")
+FONT_HDR    = Font(name="Calibri", size=10, bold=True)
+FONT_TITLE  = Font(name="Calibri", size=12, bold=True)
+FONT_NORMAL = Font(name="Calibri", size=10)
+FILL_TITLE  = PatternFill(fill_type="solid", fgColor="DDDDDD")
+FILL_COLHDR = PatternFill(fill_type="solid", fgColor="EEEEEE")
 
 
 def main():
-    print(f"Opening {SOURCE_PATH} ...")
-    wb = load_workbook(SOURCE_PATH, keep_vba=False)
-
-    print(f"Sheets found: {wb.sheetnames}")
+    wb = Workbook()
     ws = wb.active
-    print(f"Using sheet: {ws.title}")
-    print(f"Dimensions before: {ws.dimensions}  max_col={ws.max_column}  max_row={ws.max_row}")
+    ws.title = "Foglio1"
 
-    # Step 1: unmerge ALL existing ranges
-    existing_merges = list(ws.merged_cells.ranges)
-    print(f"\nUnmerging {len(existing_merges)} existing merge ranges...")
-    for mr in existing_merges:
-        ws.unmerge_cells(str(mr))
-    print("  Done — all unmerged.")
+    for col_letter, w in COL_WIDTHS.items():
+        ws.column_dimensions[col_letter].width = w
 
-    # Step 2: delete col E (MACCHINE) then E again (NO2, now shifted to E)
-    print("\nDeleting 2 columns at position 5 (E=MACCHINE, F=NO2)...")
-    ws.delete_cols(5, 2)
-    print(f"  Done. max_col now = {ws.max_column}")
+    # --- Riga 1: header anagrafica ---
+    # Export schema scrive: B1=committente, C1="Data: gg/mm/aaaa", E1=cantiere
+    ws.row_dimensions[1].height = 30.0
+    ws.cell(1, 1, "Impresa:").font = FONT_HDR
+    ws.cell(1, 1).alignment = CENTER
+    ws.cell(1, 2).alignment = CENTER                        # committente → scritto da export
+    ws.cell(1, 3).alignment = CENTER                        # data → scritto da export
+    ws.cell(1, 4, "Cantiere:").font = FONT_HDR
+    ws.cell(1, 4).alignment = CENTER
+    ws.merge_cells(start_row=1, start_column=5, end_row=1, end_column=8)
+    ws.cell(1, 5).alignment = CENTER                        # cantiere → scritto da export (E1)
+    ws.cell(1, 9, "Pag: 1").font = FONT_HDR
+    ws.cell(1, 9).alignment = RIGHT
 
-    # Step 3: delete rows 17-33 (second page)
-    print("\nDeleting rows 17-33 (second page)...")
-    ws.delete_rows(17, 17)
-    print(f"  Done. max_row now = {ws.max_row}")
+    # --- Riga 2: titolo ---
+    ws.row_dimensions[2].height = 24.95
+    ws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=NUM_COLS)
+    c = ws.cell(2, 1, "OWAS (Titolo VI D.Lgs 81/08)")
+    c.font = FONT_TITLE
+    c.alignment = CENTER
+    c.fill = FILL_TITLE
 
-    # Step 4: apply final merges
-    print("\nApplying final merges...")
-    for ref in MERGES_FINAL:
-        ws.merge_cells(ref)
-        print(f"  MERGED: {ref}")
+    # --- Righe 3-4: header colonne ---
+    ws.row_dimensions[3].height = 30.0
+    ws.row_dimensions[4].height = 18.0
 
-    # Step 5: set column widths
-    print("\nSetting column widths...")
-    for col_letter, width in COL_WIDTHS.items():
-        ws.column_dimensions[col_letter].width = width
-        print(f"  {col_letter}: {width}")
+    # Colonne con span verticale r3:r4
+    vert_span = {
+        1: "REG\n[n°]",
+        2: "MANSIONE",
+        3: "ATTIVITA'",
+        4: "DURATA",
+        10: "NOTE",
+    }
+    for col, lbl in vert_span.items():
+        ws.merge_cells(start_row=3, start_column=col, end_row=4, end_column=col)
+        c = ws.cell(3, col, lbl)
+        c.font = FONT_HDR
+        c.alignment = CENTER
+        c.fill = FILL_COLHDR
 
-    # Step 6: write cell texts
-    print("\nSetting cell texts...")
-    for cell_ref, text in CELL_TEXTS.items():
-        ws[cell_ref] = text
-        print(f"  {cell_ref} = {repr(text)}")
+    # CODICE OWAS → E:I r3 merge orizzontale
+    ws.merge_cells(start_row=3, start_column=5, end_row=3, end_column=9)
+    c = ws.cell(3, 5, "CODICE OWAS")
+    c.font = FONT_HDR
+    c.alignment = CENTER
+    c.fill = FILL_COLHDR
 
-    # Step 7: verify/set progressive numbers A5:A13
-    print("\nVerifying progressive numbers A5:A13...")
-    for i, row in enumerate(range(5, 14), start=1):
-        current = ws.cell(row=row, column=1).value
-        if current != i:
-            ws.cell(row=row, column=1).value = i
-            print(f"  A{row}: set to {i} (was {repr(current)})")
-        else:
-            print(f"  A{row}: already {i}")
+    # Sub-header r4
+    sub4 = {5: "SCHIENA", 6: "BRACCIA", 7: "GAMBE", 8: "CARICO", 9: "CLASSE"}
+    for col, lbl in sub4.items():
+        c = ws.cell(4, col, lbl)
+        c.font = FONT_HDR
+        c.alignment = CENTER
+        c.fill = FILL_COLHDR
 
-    # Step 8: alignment on vertical header merges
-    print("\nSetting alignment on vertical header merges...")
-    for ref in VERTICAL_HEADER_MERGES:
-        top_left = ref.split(":")[0]
-        row, col = coordinate_to_tuple(top_left)
-        ws.cell(row=row, column=col).alignment = Alignment(
-            horizontal="center",
-            vertical="center",
-            wrap_text=True,
-        )
-        print(f"  {top_left}: center/center/wrap")
+    # Bordi r3:r4
+    for rr in (3, 4):
+        for col in range(1, NUM_COLS + 1):
+            ws.cell(rr, col).border = BORDER_ALL
 
-    # Step 8b: alignment for other header cells
-    for cell_ref in ["E3", "E4", "F4", "G4", "H4", "I4", "J3"]:
-        ws[cell_ref].alignment = Alignment(
-            horizontal="center",
-            vertical="center",
-            wrap_text=True,
-        )
-    print("  E3, E4-I4, J3: center/center/wrap")
+    # --- Righe dati 5-12 (8 slot) ---
+    for i in range(DATA_ROWS):
+        rr = DATA_START_ROW + i
+        ws.row_dimensions[rr].height = 30.0
+        for col in range(1, NUM_COLS + 1):
+            ws.cell(rr, col).border = BORDER_ALL
+            ws.cell(rr, col).alignment = CENTER
+            ws.cell(rr, col).font = FONT_NORMAL
+        ws.cell(rr, 1, i + 1).font = FONT_HDR
 
-    # Step 9: save as xlsx (no vba)
-    wb.save(OUTPUT_PATH)
-    print(f"\nSaved: {OUTPUT_PATH}")
-    print("Done.")
+    # --- Riga 13: separatore vuoto ---
+    ws.row_dimensions[13].height = 15.0
+
+    # --- Riga 14: footer tecnico ---
+    ws.row_dimensions[14].height = 27.75
+    ws.merge_cells(start_row=14, start_column=1, end_row=14, end_column=2)
+    c = ws.cell(14, 1, "Tecnico rilevatore:")
+    c.font = FONT_HDR
+    c.alignment = LEFT
+    ws.merge_cells(start_row=14, start_column=3, end_row=14, end_column=NUM_COLS)
+    ws.cell(14, 3).alignment = LEFT
+
+    # --- Page setup ---
+    ws.page_setup.orientation = ws.ORIENTATION_LANDSCAPE
+    ws.page_setup.paperSize = ws.PAPERSIZE_A4
+    ws.page_setup.fitToWidth = 1
+    ws.page_setup.fitToHeight = 0
+    ws.page_margins = PageMargins(left=0.4, right=0.4, top=0.5, bottom=0.5, header=0.3, footer=0.3)
+    ws.print_options.horizontalCentered = True
+    ws.print_area = "A1:J14"
+
+    OUT.parent.mkdir(parents=True, exist_ok=True)
+    wb.save(OUT)
+    print(f"OK -> {OUT}")
 
 
 if __name__ == "__main__":
