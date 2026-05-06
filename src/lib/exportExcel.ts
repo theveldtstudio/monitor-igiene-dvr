@@ -1,4 +1,7 @@
 import ExcelJS from 'exceljs'
+import { addFotoSheet, type FotoSheetContext } from './exportFotoSheet'
+
+export type { FotoSheetContext }
 
 /**
  * Carica un template .xlsx, applica una funzione di "fill" e scarica il file modificato.
@@ -6,11 +9,13 @@ import ExcelJS from 'exceljs'
  * @param templateUrl - URL relativo del template (es. '/templates/rumore.xlsx')
  * @param fillWorkbook - funzione che riceve il workbook caricato e modifica le celle
  * @param outputFilename - nome del file da scaricare (es. 'A1_Lotto4_Rumore_2026-04-25.xlsx')
+ * @param fotoCtx - se presente, aggiunge foglio "Foto" con immagini embedded
  */
 export async function exportFromTemplate(
   templateUrl: string,
   fillWorkbook: (workbook: ExcelJS.Workbook) => void | Promise<void>,
   outputFilename: string,
+  fotoCtx?: FotoSheetContext,
 ): Promise<void> {
   const workbook = new ExcelJS.Workbook()
   if (templateUrl) {
@@ -23,6 +28,10 @@ export async function exportFromTemplate(
   }
 
   await fillWorkbook(workbook)
+
+  if (fotoCtx) {
+    await addFotoSheet(workbook, fotoCtx)
+  }
 
   const outBuffer = await workbook.xlsx.writeBuffer()
   const blob = new Blob([outBuffer], {

@@ -1,7 +1,9 @@
 import type React from 'react'
 import { useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useParams, useNavigate } from 'react-router-dom'
-import type { Tecnico, Strumento, Misura } from '../types'
+import type { Tecnico, Strumento, Misura, FotoMisura } from '../types'
+import { supabase } from '../lib/supabase'
 import { useCampagna } from '../hooks/useCampagna'
 import { useCantiere } from '../hooks/useCantiere'
 import { useTecnici } from '../hooks/useTecnici'
@@ -18,7 +20,7 @@ import { MODULI } from '../data/moduliCampionamento'
 import type { ModuloCampionamento } from '../data/moduliCampionamento'
 import CardMisuraGenerica from '../components/CardMisuraGenerica'
 import { getModuloEntry } from '../data/moduliRegistry'
-import { exportFromTemplate } from '../lib/exportExcel'
+import { exportFromTemplate, type FotoSheetContext } from '../lib/exportExcel'
 import { getExportSchema } from '../data/exportSchemas'
 import Spinner from '../components/Spinner'
 import Skeleton from '../components/Skeleton'
@@ -101,6 +103,21 @@ export default function FoglioCampagna() {
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
 
+  const { data: fotoTutte } = useQuery({
+    queryKey: ['foto-misure-campagna', campagnaId],
+    queryFn: async () => {
+      const misureIds = misure.map((m) => m.id)
+      if (misureIds.length === 0) return []
+      const { data, error } = await supabase
+        .from('foto_misura')
+        .select('*')
+        .in('misura_id', misureIds)
+      if (error) throw error
+      return (data ?? []) as FotoMisura[]
+    },
+    enabled: misure.length > 0 && moduloId === 'rumore',
+  })
+
   const handleApriModifica = (m: Misura) => {
     setMisuraInModifica(m)
   }
@@ -176,10 +193,23 @@ export default function FoglioCampagna() {
         strumento: strumentoSelezionato,
         risorse,
       }
+
+      let fotoCtx: FotoSheetContext | undefined
+      if (moduloId === 'rumore') {
+        const fotoPerMisura = new Map<string, FotoMisura[]>()
+        for (const f of (fotoTutte ?? [])) {
+          const arr = fotoPerMisura.get(f.misura_id) ?? []
+          arr.push(f)
+          fotoPerMisura.set(f.misura_id, arr)
+        }
+        fotoCtx = { misure, fotoPerMisura, risorse }
+      }
+
       await exportFromTemplate(
         schema.templateUrl,
         (workbook) => schema.applyData(ctx, workbook),
         schema.buildFilename(ctx),
+        fotoCtx,
       )
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Errore export'
