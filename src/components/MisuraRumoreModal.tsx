@@ -80,32 +80,34 @@ export default function MisuraRumoreModal({ open, onClose, onSaved, cantiereId, 
   }, [misuraDaModificare])
 
   useEffect(() => {
-    if (open) {
-      if (initialSnapshot) {
-        setDurata(initialSnapshot.durata)
-        setPostazioneId(initialSnapshot.postazioneId)
-        setFaseId(initialSnapshot.faseId)
-        setMacchineIds(initialSnapshot.macchineIds)
-        setLeqDbA(initialSnapshot.leqDbA)
-        setLeqDbC(initialSnapshot.leqDbC)
-        setLpeakDbC(initialSnapshot.lpeakDbC)
-        setNote(initialSnapshot.note)
-      } else {
-        setDurata('')
-        setPostazioneId(null)
-        setFaseId(null)
-        setMacchineIds([])
-        setLeqDbA('')
-        setLeqDbC('')
-        setLpeakDbC('')
-        setNote('')
-      }
-      setPostazioneModalOpen(false)
-      setFaseModalOpen(false)
-      setMacchineModalOpen(false)
-      resetError()
+    if (!open) return
+    if (initialSnapshot) {
+      setDurata(initialSnapshot.durata)
+      setPostazioneId(initialSnapshot.postazioneId)
+      setFaseId(initialSnapshot.faseId)
+      setMacchineIds(initialSnapshot.macchineIds)
+      setLeqDbA(initialSnapshot.leqDbA)
+      setLeqDbC(initialSnapshot.leqDbC)
+      setLpeakDbC(initialSnapshot.lpeakDbC)
+      setNote(initialSnapshot.note)
+    } else {
+      setDurata('')
+      setPostazioneId(null)
+      setFaseId(null)
+      setMacchineIds([])
+      setLeqDbA('')
+      setLeqDbC('')
+      setLpeakDbC('')
+      setNote('')
     }
-  }, [open, initialSnapshot, resetError])
+    setPostazioneModalOpen(false)
+    setFaseModalOpen(false)
+    setMacchineModalOpen(false)
+  }, [open, initialSnapshot])
+
+  useEffect(() => {
+    if (open) resetError()
+  }, [open, resetError])
 
   useEffect(() => {
     if (open) {
