@@ -9,6 +9,8 @@ import NuovoCantiereModal from '../components/NuovoCantiereModal'
 import CardActionsMenu from '../components/CardActionsMenu'
 import type { CardAction } from '../components/CardActionsMenu'
 import ConfirmDialog from '../components/ConfirmDialog'
+import EmptyState from '../components/EmptyState'
+import { IconCantiere } from '../components/icons/EmptyIcons'
 
 type FiltroStato = 'aperti' | 'archiviati'
 type StatoCantiere = Cantiere['stato']
@@ -198,16 +200,15 @@ export default function Home() {
       )}
 
       {!loading && !error && cantieriFiltrati.length === 0 && (
-        <div style={styles.emptyBox}>
-          <div style={styles.emptyTitle}>
-            {filtro === 'aperti' ? 'Nessun cantiere aperto' : 'Nessun cantiere archiviato'}
-          </div>
-          <div style={styles.emptyMessage}>
-            {filtro === 'aperti'
-              ? 'Aggiungi il tuo primo cantiere per iniziare a raccogliere misure'
-              : 'Quando archivierai un cantiere lo troverai qui'}
-          </div>
-        </div>
+        <EmptyState
+          icon={<IconCantiere />}
+          title={filtro === 'aperti' ? 'Nessun cantiere aperto' : 'Nessun cantiere archiviato'}
+          message={filtro === 'aperti'
+            ? 'Crea il tuo primo cantiere per iniziare a registrare le campagne di monitoraggio.'
+            : 'I cantieri archiviati appariranno qui.'}
+          actionLabel={filtro === 'aperti' ? 'Crea cantiere' : undefined}
+          onAction={filtro === 'aperti' ? handleApriNuovo : undefined}
+        />
       )}
 
       {!loading && !error && cantieriFiltrati.length > 0 && (
@@ -490,25 +491,6 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'var(--bg-toggle)',
     borderRadius: 4,
     animation: 'skeleton-pulse 1.4s ease-in-out infinite',
-  },
-  emptyBox: {
-    background: 'var(--bg-card)',
-    border: '0.5px solid var(--border)',
-    borderRadius: 'var(--radius-card)',
-    padding: 28,
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  emptyTitle: {
-    fontSize: 14,
-    fontWeight: 500,
-    color: 'var(--text-primary)',
-    marginBottom: 6,
-  },
-  emptyMessage: {
-    fontSize: 12,
-    color: 'var(--text-secondary)',
-    lineHeight: 1.5,
   },
   errorBox: {
     background: '#FCEBEB',

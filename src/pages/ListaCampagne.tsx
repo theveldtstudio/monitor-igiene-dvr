@@ -7,6 +7,8 @@ import { useCampagne } from '../hooks/useCampagne'
 import type { Campagna } from '../types'
 import { MODULI, CATEGORIE } from '../data/moduliCampionamento'
 import type { ModuloCampionamento } from '../data/moduliCampionamento'
+import EmptyState from '../components/EmptyState'
+import { IconCampagna } from '../components/icons/EmptyIcons'
 
 type StatoCampagna = Campagna['stato']
 
@@ -178,17 +180,14 @@ export default function ListaCampagne() {
       )}
 
       {!loading && !error && (notFound || moduloNonValido) && (
-        <div style={styles.emptyBox}>
-          <div style={styles.emptyTitle}>
-            {notFound ? 'Cantiere non trovato' : 'Modulo non valido'}
-          </div>
-          <div style={styles.emptyMessage}>
-            {notFound
-              ? 'Il cantiere che cerchi non esiste o è stato rimosso.'
-              : `Il modulo "${moduloId}" non è riconosciuto.`}
-          </div>
-          <button type="button" onClick={() => navigate('/')} style={styles.retryBtn}>Torna ai cantieri</button>
-        </div>
+        <EmptyState
+          title={notFound ? 'Cantiere non trovato' : 'Modulo non valido'}
+          message={notFound
+            ? 'Il cantiere che cerchi non esiste o è stato rimosso.'
+            : `Il modulo "${moduloId}" non è riconosciuto.`}
+          actionLabel="Torna ai cantieri"
+          onAction={() => navigate('/')}
+        />
       )}
 
       {!loading && !error && !notFound && cantiere && modulo && (
@@ -210,12 +209,13 @@ export default function ListaCampagne() {
           </div>
 
           {campagne.length === 0 ? (
-            <div style={styles.emptyBox}>
-              <div style={styles.emptyTitle}>Nessuna campagna ancora</div>
-              <div style={styles.emptyMessage}>
-                Usa il bottone <strong>+ Nuova campagna</strong> per registrare la prima.
-              </div>
-            </div>
+            <EmptyState
+              icon={<IconCampagna />}
+              title="Nessuna campagna per questo modulo"
+              message="Crea una nuova campagna per iniziare a registrare le misure."
+              actionLabel="Crea campagna"
+              onAction={() => setModaleAperto(true)}
+            />
           ) : (
             <div style={styles.list}>
               {campagne.map((c) => (
@@ -372,26 +372,6 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'var(--bg-toggle)',
     borderRadius: 4,
     animation: 'skeleton-pulse 1.4s ease-in-out infinite',
-  },
-  emptyBox: {
-    background: 'var(--bg-card)',
-    border: '0.5px solid var(--border)',
-    borderRadius: 'var(--radius-card)',
-    padding: 28,
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  emptyTitle: {
-    fontSize: 14,
-    fontWeight: 500,
-    color: 'var(--text-primary)',
-    marginBottom: 6,
-  },
-  emptyMessage: {
-    fontSize: 12,
-    color: 'var(--text-secondary)',
-    lineHeight: 1.5,
-    marginBottom: 14,
   },
   errorBox: {
     background: '#FCEBEB',

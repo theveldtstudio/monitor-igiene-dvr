@@ -6,6 +6,8 @@ import NuovoStrumentoModal from '../components/NuovoStrumentoModal'
 import type { Tecnico, Strumento } from '../types'
 import { useTecnici } from '../hooks/useTecnici'
 import { useStrumenti } from '../hooks/useStrumenti'
+import EmptyState from '../components/EmptyState'
+import { IconTecnico, IconStrumento } from '../components/icons/EmptyIcons'
 
 function iniziali(nome: string, cognome: string): string {
   const a = (nome ?? '').trim().charAt(0).toUpperCase()
@@ -116,10 +118,14 @@ export default function Anagrafica() {
       {!loadingT && errorT && <ErrorBox message={errorT} onRetry={() => refetchT()} />}
 
       {!loadingT && !errorT && tecnici.length === 0 && (
-        <div style={styles.emptyBox}>
-          <div style={styles.emptyTitle}>Nessun tecnico ancora</div>
-          <div style={styles.emptyMessage}>Aggiungi i tecnici che lavorano in cantiere per associarli alle campagne.</div>
-        </div>
+        <EmptyState
+          compact
+          icon={<IconTecnico size={32} />}
+          title="Nessun tecnico ancora"
+          message="Aggiungi i tecnici che lavorano in cantiere per associarli alle campagne."
+          actionLabel="Aggiungi tecnico"
+          onAction={() => setModaleTecnicoOpen(true)}
+        />
       )}
 
       {!loadingT && !errorT && tecnici.length > 0 && (
@@ -145,10 +151,14 @@ export default function Anagrafica() {
       {!loadingS && errorS && <ErrorBox message={errorS} onRetry={() => refetchS()} />}
 
       {!loadingS && !errorS && strumenti.length === 0 && (
-        <div style={styles.emptyBox}>
-          <div style={styles.emptyTitle}>Nessuno strumento ancora</div>
-          <div style={styles.emptyMessage}>Aggiungi i tuoi strumenti di misura (fonometri, pompe, sonde) per associarli alle campagne.</div>
-        </div>
+        <EmptyState
+          compact
+          icon={<IconStrumento size={32} />}
+          title="Nessuno strumento ancora"
+          message="Aggiungi i tuoi strumenti di misura (fonometri, pompe, sonde) per associarli alle campagne."
+          actionLabel="Aggiungi strumento"
+          onAction={() => setModaleStrumentoOpen(true)}
+        />
       )}
 
       {!loadingS && !errorS && strumenti.length > 0 && (
@@ -308,24 +318,6 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'var(--bg-toggle)',
     borderRadius: 4,
     animation: 'skeleton-pulse 1.4s ease-in-out infinite',
-  },
-  emptyBox: {
-    background: 'var(--bg-card)',
-    border: '0.5px solid var(--border)',
-    borderRadius: 'var(--radius-card)',
-    padding: 24,
-    textAlign: 'center',
-  },
-  emptyTitle: {
-    fontSize: 14,
-    fontWeight: 500,
-    color: 'var(--text-primary)',
-    marginBottom: 6,
-  },
-  emptyMessage: {
-    fontSize: 12,
-    color: 'var(--text-secondary)',
-    lineHeight: 1.5,
   },
   errorBox: {
     background: '#FCEBEB',
