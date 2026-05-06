@@ -1023,6 +1023,73 @@ const exportSchemaAmianto: ExportSchema = {
   },
 }
 
+// ─── Acqua ───────────────────────────────────────────────────────────────────
+// Template: public/templates/acqua.xlsx — 2 pagine × 8 misure = 16 max
+// Acqua è un modulo compatto (pochi parametri fisico-chimici), 2 pagine
+// sono sufficienti per coprire tutti i casi pratici di monitoraggio.
+// Colonne A-I: n°, punto monitoraggio, pH, conducibilità(µS/cm),
+//   T acqua(°C), T ambiente(°C), O2(%), O2(mg/L), note
+const exportSchemaAcqua: ExportSchema = {
+  templateUrl: '/templates/acqua.xlsx',
+
+  buildFilename: (ctx) => {
+    const safe = ctx.cantiere.nome.replace(/[^a-zA-Z0-9_-]/g, '_')
+    const data = ctx.campagna.data_ora ? new Date(ctx.campagna.data_ora).toISOString().slice(0, 10) : 'data'
+    return `${safe}_Acqua_${data}.xlsx`
+  },
+
+  applyData: (ctx, workbook) => {
+    const ws = workbook.getWorksheet('Foglio1')
+    if (!ws) throw new Error("Foglio 'Foglio1' non trovato nel template Acqua")
+
+    // 2 pagine × 8 misure = 16 max; PAGE_ROWS=13
+    const blocchi = [
+      { headerRow: 1,  dataStartRow: 4,  footerRow: 12 },
+      { headerRow: 14, dataStartRow: 17, footerRow: 25 },
+    ]
+    const dataFormatted = ctx.campagna.data_ora ? new Date(ctx.campagna.data_ora).toLocaleDateString('it-IT') : ''
+    const committente = ctx.cantiere.committente ?? ''
+    const cantiereNome = ctx.cantiere.nome
+    const nomiTecnici = ctx.tecnici.map((t) => `${t.nome} ${t.cognome}`.trim()).join(', ')
+    const strumentoStr = ctx.strumento
+      ? `Strumentazione: ${ctx.strumento.nome} ${ctx.strumento.modello} (${ctx.strumento.matricola})`
+      : 'Strumentazione:'
+
+    blocchi.forEach((b) => {
+      const c = ws.getCell(`B${b.headerRow}`)
+      c.value = committente || null
+      c.alignment = { horizontal: 'center', vertical: 'middle' }
+      const d = ws.getCell(`D${b.headerRow}`)
+      d.value = dataFormatted ? `Data: ${dataFormatted}` : 'Data:'
+      d.alignment = { horizontal: 'center', vertical: 'middle' }
+      const k = ws.getCell(`F${b.headerRow}`)
+      k.value = cantiereNome
+      k.alignment = { horizontal: 'center', vertical: 'middle' }
+      if (nomiTecnici) ws.getCell(`C${b.footerRow}`).value = nomiTecnici
+      ws.getCell(`F${b.footerRow}`).value = strumentoStr
+    })
+
+    const misure = [...ctx.misure].sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0))
+    misure.forEach((m, idx) => {
+      const bi = Math.floor(idx / 8)
+      if (bi >= blocchi.length) { console.warn(`Acqua: misura ${idx + 1} oltre 16 — ignorata`); return }
+      const r = blocchi[bi].dataStartRow + (idx % 8)
+      const dati = (m.dati ?? {}) as Record<string, unknown>
+
+      ws.getCell(`B${r}`).value = (dati.punto_monitoraggio as string | undefined) ?? null
+      ws.getCell(`C${r}`).value = toNumber(dati.ph)
+      ws.getCell(`D${r}`).value = toNumber(dati.conducibilita)
+      ws.getCell(`E${r}`).value = toNumber(dati.t_acqua)
+      ws.getCell(`F${r}`).value = toNumber(dati.t_ambiente)
+      ws.getCell(`G${r}`).value = toNumber(dati.o2_perc)
+      ws.getCell(`H${r}`).value = toNumber(dati.o2_mg_l)
+      const n = ws.getCell(`I${r}`)
+      n.value = m.note ?? null
+      n.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
+    })
+  },
+}
+
 export const EXPORT_SCHEMAS: Record<string, ExportSchema> = {
   rumore: exportSchemaRumore,
   'vibrazioni-wbv': exportSchemaWbv,
@@ -1036,7 +1103,7 @@ export const EXPORT_SCHEMAS: Record<string, ExportSchema> = {
   ipa: exportSchemaIpa,
   amianto: exportSchemaAmianto,
   'biologico-sas': buildSchemaGenerico('biologico-sas', 'Biologico SAS'),
-  acqua: buildSchemaGenerico('acqua', 'Monitoraggio acqua'),
+  acqua: exportSchemaAcqua,
   mmc: buildSchemaGenerico('mmc', 'MMC'),
   owas: exportSchemaOwas,
   ocra: buildSchemaGenerico('ocra', 'OCRA'),
