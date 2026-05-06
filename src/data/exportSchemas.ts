@@ -1,4 +1,4 @@
-import type { Misura, Cantiere, Campagna, Tecnico, Strumento, RisorsaCantiere } from '../types'
+﻿import type { Misura, Cantiere, Campagna, Tecnico, Strumento, RisorsaCantiere } from '../types'
 import { toNumber } from '../lib/exportExcel'
 
 /**
@@ -386,8 +386,8 @@ export const exportSchemaHav: ExportSchema = {
  * Layout template:
  * - Riga 1: A=Impresa:, B=committente, C=Data: gg/mm/aaaa, D=Cantiere:, E=cantiereNome (merged E1:H1)
  * - Righe 2-4: intestazioni colonne (statiche nel template)
- * - Righe 5-13: dati misure (max 9), colonna A numerazione fissa NON toccare
- * - Riga 16: A16:B16=label, C16:J16=nomiTecnici
+ * - Righe 5-12: dati misure (max 8), colonna A numerazione fissa NON toccare
+ * - Riga 14: A14:B14=label, C14:J14=nomiTecnici
  *
  * cellMap dati misure (a partire da r5):
  *   A = numerazione fissa nel template, non tocchiamo
@@ -425,14 +425,14 @@ export const exportSchemaOwas: ExportSchema = {
     ws.getCell('C1').value = dataFormatted ? `Data: ${dataFormatted}` : 'Data:'
     ws.getCell('E1').value = cantiereNome
 
-    // === Dati misure righe 5-13 (max 9) ===
+    // === Dati misure righe 5-12 (max 8) ===
     const DATA_START_ROW = 5
-    const MAX_MISURE = 9
+    const MAX_MISURE = 8
 
     const misureOrdinate = [...ctx.misure].sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0))
 
     if (misureOrdinate.length > MAX_MISURE) {
-      console.warn('OWAS export: max 9 misure, troncate', misureOrdinate.length - MAX_MISURE, 'misure escluse')
+      console.warn('OWAS export: max 8 misure, troncate', misureOrdinate.length - MAX_MISURE, 'misure escluse')
     }
 
     misureOrdinate.slice(0, MAX_MISURE).forEach((m, i) => {
@@ -455,10 +455,10 @@ export const exportSchemaOwas: ExportSchema = {
       ws.getCell(`J${r}`).value = m.note ?? null
     })
 
-    // === Footer riga 16 ===
+    // === Footer riga 14 ===
     const nomiTecnici = ctx.tecnici.length > 0 ? ctx.tecnici.map((t) => t.nome).join(', ') : ''
     if (nomiTecnici) {
-      ws.getCell('C16').value = nomiTecnici
+      ws.getCell('C14').value = nomiTecnici
     }
   },
 }
@@ -1157,8 +1157,9 @@ const exportSchemaCarbonio: ExportSchema = {
 
 // ─── IPA ─────────────────────────────────────────────────────────────────────
 // Template: public/templates/ipa.xlsx — 4 pagine × 8 misure = 32 max
-// Colonne A-L: n°, fase, postazione, tipo misura, macchine, codice campione,
-//   n° fiala, n° membrana, pompa, Q(L/min), durata(min), volume(L)
+// Colonne A-K: n°, fase, postazione, tipo misura, macchine, codice campione,
+//   n° fiala, pompa, Q(L/min), durata(min), volume(L)
+// Nota: N° MEMBRANA rimossa dal foglio campagna (campo ancora in dati, non esportato).
 // Nota: nessuna colonna risultato — i valori analitici IPA vengono dal lab.
 // Nota: temperatura e velocita_aria NON in colonne.
 const exportSchemaIpa: ExportSchema = {
@@ -1199,7 +1200,7 @@ const exportSchemaIpa: ExportSchema = {
       k.value = cantiereNome
       k.alignment = { horizontal: 'center', vertical: 'middle' }
       if (nomiTecnici) ws.getCell(`C${b.footerRow}`).value = nomiTecnici
-      ws.getCell(`H${b.footerRow}`).value = strumentoStr
+      ws.getCell(`G${b.footerRow}`).value = strumentoStr
     })
 
     const tipoLabel = (v: unknown): string | null => {
@@ -1222,11 +1223,11 @@ const exportSchemaIpa: ExportSchema = {
       ws.getCell(`E${r}`).value = macchine.length > 0 ? macchine.join(', ') : null
       ws.getCell(`F${r}`).value = (dati.codice_campione as string | undefined) ?? null
       ws.getCell(`G${r}`).value = (dati.numero_fiala as string | undefined) ?? null
-      ws.getCell(`H${r}`).value = (dati.numero_membrana as string | undefined) ?? null
-      ws.getCell(`I${r}`).value = (dati.pompa as string | undefined) ?? null
-      ws.getCell(`J${r}`).value = toNumber(dati.portata_q)
-      ws.getCell(`K${r}`).value = toNumber(dati.durata_prelievo)
-      ws.getCell(`L${r}`).value = toNumber(dati.volume_campionato)
+      // H: numero_membrana rimossa — numero_membrana rimane in dati ma non viene esportata
+      ws.getCell(`H${r}`).value = (dati.pompa as string | undefined) ?? null
+      ws.getCell(`I${r}`).value = toNumber(dati.portata_q)
+      ws.getCell(`J${r}`).value = toNumber(dati.durata_prelievo)
+      ws.getCell(`K${r}`).value = toNumber(dati.volume_campionato)
     })
   },
 }
