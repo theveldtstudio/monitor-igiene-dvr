@@ -619,6 +619,92 @@ function buildSchemaGenerico(moduloId: string, moduloLabel: string): ExportSchem
   }
 }
 
+// ─── Gas ─────────────────────────────────────────────────────────────────────
+// Template: public/templates/gas.xlsx — 4 pagine × 8 misure = 32 max
+// Layout per ogni blocco (BASE_ROW = 1 | 16 | 31 | 46):
+//   header:  BASE_ROW
+//   dati:    BASE_ROW+4 … BASE_ROW+11
+//   footer:  BASE_ROW+12
+export const exportSchemaGas: ExportSchema = {
+  templateUrl: '/templates/gas.xlsx',
+
+  buildFilename: (ctx) => {
+    const safe = ctx.cantiere.nome.replace(/[^a-zA-Z0-9_-]/g, '_')
+    const data = ctx.campagna.data_ora ? new Date(ctx.campagna.data_ora).toISOString().slice(0, 10) : 'data'
+    return `${safe}_Gas_${data}.xlsx`
+  },
+
+  applyData: (ctx, workbook) => {
+    const ws = workbook.getWorksheet('Foglio1')
+    if (!ws) throw new Error("Foglio 'Foglio1' non trovato nel template Gas")
+
+    const blocchi = [
+      { headerRow: 1,  dataStartRow: 5,  footerRow: 13 },
+      { headerRow: 16, dataStartRow: 20, footerRow: 28 },
+      { headerRow: 31, dataStartRow: 35, footerRow: 43 },
+      { headerRow: 46, dataStartRow: 50, footerRow: 58 },
+    ]
+    const dataFormatted = ctx.campagna.data_ora ? new Date(ctx.campagna.data_ora).toLocaleDateString('it-IT') : ''
+    const committente = ctx.cantiere.committente ?? ''
+    const cantiereNome = ctx.cantiere.nome
+    const nomiTecnici = ctx.tecnici.map((t) => `${t.nome} ${t.cognome}`.trim()).join(', ')
+    const strumentoStr = ctx.strumento
+      ? `Strumentazione: ${ctx.strumento.nome} ${ctx.strumento.modello} (${ctx.strumento.matricola})`
+      : 'Strumentazione:'
+
+    blocchi.forEach((b) => {
+      const c = ws.getCell(`B${b.headerRow}`)
+      c.value = committente || null
+      c.alignment = { horizontal: 'center', vertical: 'middle' }
+      const d = ws.getCell(`D${b.headerRow}`)
+      d.value = dataFormatted ? `Data: ${dataFormatted}` : 'Data:'
+      d.alignment = { horizontal: 'center', vertical: 'middle' }
+      const k = ws.getCell(`F${b.headerRow}`)
+      k.value = cantiereNome
+      k.alignment = { horizontal: 'center', vertical: 'middle' }
+      if (nomiTecnici) ws.getCell(`C${b.footerRow}`).value = nomiTecnici
+      ws.getCell(`I${b.footerRow}`).value = strumentoStr
+    })
+
+    const tipoLabel = (v: unknown): string | null => {
+      if (typeof v !== 'string' || !v) return null
+      const map: Record<string, string> = { personale: 'Personale', ambientale: 'Ambientale', puntuale: 'Puntuale' }
+      return map[v] ?? v
+    }
+
+    const misure = [...ctx.misure].sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0))
+    misure.forEach((m, idx) => {
+      const bi = Math.floor(idx / 8)
+      if (bi >= blocchi.length) { console.warn(`Gas: misura ${idx + 1} oltre 32 — ignorata`); return }
+      const r = blocchi[bi].dataStartRow + (idx % 8)
+      const dati = (m.dati ?? {}) as Record<string, unknown>
+      const macchine = (dati.macchine_nomi as string[] | undefined) ?? []
+
+      ws.getCell(`B${r}`).value = (dati.fase_nome as string | undefined) ?? null
+      ws.getCell(`C${r}`).value = (dati.postazione_nome as string | undefined) ?? null
+      ws.getCell(`D${r}`).value = (dati.tempo_prelievo as string | undefined) ?? null
+      ws.getCell(`E${r}`).value = tipoLabel(dati.tipo_prelievo)
+      ws.getCell(`F${r}`).value = macchine.length > 0 ? macchine.join(', ') : null
+      ws.getCell(`G${r}`).value = toNumber(dati.no2)
+      ws.getCell(`H${r}`).value = toNumber(dati.no)
+      ws.getCell(`I${r}`).value = toNumber(dati.co)
+      ws.getCell(`J${r}`).value = toNumber(dati.co2)
+      ws.getCell(`K${r}`).value = toNumber(dati.h2s)
+
+      const altroNome = typeof dati.altro_gas_nome === 'string' ? dati.altro_gas_nome.trim() : ''
+      const altroVal = toNumber(dati.altro_gas_valore)
+      if (altroNome && altroVal !== null) ws.getCell(`L${r}`).value = `${altroNome}: ${altroVal}`
+      else if (altroNome) ws.getCell(`L${r}`).value = altroNome
+      else if (altroVal !== null) ws.getCell(`L${r}`).value = altroVal
+
+      ws.getCell(`M${r}`).value = toNumber(dati.o2)
+      const n = ws.getCell(`N${r}`)
+      n.value = m.note ?? null
+      n.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
+    })
+  },
+}
+
 export const EXPORT_SCHEMAS: Record<string, ExportSchema> = {
   rumore: exportSchemaRumore,
   'vibrazioni-wbv': exportSchemaWbv,
@@ -626,7 +712,7 @@ export const EXPORT_SCHEMAS: Record<string, ExportSchema> = {
   microclima: buildSchemaGenerico('microclima', 'Microclima'),
   cem: buildSchemaGenerico('cem', 'CEM'),
   roa: buildSchemaGenerico('roa', 'ROA'),
-  gas: buildSchemaGenerico('gas', 'Gas'),
+  gas: exportSchemaGas,
   polveri: buildSchemaGenerico('polveri', 'Polveri'),
   'carbonio-elementare': buildSchemaGenerico('carbonio-elementare', 'Carbonio elementare'),
   ipa: buildSchemaGenerico('ipa', 'IPA'),
