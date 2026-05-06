@@ -88,7 +88,7 @@ export const exportSchemaRumore: ExportSchema = {
   templateUrl: '/templates/rumore.xlsx',
 
   buildFilename: (ctx) => {
-    const cantiereSafe = ctx.cantiere.nome.replace(/[^a-zA-Z0-9_\-]/g, '_')
+    const cantiereSafe = ctx.cantiere.nome.replace(/[^a-zA-Z0-9_-]/g, '_')
     const data = ctx.campagna.data_ora ? new Date(ctx.campagna.data_ora).toISOString().slice(0, 10) : 'data'
     return `${cantiereSafe}_Rumore_${data}.xlsx`
   },
@@ -215,7 +215,7 @@ export const exportSchemaWbv: ExportSchema = {
   templateUrl: '/templates/wbv.xlsx',
 
   buildFilename: (ctx) => {
-    const cantiereSafe = ctx.cantiere.nome.replace(/[^a-zA-Z0-9_\-]/g, '_')
+    const cantiereSafe = ctx.cantiere.nome.replace(/[^a-zA-Z0-9_-]/g, '_')
     const data = ctx.campagna.data_ora ? new Date(ctx.campagna.data_ora).toISOString().slice(0, 10) : 'data'
     return `${cantiereSafe}_WBV_${data}.xlsx`
   },
@@ -309,7 +309,7 @@ export const exportSchemaHav: ExportSchema = {
   templateUrl: '/templates/hav.xlsx',
 
   buildFilename: (ctx) => {
-    const cantiereSafe = ctx.cantiere.nome.replace(/[^a-zA-Z0-9_\-]/g, '_')
+    const cantiereSafe = ctx.cantiere.nome.replace(/[^a-zA-Z0-9_-]/g, '_')
     const data = ctx.campagna.data_ora ? new Date(ctx.campagna.data_ora).toISOString().slice(0, 10) : 'data'
     return `${cantiereSafe}_HAV_${data}.xlsx`
   },
@@ -617,6 +617,76 @@ function buildSchemaGenerico(moduloId: string, moduloLabel: string): ExportSchem
       applyDataGenerico(ctx, wb, moduloLabel, risorseMap)
     },
   }
+}
+
+// ─── Microclima ───────────────────────────────────────────────────────────────
+// Template: public/templates/microclima.xlsx — 4 pagine × 8 misure = 32 max
+// Colonne A-M: n°, postazione, fase, ambiente, Ta, Tg, Tnw, UR, Va, WBGT,
+//   attività metabolica, vestiario, note
+const exportSchemaMicroclima: ExportSchema = {
+  templateUrl: '/templates/microclima.xlsx',
+
+  buildFilename: (ctx) => {
+    const safe = ctx.cantiere.nome.replace(/[^a-zA-Z0-9_-]/g, '_')
+    const data = ctx.campagna.data_ora ? new Date(ctx.campagna.data_ora).toISOString().slice(0, 10) : 'data'
+    return `${safe}_Microclima_${data}.xlsx`
+  },
+
+  applyData: (ctx, workbook) => {
+    const ws = workbook.getWorksheet('Foglio1')
+    if (!ws) throw new Error("Foglio 'Foglio1' non trovato nel template Microclima")
+
+    const blocchi = [
+      { headerRow: 1,  dataStartRow: 4,  footerRow: 12 },
+      { headerRow: 14, dataStartRow: 17, footerRow: 25 },
+      { headerRow: 27, dataStartRow: 30, footerRow: 38 },
+      { headerRow: 40, dataStartRow: 43, footerRow: 51 },
+    ]
+    const dataFormatted = ctx.campagna.data_ora ? new Date(ctx.campagna.data_ora).toLocaleDateString('it-IT') : ''
+    const committente = ctx.cantiere.committente ?? ''
+    const cantiereNome = ctx.cantiere.nome
+    const nomiTecnici = ctx.tecnici.map((t) => `${t.nome} ${t.cognome}`.trim()).join(', ')
+    const strumentoStr = ctx.strumento
+      ? `Strumentazione: ${ctx.strumento.nome} ${ctx.strumento.modello} (${ctx.strumento.matricola})`
+      : 'Strumentazione:'
+
+    blocchi.forEach((b) => {
+      const c = ws.getCell(`B${b.headerRow}`)
+      c.value = committente || null
+      c.alignment = { horizontal: 'center', vertical: 'middle' }
+      const d = ws.getCell(`D${b.headerRow}`)
+      d.value = dataFormatted ? `Data: ${dataFormatted}` : 'Data:'
+      d.alignment = { horizontal: 'center', vertical: 'middle' }
+      const k = ws.getCell(`F${b.headerRow}`)
+      k.value = cantiereNome
+      k.alignment = { horizontal: 'center', vertical: 'middle' }
+      if (nomiTecnici) ws.getCell(`C${b.footerRow}`).value = nomiTecnici
+      ws.getCell(`F${b.footerRow}`).value = strumentoStr
+    })
+
+    const misure = [...ctx.misure].sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0))
+    misure.forEach((m, idx) => {
+      const bi = Math.floor(idx / 8)
+      if (bi >= blocchi.length) { console.warn(`Microclima: misura ${idx + 1} oltre 32 — ignorata`); return }
+      const r = blocchi[bi].dataStartRow + (idx % 8)
+      const dati = (m.dati ?? {}) as Record<string, unknown>
+
+      ws.getCell(`B${r}`).value = (dati.postazione_nome as string | undefined) ?? null
+      ws.getCell(`C${r}`).value = (dati.fase_nome as string | undefined) ?? null
+      ws.getCell(`D${r}`).value = (dati.ambiente as string | undefined) ?? null
+      ws.getCell(`E${r}`).value = toNumber(dati.ta)
+      ws.getCell(`F${r}`).value = toNumber(dati.tg)
+      ws.getCell(`G${r}`).value = toNumber(dati.tnw)
+      ws.getCell(`H${r}`).value = toNumber(dati.ur)
+      ws.getCell(`I${r}`).value = toNumber(dati.va)
+      ws.getCell(`J${r}`).value = toNumber(dati.wbgt)
+      ws.getCell(`K${r}`).value = (dati.attivita_metabolica as string | undefined) ?? null
+      ws.getCell(`L${r}`).value = (dati.vestiario as string | undefined) ?? null
+      const n = ws.getCell(`M${r}`)
+      n.value = m.note ?? null
+      n.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
+    })
+  },
 }
 
 // ─── Gas ─────────────────────────────────────────────────────────────────────
@@ -1094,7 +1164,7 @@ export const EXPORT_SCHEMAS: Record<string, ExportSchema> = {
   rumore: exportSchemaRumore,
   'vibrazioni-wbv': exportSchemaWbv,
   'vibrazioni-hav': exportSchemaHav,
-  microclima: buildSchemaGenerico('microclima', 'Microclima'),
+  microclima: exportSchemaMicroclima,
   cem: buildSchemaGenerico('cem', 'CEM'),
   roa: buildSchemaGenerico('roa', 'ROA'),
   gas: exportSchemaGas,
