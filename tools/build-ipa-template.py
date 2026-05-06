@@ -3,7 +3,7 @@ Build public/templates/ipa.xlsx — Foglio di campagna ufficiale IPA
 (Idrocarburi Policiclici Aromatici).
 Pattern: 4 pagine x 8 misure = 32 max.
 
-Colonne (A..L):
+Colonne (A..K):
   A  REG | [n°]
   B  FASE LAVORATIVA
   C  POSTAZIONE DI MISURA
@@ -11,12 +11,12 @@ Colonne (A..L):
   E  MACCHINE/IMPIANTI PRESENTI
   F  CODICE CAMPIONE
   G  N° FIALA
-  H  N° MEMBRANA
-  I  POMPA
-  J  PORTATA Q (L/min)
-  K  DURATA PRELIEVO (min)
-  L  VOLUME CAMPIONATO (L)
+  H  POMPA
+  I  PORTATA Q (L/min)
+  J  DURATA PRELIEVO (min)
+  K  VOLUME CAMPIONATO (L)
 
+Nota: N° MEMBRANA rimossa (campo ancora salvato in dati ma non esportato).
 Nota: i risultati analitici IPA vengono dal laboratorio, non dal campo —
 nessuna colonna risultato nel foglio campagna. Temperatura e velocita_aria
 non inseriti.
@@ -37,11 +37,10 @@ COL_WIDTHS = {
     "E": 22.0,
     "F": 14.0,
     "G": 10.0,
-    "H": 12.0,
+    "H": 10.0,
     "I": 10.0,
     "J": 10.0,
-    "K": 10.0,
-    "L": 12.0,
+    "K": 12.0,
 }
 ROW_H_HEADER = 30.0
 ROW_H_TITLE  = 24.95
@@ -52,7 +51,7 @@ ROW_H_EMPTY  = 15.0
 
 PAGE_ROWS = 13
 DATA_ROWS_PER_PAGE = 8
-NUM_COLS = 12
+NUM_COLS = 11
 
 THIN = Side(style="thin", color="000000")
 BORDER_ALL = Border(left=THIN, right=THIN, top=THIN, bottom=THIN)
@@ -72,7 +71,6 @@ HEADERS = [
     "MACCHINE/IMPIANTI PRESENTI",
     "CODICE CAMPIONE",
     "N° FIALA",
-    "N° MEMBRANA",
     "POMPA",
     "PORTATA Q\n(L/min)",
     "DURATA\n(min)",
@@ -127,10 +125,10 @@ def build_page(ws, page_num: int, base_row: int, slot_start: int):
     c = ws.cell(r_foot, 1, "Tecnico rilevatore")
     c.font = FONT_HDR
     c.alignment = LEFT
-    ws.merge_cells(start_row=r_foot, start_column=3, end_row=r_foot, end_column=7)
+    ws.merge_cells(start_row=r_foot, start_column=3, end_row=r_foot, end_column=6)
     ws.cell(r_foot, 3).alignment = LEFT
-    ws.merge_cells(start_row=r_foot, start_column=8, end_row=r_foot, end_column=NUM_COLS)
-    c = ws.cell(r_foot, 8, "Strumentazione:")
+    ws.merge_cells(start_row=r_foot, start_column=7, end_row=r_foot, end_column=NUM_COLS)
+    c = ws.cell(r_foot, 7, "Strumentazione:")
     c.font = FONT_NORMAL
     c.alignment = LEFT
 
@@ -164,7 +162,7 @@ def main():
     ws.row_breaks = RowBreak(brk=breaks)
 
     last_row = 4 * PAGE_ROWS
-    ws.print_area = f"A1:L{last_row}"
+    ws.print_area = f"A1:K{last_row}"
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     wb.save(OUT)
