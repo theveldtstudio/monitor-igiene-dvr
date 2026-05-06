@@ -454,11 +454,6 @@ export const exportSchemaOwas: ExportSchema = {
       const r = DATA_START_ROW + i
       const dati = (m.dati ?? {}) as Record<string, unknown>
 
-      const durataMin = parseDurataMinuti(dati.durata)
-      const cellaDurata = ws.getCell(`D${r}`)
-      cellaDurata.value = durataMin !== null ? durataMin / 1440 : null
-      cellaDurata.numFmt = 'hh:mm:ss'
-
       const ce = ws.getCell(`E${r}`)
       ce.value = toNumber(dati.schiena)
       ce.numFmt = '0'
@@ -478,6 +473,12 @@ export const exportSchemaOwas: ExportSchema = {
       ws.getCell(`B${r}`).value = (dati.mansione as string | undefined) ?? null
       ws.getCell(`C${r}`).value = (dati.attivita as string | undefined) ?? null
       ws.getCell(`J${r}`).value = m.note ?? null
+
+      // Scritto per ultimo: sovrascrive l'eventuale xfId ereditato da E-I
+      const durataMin = parseDurataMinuti(dati.durata)
+      const cellaDurata = ws.getCell(`D${r}`)
+      cellaDurata.value = durataMin !== null ? durataMin / 1440 : null
+      cellaDurata.numFmt = 'hh:mm:ss'
     })
 
     // === Footer riga 14 ===

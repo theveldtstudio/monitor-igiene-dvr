@@ -1,11 +1,10 @@
 import type React from 'react'
 import { useState, useEffect, useMemo } from 'react'
 import type { Misura } from '../types'
-import { useRisorseCantiere } from '../hooks/useRisorseCantiere'
 import { useCreateMisura } from '../hooks/useCreateMisura'
 import { useUpdateMisura } from '../hooks/useUpdateMisura'
-import SelezionaRisorseModal from './SelezionaRisorseModal'
 import MisuraModalShell from './MisuraModalShell'
+import DurationPicker from './DurationPicker'
 import FotoUploader from './FotoUploader'
 import { calcolaClasseOwas, coloriClasseOwas } from '../data/owasLookup'
 import type { SchienaCode, BracciaCode, GambeCode, CaricoCode } from '../data/owasLookup'
@@ -63,18 +62,16 @@ const GAMBE_ICONS = {
   1: GambeIcon1, 2: GambeIcon2, 3: GambeIcon3, 4: GambeIcon4, 5: GambeIcon5, 6: GambeIcon6, 7: GambeIcon7,
 } as const;
 
-export default function MisuraOwasModal({ open, onClose, onSaved, cantiereId, campagnaId, misuraDaModificare }: MisuraOwasModalProps) {
-  const [postazioneId, setPostazioneId] = useState<string | null>(null)
+export default function MisuraOwasModal({ open, onClose, onSaved, campagnaId, misuraDaModificare }: MisuraOwasModalProps) {
   const [mansione, setMansione] = useState('')
   const [attivita, setAttivita] = useState('')
-  const [durata, setDurata] = useState('')
+  const [durata, setDurata] = useState<number | null>(null)
+  const [pickerOpen, setPickerOpen] = useState(false)
   const [schiena, setSchiena] = useState<SchienaCode>(1)
   const [braccia, setBraccia] = useState<BracciaCode>(1)
   const [gambe, setGambe] = useState<GambeCode>(1)
   const [carico, setCarico] = useState<CaricoCode>(1)
   const [note, setNote] = useState('')
-
-  const [postazioneModalOpen, setPostazioneModalOpen] = useState(false)
 
   const [misuraIdCorrente, setMisuraIdCorrente] = useState<string | null>(
     misuraDaModificare?.id ?? null
@@ -85,7 +82,6 @@ export default function MisuraOwasModal({ open, onClose, onSaved, cantiereId, ca
 
   const isModifica = misuraIdCorrente != null
 
-  const { risorse: postazioni } = useRisorseCantiere(cantiereId, 'postazione')
   const createHook = useCreateMisura()
   const updateHook = useUpdateMisura()
   const saving = isModifica ? updateHook.saving : createHook.saving
@@ -96,12 +92,9 @@ export default function MisuraOwasModal({ open, onClose, onSaved, cantiereId, ca
     if (!misuraDaModificare) return null
     const d = misuraDaModificare.dati as Record<string, unknown>
     return {
-      postazioneId: (typeof d.postazione_id === 'string' ? d.postazione_id
-                    : typeof d.postazioneId === 'string' ? d.postazioneId
-                    : null),
       mansione: (d.mansione as string) ?? '',
       attivita: (d.attivita as string) ?? '',
-      durata: d.durata != null ? String(d.durata) : '',
+      durata: typeof d.durata === 'number' ? d.durata : null,
       schiena: (d.schiena as SchienaCode) ?? 1,
       braccia: (d.braccia as BracciaCode) ?? 1,
       gambe: (d.gambe as GambeCode) ?? 1,
@@ -113,7 +106,6 @@ export default function MisuraOwasModal({ open, onClose, onSaved, cantiereId, ca
   useEffect(() => {
     if (open) {
       if (initialSnapshot) {
-        setPostazioneId(initialSnapshot.postazioneId)
         setMansione(initialSnapshot.mansione)
         setAttivita(initialSnapshot.attivita)
         setDurata(initialSnapshot.durata)
@@ -123,12 +115,11 @@ export default function MisuraOwasModal({ open, onClose, onSaved, cantiereId, ca
         setCarico(initialSnapshot.carico)
         setNote(initialSnapshot.note)
       } else {
-        setPostazioneId(null)
-        setMansione(''); setAttivita(''); setDurata('')
+        setMansione(''); setAttivita(''); setDurata(null)
         setSchiena(1); setBraccia(1); setGambe(1); setCarico(1)
         setNote('')
       }
-      setPostazioneModalOpen(false)
+      setPickerOpen(false)
       resetError()
     }
   }, [open, initialSnapshot, resetError])
@@ -143,23 +134,17 @@ export default function MisuraOwasModal({ open, onClose, onSaved, cantiereId, ca
     }
   }, [open, misuraDaModificare?.id, misuraDaModificare?.numero])
 
-  const postazioneNome = useMemo(
-    () => postazioni.find((p) => p.id === postazioneId)?.valore ?? null,
-    [postazioni, postazioneId]
-  )
-
   const classe = calcolaClasseOwas(schiena, braccia, gambe, carico)
   const codice = `${schiena}-${braccia}-${gambe}-${carico}`
   const colori = coloriClasseOwas(classe)
 
   const isAlmenoUnCampoCompilato = (
-    postazioneId !== null || mansione.trim() !== '' || attivita.trim() !== '' || note.trim() !== ''
+    durata !== null || mansione.trim() !== '' || attivita.trim() !== '' || note.trim() !== ''
   )
   const isValid = isAlmenoUnCampoCompilato
 
   const isDirty = isModifica && initialSnapshot
     ? (
-      postazioneId !== initialSnapshot.postazioneId ||
       mansione !== initialSnapshot.mansione ||
       attivita !== initialSnapshot.attivita ||
       durata !== initialSnapshot.durata ||
@@ -173,16 +158,11 @@ export default function MisuraOwasModal({ open, onClose, onSaved, cantiereId, ca
 
   const buildDati = (): Record<string, unknown> => {
     const dati: Record<string, unknown> = {}
-    if (postazioneId) {
-      dati.postazione_id = postazioneId
-      dati.postazione_nome = postazioneNome ?? ''
-    }
     const mansioneTrim = mansione.trim()
     if (mansioneTrim) dati.mansione = mansioneTrim
     const attivitaTrim = attivita.trim()
     if (attivitaTrim) dati.attivita = attivitaTrim
-    const durataN = parseFloat(durata.replace(',', '.'))
-    if (!isNaN(durataN) && durataN > 0) dati.durata = durataN
+    if (durata !== null) dati.durata = durata
     dati.schiena = schiena
     dati.braccia = braccia
     dati.gambe = gambe
@@ -212,11 +192,6 @@ export default function MisuraOwasModal({ open, onClose, onSaved, cantiereId, ca
     }
   }
 
-  const handleSavePostazione = async (id: string | null): Promise<boolean> => {
-    setPostazioneId(id)
-    return true
-  }
-
   return (
     <>
       <MisuraModalShell
@@ -230,17 +205,6 @@ export default function MisuraOwasModal({ open, onClose, onSaved, cantiereId, ca
         saveError={error}
         onSubmit={handleSubmit}
       >
-        <div style={styles.field}>
-          <label style={styles.label}>Postazione</label>
-          <button type="button" onClick={() => setPostazioneModalOpen(true)} disabled={saving}
-            style={{ ...styles.selectorBtn, ...(postazioneNome ? styles.selectorBtnFilled : {}) }}>
-            <span style={postazioneNome ? styles.selectorValue : styles.selectorPlaceholder}>
-              {postazioneNome ?? 'Seleziona postazione'}
-            </span>
-            <span style={styles.selectorChevron}>›</span>
-          </button>
-        </div>
-
         <div style={styles.field}>
           <label htmlFor="ow-mans" style={styles.label}>Mansione</label>
           <input
@@ -268,18 +232,28 @@ export default function MisuraOwasModal({ open, onClose, onSaved, cantiereId, ca
         </div>
 
         <div style={styles.field}>
-          <label htmlFor="ow-dur" style={styles.label}>Durata (min/giorno)</label>
-          <input
-            id="ow-dur"
-            type="text"
-            inputMode="decimal"
-            value={durata}
-            onChange={(e) => setDurata(e.target.value)}
-            placeholder="es. 90"
-            disabled={saving}
-            style={{ ...styles.input, ...(durata ? styles.inputFilled : {}), ...(saving ? styles.inputDisabled : {}) }}
-          />
+          <label style={styles.label}>Durata</label>
+          <button
+            type="button"
+            onClick={() => setPickerOpen(true)}
+            style={styles.durataButton}
+          >
+            <span style={styles.durataIcon}>🕐</span>
+            <span style={durata !== null ? styles.durataValore : styles.durataPlaceholder}>
+              {durata !== null
+                ? `${String(Math.floor(durata / 60)).padStart(2, '0')}:${String(durata % 60).padStart(2, '0')}`
+                : 'Tocca per impostare'}
+            </span>
+          </button>
         </div>
+
+        <DurationPicker
+          open={pickerOpen}
+          initialMinutes={durata}
+          onClose={() => setPickerOpen(false)}
+          onConfirm={(min) => { setDurata(min); setPickerOpen(false) }}
+          onCancel={() => { setDurata(null); setPickerOpen(false) }}
+        />
 
         <div style={styles.sectionHeader}>Codice posturale OWAS</div>
 
@@ -396,21 +370,6 @@ export default function MisuraOwasModal({ open, onClose, onSaved, cantiereId, ca
         </div>
       </MisuraModalShell>
 
-      <SelezionaRisorseModal
-        open={postazioneModalOpen}
-        onClose={() => setPostazioneModalOpen(false)}
-        onSaveSingola={handleSavePostazione}
-        modalita="singola"
-        initialSelectedId={postazioneId}
-        cantiereId={cantiereId}
-        tipo="postazione"
-        titolo="Postazione"
-        labelSingolare="postazione"
-        labelPlurale="postazioni"
-        permettiNessuno={true}
-        saving={false}
-        saveError={null}
-      />
     </>
   )
 }
@@ -422,6 +381,10 @@ const styles: Record<string, React.CSSProperties> = {
   textarea: { width: '100%', background: 'var(--bg-card)', borderWidth: '0.5px', borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 8, padding: '10px 12px', fontSize: 14, color: 'var(--text-primary)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', resize: 'vertical', minHeight: 60 },
   inputFilled: { borderColor: 'var(--accent)' },
   inputDisabled: { background: 'var(--bg-toggle)', opacity: 0.7, cursor: 'not-allowed' },
+  durataButton: { width: '100%', display: 'flex', alignItems: 'center', gap: 12, paddingTop: 12, paddingBottom: 12, paddingLeft: 14, paddingRight: 14, backgroundColor: 'var(--bg-card)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 'var(--radius-card)', fontSize: 15, fontFamily: 'var(--font-sans)', color: 'var(--text-primary)', cursor: 'pointer', textAlign: 'left' },
+  durataIcon: { fontSize: 18 },
+  durataValore: { color: 'var(--text-primary)' },
+  durataPlaceholder: { color: 'var(--text-tertiary)' },
   selectorBtn: { width: '100%', background: 'var(--bg-card)', borderWidth: '0.5px', borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 8, padding: '10px 12px', fontSize: 14, fontFamily: 'inherit', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', textAlign: 'left', boxSizing: 'border-box' },
   selectorBtnFilled: { borderColor: 'var(--accent)' },
   selectorValue: { color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, marginRight: 8 },
