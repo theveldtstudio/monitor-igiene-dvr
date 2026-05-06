@@ -154,9 +154,6 @@ export const exportSchemaRumore: ExportSchema = {
       cellaDurata.value = durataMin !== null ? durataMin / 1440 : null
       cellaDurata.numFmt = 'hh:mm:ss'
       cellaDurata.alignment = { horizontal: 'center', vertical: 'middle' }
-      ws.getCell(`C${r}`).value = (dati.postazione_nome as string | undefined) ?? null
-      ws.getCell(`D${r}`).value = (dati.fase_nome as string | undefined) ?? null
-      ws.getCell(`E${r}`).value = macchine.length > 0 ? macchine.join(', ') : null
       const cfLeqDba = ws.getCell(`F${r}`)
       cfLeqDba.value = toNumber(dati.leq_dba)
       cfLeqDba.numFmt = 'General'
@@ -166,7 +163,9 @@ export const exportSchemaRumore: ExportSchema = {
       const cfLpeak = ws.getCell(`H${r}`)
       cfLpeak.value = toNumber(dati.lpeak_dbc)
       cfLpeak.numFmt = 'General'
-
+      ws.getCell(`C${r}`).value = (dati.postazione_nome as string | undefined) ?? null
+      ws.getCell(`D${r}`).value = (dati.fase_nome as string | undefined) ?? null
+      ws.getCell(`E${r}`).value = macchine.length > 0 ? macchine.join(', ') : null
       const cellaNote = ws.getCell(`I${r}`)
       cellaNote.value = m.note ?? null
       cellaNote.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
@@ -256,20 +255,11 @@ export const exportSchemaWbv: ExportSchema = {
       const r = DATA_START_ROW + idx
       const dati = m.dati as Record<string, unknown>
 
-      ws.getCell(`B${r}`).value = dataFormatted
       const durataMin = parseDurataMinuti(dati.durata)
       const cellaDurata = ws.getCell(`C${r}`)
       cellaDurata.value = durataMin !== null ? durataMin / 1440 : null
       cellaDurata.numFmt = 'hh:mm:ss'
       cellaDurata.alignment = { horizontal: 'center', vertical: 'middle' }
-
-      ws.getCell(`D${r}`).value = (dati.macchina_nome as string | undefined) ?? null
-      ws.getCell(`E${r}`).value = (dati.targa as string | undefined) ?? null
-      ws.getCell(`F${r}`).value = (dati.posizione_operatore as string | undefined) ?? null
-      ws.getCell(`G${r}`).value = (dati.trazione as string | undefined) ?? null
-      ws.getCell(`H${r}`).value = (dati.utensile as string | undefined) ?? null
-      ws.getCell(`I${r}`).value = (dati.regime as string | undefined) ?? null
-      ws.getCell(`J${r}`).value = (dati.fase_nome as string | undefined) ?? null
       const ck = ws.getCell(`K${r}`)
       ck.value = toNumber(dati.aw_x)
       ck.numFmt = 'General'
@@ -279,6 +269,14 @@ export const exportSchemaWbv: ExportSchema = {
       const cm = ws.getCell(`M${r}`)
       cm.value = toNumber(dati.aw_z)
       cm.numFmt = 'General'
+      ws.getCell(`B${r}`).value = dataFormatted
+      ws.getCell(`D${r}`).value = (dati.macchina_nome as string | undefined) ?? null
+      ws.getCell(`E${r}`).value = (dati.targa as string | undefined) ?? null
+      ws.getCell(`F${r}`).value = (dati.posizione_operatore as string | undefined) ?? null
+      ws.getCell(`G${r}`).value = (dati.trazione as string | undefined) ?? null
+      ws.getCell(`H${r}`).value = (dati.utensile as string | undefined) ?? null
+      ws.getCell(`I${r}`).value = (dati.regime as string | undefined) ?? null
+      ws.getCell(`J${r}`).value = (dati.fase_nome as string | undefined) ?? null
       // N e O = formule del template, non tocchiamo
       const cellaNote = ws.getCell(`P${r}`)
       cellaNote.value = m.note ?? null
@@ -366,19 +364,11 @@ export const exportSchemaHav: ExportSchema = {
         }
       }
 
-      ws.getCell(`B${r}`).value = dataFormatted
       const durataMin = parseDurataMinuti(dati.durata)
       const cellaDurata = ws.getCell(`C${r}`)
       cellaDurata.value = durataMin !== null ? durataMin / 1440 : null
       cellaDurata.numFmt = 'hh:mm:ss'
       cellaDurata.alignment = { horizontal: 'center', vertical: 'middle' }
-
-      ws.getCell(`D${r}`).value = (dati.utensile as string | undefined) ?? null
-      ws.getCell(`E${r}`).value = (dati.matricola as string | undefined) ?? null
-      ws.getCell(`F${r}`).value = impugnaturaText
-      ws.getCell(`G${r}`).value = (dati.alimentazione as string | undefined) ?? null
-      ws.getCell(`H${r}`).value = (dati.accessorio as string | undefined) ?? null
-      ws.getCell(`I${r}`).value = (dati.fase_nome as string | undefined) ?? null
       const cj = ws.getCell(`J${r}`)
       cj.value = toNumber(dati.aw_x)
       cj.numFmt = 'General'
@@ -388,6 +378,13 @@ export const exportSchemaHav: ExportSchema = {
       const cl2 = ws.getCell(`L${r}`)
       cl2.value = toNumber(dati.aw_z)
       cl2.numFmt = 'General'
+      ws.getCell(`B${r}`).value = dataFormatted
+      ws.getCell(`D${r}`).value = (dati.utensile as string | undefined) ?? null
+      ws.getCell(`E${r}`).value = (dati.matricola as string | undefined) ?? null
+      ws.getCell(`F${r}`).value = impugnaturaText
+      ws.getCell(`G${r}`).value = (dati.alimentazione as string | undefined) ?? null
+      ws.getCell(`H${r}`).value = (dati.accessorio as string | undefined) ?? null
+      ws.getCell(`I${r}`).value = (dati.fase_nome as string | undefined) ?? null
       // M = formula A(w)sum, non tocchiamo
       const cellaNote = ws.getCell(`N${r}`)
       cellaNote.value = m.note ?? null
@@ -457,9 +454,6 @@ export const exportSchemaOwas: ExportSchema = {
       const r = DATA_START_ROW + i
       const dati = (m.dati ?? {}) as Record<string, unknown>
 
-      ws.getCell(`B${r}`).value = (dati.mansione as string | undefined) ?? null
-      ws.getCell(`C${r}`).value = (dati.attivita as string | undefined) ?? null
-
       const durataMin = parseDurataMinuti(dati.durata)
       const cellaDurata = ws.getCell(`D${r}`)
       cellaDurata.value = durataMin !== null ? durataMin / 1440 : null
@@ -480,6 +474,9 @@ export const exportSchemaOwas: ExportSchema = {
       const ci = ws.getCell(`I${r}`)
       ci.value = toNumber(dati.classe)
       ci.numFmt = '0'
+
+      ws.getCell(`B${r}`).value = (dati.mansione as string | undefined) ?? null
+      ws.getCell(`C${r}`).value = (dati.attivita as string | undefined) ?? null
       ws.getCell(`J${r}`).value = m.note ?? null
     })
 
