@@ -689,6 +689,79 @@ const exportSchemaMicroclima: ExportSchema = {
   },
 }
 
+// ─── CEM ─────────────────────────────────────────────────────────────────────
+// Template: public/templates/cem.xlsx — 4 pagine × 8 misure = 32 max
+// Colonne A-L: n°, postazione, fase, sorgente CEM, frequenza (val+unità),
+//   distanza(m), E(V/m), H(A/m), B(µT), limite rif., indice esp.(%), note
+const exportSchemaCem: ExportSchema = {
+  templateUrl: '/templates/cem.xlsx',
+
+  buildFilename: (ctx) => {
+    const safe = ctx.cantiere.nome.replace(/[^a-zA-Z0-9_-]/g, '_')
+    const data = ctx.campagna.data_ora ? new Date(ctx.campagna.data_ora).toISOString().slice(0, 10) : 'data'
+    return `${safe}_CEM_${data}.xlsx`
+  },
+
+  applyData: (ctx, workbook) => {
+    const ws = workbook.getWorksheet('Foglio1')
+    if (!ws) throw new Error("Foglio 'Foglio1' non trovato nel template CEM")
+
+    const blocchi = [
+      { headerRow: 1,  dataStartRow: 4,  footerRow: 12 },
+      { headerRow: 14, dataStartRow: 17, footerRow: 25 },
+      { headerRow: 27, dataStartRow: 30, footerRow: 38 },
+      { headerRow: 40, dataStartRow: 43, footerRow: 51 },
+    ]
+    const dataFormatted = ctx.campagna.data_ora ? new Date(ctx.campagna.data_ora).toLocaleDateString('it-IT') : ''
+    const committente = ctx.cantiere.committente ?? ''
+    const cantiereNome = ctx.cantiere.nome
+    const nomiTecnici = ctx.tecnici.map((t) => `${t.nome} ${t.cognome}`.trim()).join(', ')
+    const strumentoStr = ctx.strumento
+      ? `Strumentazione: ${ctx.strumento.nome} ${ctx.strumento.modello} (${ctx.strumento.matricola})`
+      : 'Strumentazione:'
+
+    blocchi.forEach((b) => {
+      const c = ws.getCell(`B${b.headerRow}`)
+      c.value = committente || null
+      c.alignment = { horizontal: 'center', vertical: 'middle' }
+      const d = ws.getCell(`D${b.headerRow}`)
+      d.value = dataFormatted ? `Data: ${dataFormatted}` : 'Data:'
+      d.alignment = { horizontal: 'center', vertical: 'middle' }
+      const k = ws.getCell(`F${b.headerRow}`)
+      k.value = cantiereNome
+      k.alignment = { horizontal: 'center', vertical: 'middle' }
+      if (nomiTecnici) ws.getCell(`C${b.footerRow}`).value = nomiTecnici
+      ws.getCell(`F${b.footerRow}`).value = strumentoStr
+    })
+
+    const misure = [...ctx.misure].sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0))
+    misure.forEach((m, idx) => {
+      const bi = Math.floor(idx / 8)
+      if (bi >= blocchi.length) { console.warn(`CEM: misura ${idx + 1} oltre 32 — ignorata`); return }
+      const r = blocchi[bi].dataStartRow + (idx % 8)
+      const dati = (m.dati ?? {}) as Record<string, unknown>
+
+      const freqVal = toNumber(dati.frequenza)
+      const freqUnita = typeof dati.unita_frequenza === 'string' ? dati.unita_frequenza : ''
+      const freqStr = freqVal !== null ? `${freqVal} ${freqUnita}`.trim() : (freqUnita || null)
+
+      ws.getCell(`B${r}`).value = (dati.postazione_nome as string | undefined) ?? null
+      ws.getCell(`C${r}`).value = (dati.fase_nome as string | undefined) ?? null
+      ws.getCell(`D${r}`).value = (dati.sorgente as string | undefined) ?? null
+      ws.getCell(`E${r}`).value = freqStr
+      ws.getCell(`F${r}`).value = toNumber(dati.distanza)
+      ws.getCell(`G${r}`).value = toNumber(dati.campo_e)
+      ws.getCell(`H${r}`).value = toNumber(dati.campo_h)
+      ws.getCell(`I${r}`).value = toNumber(dati.induzione_b)
+      ws.getCell(`J${r}`).value = (dati.limite_riferimento as string | undefined) ?? null
+      ws.getCell(`K${r}`).value = toNumber(dati.indice_esposizione)
+      const n = ws.getCell(`L${r}`)
+      n.value = m.note ?? null
+      n.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
+    })
+  },
+}
+
 // ─── Gas ─────────────────────────────────────────────────────────────────────
 // Template: public/templates/gas.xlsx — 4 pagine × 8 misure = 32 max
 // Layout per ogni blocco (BASE_ROW = 1 | 16 | 31 | 46):
@@ -1165,7 +1238,7 @@ export const EXPORT_SCHEMAS: Record<string, ExportSchema> = {
   'vibrazioni-wbv': exportSchemaWbv,
   'vibrazioni-hav': exportSchemaHav,
   microclima: exportSchemaMicroclima,
-  cem: buildSchemaGenerico('cem', 'CEM'),
+  cem: exportSchemaCem,
   roa: buildSchemaGenerico('roa', 'ROA'),
   gas: exportSchemaGas,
   polveri: exportSchemaPolveri,
