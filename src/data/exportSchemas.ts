@@ -1,4 +1,3 @@
-import type ExcelJS from 'exceljs'
 import type { Misura, Cantiere, Campagna, Tecnico, Strumento, RisorsaCantiere } from '../types'
 import { toNumber } from '../lib/exportExcel'
 
@@ -464,161 +463,6 @@ export const exportSchemaOwas: ExportSchema = {
   },
 }
 
-function risolviNomiRisorsa(
-  dati: Record<string, unknown>,
-  risorseMap: Map<string, string>,
-): { postazione: string; fase: string; macchine: string } {
-  const postazioneNome = typeof dati.postazione_nome === 'string' && dati.postazione_nome.trim().length > 0
-    ? dati.postazione_nome.trim()
-    : null
-  const postazioneId = typeof dati.postazione_id === 'string'
-    ? dati.postazione_id
-    : (typeof dati.postazioneId === 'string' ? dati.postazioneId : null)
-  const postazione = postazioneNome ?? (postazioneId ? risorseMap.get(postazioneId) ?? '' : '')
-
-  const faseNome = typeof dati.fase_nome === 'string' && dati.fase_nome.trim().length > 0
-    ? dati.fase_nome.trim()
-    : null
-  const faseId = typeof dati.fase_id === 'string' ? dati.fase_id : null
-  const fase = faseNome ?? (faseId ? risorseMap.get(faseId) ?? '' : '')
-
-  let macchineList: string[] = []
-  const macchineNomi = Array.isArray(dati.macchine_nomi) ? (dati.macchine_nomi as unknown[]) : null
-  const macchineIds = Array.isArray(dati.macchine_ids) ? (dati.macchine_ids as unknown[]) : null
-  if (macchineNomi && macchineNomi.length > 0) {
-    macchineList = macchineNomi
-      .filter((n): n is string => typeof n === 'string' && n.trim().length > 0)
-      .map((n) => n.trim())
-  } else if (macchineIds && macchineIds.length > 0) {
-    macchineList = macchineIds
-      .filter((id): id is string => typeof id === 'string')
-      .map((id) => risorseMap.get(id) ?? '')
-      .filter((n) => n.length > 0)
-  }
-
-  if (macchineList.length === 0) {
-    const macchinaNome = typeof dati.macchina_nome === 'string' && dati.macchina_nome.trim().length > 0
-      ? dati.macchina_nome.trim()
-      : null
-    const macchinaId = typeof dati.macchina_id === 'string' ? dati.macchina_id : null
-    const single = macchinaNome ?? (macchinaId ? risorseMap.get(macchinaId) ?? '' : '')
-    if (single.length > 0) macchineList = [single]
-  }
-
-  return { postazione, fase, macchine: macchineList.join('; ') }
-}
-
-function applyDataGenerico(
-  ctx: ExportContext,
-  workbook: ExcelJS.Workbook,
-  moduloLabel: string,
-  risorsePerCantiere: Map<string, string>,
-): void {
-  const sheet = workbook.addWorksheet('Misure')
-
-  const cantiereNome = ctx.cantiere?.nome ?? ''
-  const committente = ctx.cantiere?.committente ?? ''
-  const dataCampagna = ctx.campagna?.data_ora ? new Date(ctx.campagna.data_ora).toLocaleDateString('it-IT') : ''
-  const statoCampagna = ctx.campagna?.stato ?? ''
-  const tecniciStr = (ctx.tecnici ?? []).map((t) => `${t.nome} ${t.cognome}`).join(', ')
-  const strumentoStr = ctx.strumento ? `${ctx.strumento.nome} ${ctx.strumento.modello} (${ctx.strumento.matricola})` : ''
-
-  sheet.getCell('A1').value = `CANTIERE: ${cantiereNome}`
-  sheet.mergeCells('A1:I1')
-  sheet.getCell('A2').value = `COMMITTENTE: ${committente}`
-  sheet.mergeCells('A2:I2')
-  sheet.getCell('A3').value = `CAMPAGNA: ${moduloLabel} — ${dataCampagna} — ${statoCampagna}`
-  sheet.mergeCells('A3:I3')
-  sheet.getCell('A4').value = `TECNICO: ${tecniciStr || '—'} · STRUMENTO: ${strumentoStr || '—'}`
-  sheet.mergeCells('A4:I4')
-
-  ;(['A1', 'A2', 'A3', 'A4'] as const).forEach((addr) => {
-    const cell = sheet.getCell(addr)
-    cell.font = { bold: false, size: 11 }
-    cell.alignment = { vertical: 'middle', horizontal: 'left' }
-  })
-  sheet.getCell('A1').font = { bold: true, size: 12 }
-  sheet.getCell('A3').font = { bold: true, size: 11 }
-
-  const headerRowIdx = 6
-  const headers = ['#', 'Postazione', 'Fase', 'Macchine', 'Durata', 'Dati misura', 'Note']
-  headers.forEach((h, i) => {
-    const cell = sheet.getCell(headerRowIdx, i + 1)
-    cell.value = h
-    cell.font = { bold: true, size: 11 }
-    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE5E7EB' } }
-    cell.alignment = { vertical: 'middle', horizontal: 'left' }
-    cell.border = {
-      top: { style: 'thin', color: { argb: 'FF9CA3AF' } },
-      bottom: { style: 'thin', color: { argb: 'FF9CA3AF' } },
-    }
-  })
-
-  const misure = ctx.misure ?? []
-  misure.forEach((m, idx) => {
-    const rowIdx = headerRowIdx + 1 + idx
-    const dati = (m.dati ?? {}) as Record<string, unknown>
-
-    const { postazione, fase, macchine } = risolviNomiRisorsa(dati, risorsePerCantiere)
-
-    let durataStr = ''
-    if (typeof dati.durata === 'string' || typeof dati.durata === 'number') {
-      durataStr = String(dati.durata)
-    } else if (typeof dati.durataMinuti === 'number') {
-      const min = dati.durataMinuti
-      const h = Math.floor(min / 60)
-      const m2 = min % 60
-      durataStr = `${h}h ${m2}m`
-    }
-
-    const escludi = new Set([
-      'postazione_id', 'postazione_nome', 'postazioneId',
-      'fase_id', 'fase_nome',
-      'macchine_ids', 'macchine_nomi',
-      'macchina_id', 'macchina_nome',
-      'durata', 'durataMinuti',
-    ])
-    const datiSerializzati = Object.entries(dati)
-      .filter(([k, v]) => !escludi.has(k) && v !== null && v !== undefined && v !== '')
-      .map(([k, v]) => `${k}=${typeof v === 'object' ? JSON.stringify(v) : v}`)
-      .join('; ')
-
-    sheet.getCell(rowIdx, 1).value = m.numero ?? idx + 1
-    sheet.getCell(rowIdx, 2).value = postazione
-    sheet.getCell(rowIdx, 3).value = fase
-    sheet.getCell(rowIdx, 4).value = macchine
-    sheet.getCell(rowIdx, 5).value = durataStr
-    sheet.getCell(rowIdx, 6).value = datiSerializzati
-    sheet.getCell(rowIdx, 7).value = m.note ?? ''
-  })
-
-  sheet.getColumn(1).width = 5
-  sheet.getColumn(2).width = 20
-  sheet.getColumn(3).width = 20
-  sheet.getColumn(4).width = 25
-  sheet.getColumn(5).width = 12
-  sheet.getColumn(6).width = 60
-  sheet.getColumn(7).width = 30
-}
-
-function buildSchemaGenerico(moduloId: string, moduloLabel: string): ExportSchema {
-  return {
-    templateUrl: '',
-    buildFilename: (ctx) => {
-      const cantiereSafe = (ctx.cantiere?.nome ?? 'cantiere').replace(/[^a-zA-Z0-9_-]/g, '_')
-      const dataStr = ctx.campagna?.data_ora ? new Date(ctx.campagna.data_ora).toISOString().slice(0, 10) : 'data'
-      return `${cantiereSafe}_${moduloId}_${dataStr}.xlsx`
-    },
-    applyData: (ctx, wb) => {
-      const risorseMap = new Map<string, string>()
-      for (const r of ctx.risorse ?? []) {
-        risorseMap.set(r.id, r.valore)
-      }
-      applyDataGenerico(ctx, wb, moduloLabel, risorseMap)
-    },
-  }
-}
-
 // ─── Microclima ───────────────────────────────────────────────────────────────
 // Template: public/templates/microclima.xlsx — 4 pagine × 8 misure = 32 max
 // Colonne A-M: n°, postazione, fase, ambiente, Ta, Tg, Tnw, UR, Va, WBGT,
@@ -983,6 +827,79 @@ const exportSchemaMmc: ExportSchema = {
       ws.getCell(`L${r}`).value = toNumber(dati.traino)
       ws.getCell(`M${r}`).value = toNumber(dati.distanza_trasporto)
       const n = ws.getCell(`N${r}`)
+      n.value = m.note ?? null
+      n.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
+    })
+  },
+}
+
+// ─── OCRA ─────────────────────────────────────────────────────────────────────
+// Template: public/templates/ocra.xlsx — 4 pagine × 8 misure = 32 max
+// Colonne A-I: n°, denominazione compito, arto, minuti compito,
+//   punteggio intrinseco, moltiplicatore durata, punteggio reale,
+//   fascia rischio, note
+// Le risposte dettagliate checklist (risposte_ocra) non sono riportate:
+// troppo voluminose per il foglio cartaceo. Si riportano solo i punteggi.
+const exportSchemaOcra: ExportSchema = {
+  templateUrl: '/templates/ocra.xlsx',
+
+  buildFilename: (ctx) => {
+    const safe = ctx.cantiere.nome.replace(/[^a-zA-Z0-9_-]/g, '_')
+    const data = ctx.campagna.data_ora ? new Date(ctx.campagna.data_ora).toISOString().slice(0, 10) : 'data'
+    return `${safe}_OCRA_${data}.xlsx`
+  },
+
+  applyData: (ctx, workbook) => {
+    const ws = workbook.getWorksheet('Foglio1')
+    if (!ws) throw new Error("Foglio 'Foglio1' non trovato nel template OCRA")
+
+    const blocchi = [
+      { headerRow: 1,  dataStartRow: 4,  footerRow: 12 },
+      { headerRow: 14, dataStartRow: 17, footerRow: 25 },
+      { headerRow: 27, dataStartRow: 30, footerRow: 38 },
+      { headerRow: 40, dataStartRow: 43, footerRow: 51 },
+    ]
+    const dataFormatted = ctx.campagna.data_ora ? new Date(ctx.campagna.data_ora).toLocaleDateString('it-IT') : ''
+    const committente = ctx.cantiere.committente ?? ''
+    const cantiereNome = ctx.cantiere.nome
+    const nomiTecnici = ctx.tecnici.map((t) => `${t.nome} ${t.cognome}`.trim()).join(', ')
+    const strumentoStr = ctx.strumento
+      ? `Strumentazione: ${ctx.strumento.nome} ${ctx.strumento.modello} (${ctx.strumento.matricola})`
+      : 'Strumentazione:'
+
+    blocchi.forEach((b) => {
+      const c = ws.getCell(`B${b.headerRow}`)
+      c.value = committente || null
+      c.alignment = { horizontal: 'center', vertical: 'middle' }
+      const d = ws.getCell(`D${b.headerRow}`)
+      d.value = dataFormatted ? `Data: ${dataFormatted}` : 'Data:'
+      d.alignment = { horizontal: 'center', vertical: 'middle' }
+      const k = ws.getCell(`F${b.headerRow}`)
+      k.value = cantiereNome
+      k.alignment = { horizontal: 'center', vertical: 'middle' }
+      if (nomiTecnici) ws.getCell(`C${b.footerRow}`).value = nomiTecnici
+      ws.getCell(`F${b.footerRow}`).value = strumentoStr
+    })
+
+    const misure = [...ctx.misure].sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0))
+    misure.forEach((m, idx) => {
+      const bi = Math.floor(idx / 8)
+      if (bi >= blocchi.length) { console.warn(`OCRA: misura ${idx + 1} oltre 32 — ignorata`); return }
+      const r = blocchi[bi].dataStartRow + (idx % 8)
+      const dati = (m.dati ?? {}) as Record<string, unknown>
+
+      const fasciaLabel = typeof dati.fascia_label === 'string' ? dati.fascia_label : null
+      const fasciaRischio = typeof dati.fascia_rischio === 'string' ? dati.fascia_rischio : null
+      const fasciaStr = fasciaLabel ?? fasciaRischio
+
+      ws.getCell(`B${r}`).value = (dati.denominazione as string | undefined) ?? null
+      ws.getCell(`C${r}`).value = (dati.arto_valutato as string | undefined) ?? null
+      ws.getCell(`D${r}`).value = toNumber(dati.minuti_compito)
+      ws.getCell(`E${r}`).value = toNumber(dati.punteggio_intrinseco)
+      ws.getCell(`F${r}`).value = toNumber(dati.moltiplicatore_durata)
+      ws.getCell(`G${r}`).value = toNumber(dati.punteggio_reale)
+      ws.getCell(`H${r}`).value = fasciaStr
+      const n = ws.getCell(`I${r}`)
       n.value = m.note ?? null
       n.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
     })
@@ -1476,7 +1393,7 @@ export const EXPORT_SCHEMAS: Record<string, ExportSchema> = {
   acqua: exportSchemaAcqua,
   mmc: exportSchemaMmc,
   owas: exportSchemaOwas,
-  ocra: buildSchemaGenerico('ocra', 'OCRA'),
+  ocra: exportSchemaOcra,
 }
 
 export function getExportSchema(moduloId: string | undefined): ExportSchema | undefined {
