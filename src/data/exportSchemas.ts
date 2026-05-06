@@ -705,6 +705,91 @@ export const exportSchemaGas: ExportSchema = {
   },
 }
 
+// ─── Polveri ─────────────────────────────────────────────────────────────────
+// Template: public/templates/polveri.xlsx — 4 pagine × 8 misure = 32 max
+// Colonne A-N: n°, fase, postazione, tipo misura, macchine, codice filtro,
+//   pompa, Q(L/min), durata(min), volume(L), polveri filtro(mg),
+//   conc polveri(mg/m³), silice filtro(mg), conc silice(mg/m³)
+// Nota: temperatura e velocita_aria NON in colonne (non standard per il
+//   foglio cartaceo).
+const exportSchemaPolveri: ExportSchema = {
+  templateUrl: '/templates/polveri.xlsx',
+
+  buildFilename: (ctx) => {
+    const safe = ctx.cantiere.nome.replace(/[^a-zA-Z0-9_-]/g, '_')
+    const data = ctx.campagna.data_ora ? new Date(ctx.campagna.data_ora).toISOString().slice(0, 10) : 'data'
+    return `${safe}_Polveri_${data}.xlsx`
+  },
+
+  applyData: (ctx, workbook) => {
+    const ws = workbook.getWorksheet('Foglio1')
+    if (!ws) throw new Error("Foglio 'Foglio1' non trovato nel template Polveri")
+
+    const blocchi = [
+      { headerRow: 1,  dataStartRow: 4,  footerRow: 12 },
+      { headerRow: 14, dataStartRow: 17, footerRow: 25 },
+      { headerRow: 27, dataStartRow: 30, footerRow: 38 },
+      { headerRow: 40, dataStartRow: 43, footerRow: 51 },
+    ]
+    const dataFormatted = ctx.campagna.data_ora ? new Date(ctx.campagna.data_ora).toLocaleDateString('it-IT') : ''
+    const committente = ctx.cantiere.committente ?? ''
+    const cantiereNome = ctx.cantiere.nome
+    const nomiTecnici = ctx.tecnici.map((t) => `${t.nome} ${t.cognome}`.trim()).join(', ')
+    const strumentoStr = ctx.strumento
+      ? `Strumentazione: ${ctx.strumento.nome} ${ctx.strumento.modello} (${ctx.strumento.matricola})`
+      : 'Strumentazione:'
+
+    blocchi.forEach((b) => {
+      const c = ws.getCell(`B${b.headerRow}`)
+      c.value = committente || null
+      c.alignment = { horizontal: 'center', vertical: 'middle' }
+      const d = ws.getCell(`D${b.headerRow}`)
+      d.value = dataFormatted ? `Data: ${dataFormatted}` : 'Data:'
+      d.alignment = { horizontal: 'center', vertical: 'middle' }
+      const k = ws.getCell(`F${b.headerRow}`)
+      k.value = cantiereNome
+      k.alignment = { horizontal: 'center', vertical: 'middle' }
+      if (nomiTecnici) ws.getCell(`C${b.footerRow}`).value = nomiTecnici
+      ws.getCell(`I${b.footerRow}`).value = strumentoStr
+    })
+
+    const tipoLabel = (v: unknown): string | null => {
+      if (typeof v !== 'string' || !v) return null
+      const map: Record<string, string> = { personale: 'Personale', ambientale: 'Ambientale', statico: 'Ambientale statico' }
+      return map[v] ?? v
+    }
+
+    const concSottoSoglia = (val: unknown, flag: unknown): number | string | null => {
+      const n = toNumber(val)
+      if (n === null) return null
+      return flag === true ? `<${n}` : n
+    }
+
+    const misure = [...ctx.misure].sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0))
+    misure.forEach((m, idx) => {
+      const bi = Math.floor(idx / 8)
+      if (bi >= blocchi.length) { console.warn(`Polveri: misura ${idx + 1} oltre 32 — ignorata`); return }
+      const r = blocchi[bi].dataStartRow + (idx % 8)
+      const dati = (m.dati ?? {}) as Record<string, unknown>
+      const macchine = (dati.macchine_nomi as string[] | undefined) ?? []
+
+      ws.getCell(`B${r}`).value = (dati.fase_nome as string | undefined) ?? null
+      ws.getCell(`C${r}`).value = (dati.postazione_nome as string | undefined) ?? null
+      ws.getCell(`D${r}`).value = tipoLabel(dati.tipo_misura)
+      ws.getCell(`E${r}`).value = macchine.length > 0 ? macchine.join(', ') : null
+      ws.getCell(`F${r}`).value = (dati.codice_filtro as string | undefined) ?? null
+      ws.getCell(`G${r}`).value = (dati.pompa as string | undefined) ?? null
+      ws.getCell(`H${r}`).value = toNumber(dati.portata_q)
+      ws.getCell(`I${r}`).value = toNumber(dati.durata_prelievo)
+      ws.getCell(`J${r}`).value = toNumber(dati.volume_campionato)
+      ws.getCell(`K${r}`).value = toNumber(dati.polveri_filtro)
+      ws.getCell(`L${r}`).value = toNumber(dati.conc_polveri)
+      ws.getCell(`M${r}`).value = typeof dati.silice_filtro_raw === 'string' && dati.silice_filtro_raw ? dati.silice_filtro_raw : toNumber(dati.silice_filtro_valore)
+      ws.getCell(`N${r}`).value = concSottoSoglia(dati.conc_silice, dati.conc_silice_sotto_soglia)
+    })
+  },
+}
+
 export const EXPORT_SCHEMAS: Record<string, ExportSchema> = {
   rumore: exportSchemaRumore,
   'vibrazioni-wbv': exportSchemaWbv,
@@ -713,7 +798,7 @@ export const EXPORT_SCHEMAS: Record<string, ExportSchema> = {
   cem: buildSchemaGenerico('cem', 'CEM'),
   roa: buildSchemaGenerico('roa', 'ROA'),
   gas: exportSchemaGas,
-  polveri: buildSchemaGenerico('polveri', 'Polveri'),
+  polveri: exportSchemaPolveri,
   'carbonio-elementare': buildSchemaGenerico('carbonio-elementare', 'Carbonio elementare'),
   ipa: buildSchemaGenerico('ipa', 'IPA'),
   amianto: buildSchemaGenerico('amianto', 'Amianto'),
