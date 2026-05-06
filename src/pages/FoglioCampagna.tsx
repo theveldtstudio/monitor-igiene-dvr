@@ -21,6 +21,9 @@ import { getModuloEntry } from '../data/moduliRegistry'
 import { exportFromTemplate } from '../lib/exportExcel'
 import { getExportSchema } from '../data/exportSchemas'
 import Spinner from '../components/Spinner'
+import Skeleton from '../components/Skeleton'
+import ErrorState from '../components/ErrorState'
+import EmptyState from '../components/EmptyState'
 
 const MESI = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic']
 
@@ -52,38 +55,17 @@ function badgeStato(stato: 'bozza' | 'completa'): React.CSSProperties {
 function SkeletonBlock() {
   return (
     <div>
-      <div style={{ ...styles.skeletonLine, width: '50%', height: 22, marginBottom: 8 }} />
-      <div style={{ ...styles.skeletonLine, width: '70%', height: 12, marginBottom: 18 }} />
-      <div style={{ ...styles.skeletonLine, width: '30%', height: 11, marginBottom: 8 }} />
+      <Skeleton width="50%" height={22} marginBottom={8} />
+      <Skeleton width="70%" height={12} marginBottom={18} />
+      <Skeleton width="30%" height={11} marginBottom={8} />
       <div style={styles.infoCard}>
-        <div style={{ ...styles.skeletonLine, width: '60%', height: 14, marginBottom: 4 }} />
-        <div style={{ ...styles.skeletonLine, width: '40%', height: 11, marginBottom: 14 }} />
-        <div style={{ ...styles.skeletonLine, width: '60%', height: 14, marginBottom: 4 }} />
-        <div style={{ ...styles.skeletonLine, width: '40%', height: 11, marginBottom: 14 }} />
-        <div style={{ ...styles.skeletonLine, width: '60%', height: 14, marginBottom: 4 }} />
-        <div style={{ ...styles.skeletonLine, width: '40%', height: 11 }} />
+        <Skeleton width="60%" height={14} marginBottom={4} />
+        <Skeleton width="40%" height={11} marginBottom={14} />
+        <Skeleton width="60%" height={14} marginBottom={4} />
+        <Skeleton width="40%" height={11} marginBottom={14} />
+        <Skeleton width="60%" height={14} marginBottom={4} />
+        <Skeleton width="40%" height={11} />
       </div>
-    </div>
-  )
-}
-
-function ErrorBox({ message, onRetry }: { message: string; onRetry: () => void }) {
-  return (
-    <div style={styles.errorBox}>
-      <div style={styles.errorIcon}>!</div>
-      <div style={styles.errorTitle}>Errore di caricamento</div>
-      <div style={styles.errorMessage}>{message}</div>
-      <button type="button" onClick={onRetry} style={styles.retryBtn}>Riprova</button>
-    </div>
-  )
-}
-
-function NotFoundBox({ titolo, messaggio, onBack }: { titolo: string; messaggio: string; onBack: () => void }) {
-  return (
-    <div style={styles.emptyBox}>
-      <div style={styles.emptyTitle}>{titolo}</div>
-      <div style={styles.emptyMessage}>{messaggio}</div>
-      <button type="button" onClick={onBack} style={styles.retryBtn}>Torna indietro</button>
     </div>
   )
 }
@@ -247,14 +229,15 @@ export default function FoglioCampagna() {
       {loading && <SkeletonBlock />}
 
       {!loading && errorCa && (
-        <ErrorBox message={errorCa} onRetry={() => refetchCa()} />
+        <ErrorState message={errorCa} onRetry={() => refetchCa()} />
       )}
 
       {!loading && !errorCa && (notFoundCa || moduloNonValido) && (
-        <NotFoundBox
-          titolo={notFoundCa ? 'Campagna non trovata' : 'Modulo non valido'}
-          messaggio={notFoundCa ? 'La campagna che cerchi non esiste o è stata rimossa.' : `Il modulo "${moduloId}" non è riconosciuto.`}
-          onBack={() => navigate(id ? `/cantieri/${id}` : '/')}
+        <EmptyState
+          title={notFoundCa ? 'Campagna non trovata' : 'Modulo non valido'}
+          message={notFoundCa ? 'La campagna che cerchi non esiste o è stata rimossa.' : `Il modulo "${moduloId}" non è riconosciuto.`}
+          actionLabel="Torna indietro"
+          onAction={() => navigate(id ? `/cantieri/${id}` : '/')}
         />
       )}
 
@@ -346,8 +329,8 @@ export default function FoglioCampagna() {
             <div style={styles.skeletonMisureList}>
               {[0, 1].map((i) => (
                 <div key={i} style={styles.skeletonMisuraCard}>
-                  <div style={{ ...styles.skeletonLine, width: '50%', height: 14, marginBottom: 6 }} />
-                  <div style={{ ...styles.skeletonLine, width: '70%', height: 11 }} />
+                  <Skeleton width="50%" height={14} marginBottom={6} />
+                  <Skeleton width="70%" height={11} />
                 </div>
               ))}
             </div>
@@ -823,56 +806,6 @@ const styles: Record<string, React.CSSProperties> = {
     color: 'var(--text-tertiary)',
     textAlign: 'center',
     marginTop: 6,
-  },
-  skeletonLine: {
-    background: 'var(--bg-toggle)',
-    borderRadius: 4,
-    animation: 'skeleton-pulse 1.4s ease-in-out infinite',
-  },
-  errorBox: {
-    background: '#FCEBEB',
-    border: '0.5px solid #F09595',
-    borderRadius: 'var(--radius-card)',
-    padding: 20,
-    textAlign: 'center',
-    marginTop: 18,
-  },
-  errorIcon: {
-    fontSize: 28,
-    color: '#A32D2D',
-    fontWeight: 500,
-    marginBottom: 6,
-  },
-  errorTitle: {
-    fontSize: 14,
-    fontWeight: 500,
-    color: '#501313',
-    marginBottom: 4,
-  },
-  errorMessage: {
-    fontSize: 11,
-    color: '#791F1F',
-    marginBottom: 14,
-    wordBreak: 'break-word',
-  },
-  emptyBox: {
-    background: 'var(--bg-card)',
-    border: '0.5px solid var(--border)',
-    borderRadius: 'var(--radius-card)',
-    padding: 28,
-    textAlign: 'center',
-    marginTop: 18,
-  },
-  retryBtn: {
-    background: 'var(--accent)',
-    color: 'var(--text-on-accent)',
-    border: 'none',
-    padding: '8px 16px',
-    borderRadius: 16,
-    fontSize: 12,
-    fontWeight: 500,
-    cursor: 'pointer',
-    fontFamily: 'inherit',
   },
   btnEsportaExcel: {
     width: '100%',

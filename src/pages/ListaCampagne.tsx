@@ -9,6 +9,8 @@ import { MODULI, CATEGORIE } from '../data/moduliCampionamento'
 import type { ModuloCampionamento } from '../data/moduliCampionamento'
 import EmptyState from '../components/EmptyState'
 import { IconCampagna } from '../components/icons/EmptyIcons'
+import Skeleton from '../components/Skeleton'
+import ErrorState from '../components/ErrorState'
 
 type StatoCampagna = Campagna['stato']
 
@@ -106,10 +108,10 @@ function CardCampagna({ campagna, cantiereId, moduloId }: { campagna: Campagna; 
 function SkeletonHeader() {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
-      <div style={{ ...styles.skeletonLine, width: 40, height: 40, borderRadius: 8 }} />
+      <Skeleton width={40} height={40} borderRadius={8} />
       <div style={{ flex: 1 }}>
-        <div style={{ ...styles.skeletonLine, width: '50%', height: 18, marginBottom: 6 }} />
-        <div style={{ ...styles.skeletonLine, width: '30%', height: 11 }} />
+        <Skeleton width="50%" height={18} marginBottom={6} />
+        <Skeleton width="30%" height={11} />
       </div>
     </div>
   )
@@ -121,10 +123,10 @@ function SkeletonCards() {
       {[0, 1, 2].map((i) => (
         <div key={i} style={styles.card}>
           <div style={{ flex: 1 }}>
-            <div style={{ ...styles.skeletonLine, width: '40%', height: 16, marginBottom: 6 }} />
-            <div style={{ ...styles.skeletonLine, width: '20%', height: 11 }} />
+            <Skeleton width="40%" height={16} marginBottom={6} />
+            <Skeleton width="20%" height={11} />
           </div>
-          <div style={{ ...styles.skeletonLine, width: 70, height: 18, borderRadius: 6 }} />
+          <Skeleton width={70} height={18} borderRadius={6} />
         </div>
       ))}
     </div>
@@ -171,12 +173,7 @@ export default function ListaCampagne() {
       )}
 
       {!loading && error && (
-        <div style={styles.errorBox}>
-          <div style={styles.errorIcon}>!</div>
-          <div style={styles.errorTitle}>Errore di caricamento</div>
-          <div style={styles.errorMessage}>{error}</div>
-          <button type="button" onClick={() => refetch()} style={styles.retryBtn}>Riprova</button>
-        </div>
+        <ErrorState message={error} onRetry={() => refetch()} />
       )}
 
       {!loading && !error && (notFound || moduloNonValido) && (
@@ -367,48 +364,6 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 11,
     color: 'var(--text-tertiary)',
     marginTop: 2,
-  },
-  skeletonLine: {
-    background: 'var(--bg-toggle)',
-    borderRadius: 4,
-    animation: 'skeleton-pulse 1.4s ease-in-out infinite',
-  },
-  errorBox: {
-    background: '#FCEBEB',
-    border: '0.5px solid #F09595',
-    borderRadius: 'var(--radius-card)',
-    padding: 20,
-    textAlign: 'center',
-    marginTop: 18,
-  },
-  errorIcon: {
-    fontSize: 28,
-    color: '#A32D2D',
-    fontWeight: 500,
-    marginBottom: 6,
-  },
-  errorTitle: {
-    fontSize: 14,
-    fontWeight: 500,
-    color: '#501313',
-    marginBottom: 4,
-  },
-  errorMessage: {
-    fontSize: 11,
-    color: '#791F1F',
-    marginBottom: 14,
-    wordBreak: 'break-word',
-  },
-  retryBtn: {
-    background: 'var(--accent)',
-    color: 'var(--text-on-accent)',
-    border: 'none',
-    padding: '8px 16px',
-    borderRadius: 16,
-    fontSize: 12,
-    fontWeight: 500,
-    cursor: 'pointer',
-    fontFamily: 'inherit',
   },
   fabWrap: {
     display: 'flex',

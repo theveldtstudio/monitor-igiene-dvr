@@ -5,6 +5,9 @@ import { useCantiere } from '../hooks/useCantiere'
 import { CATEGORIE, ORDINE_CATEGORIE, moduliPerCategoria } from '../data/moduliCampionamento'
 import type { CategoriaModulo, ModuloCampionamento } from '../data/moduliCampionamento'
 import SezioneRisorse from '../components/SezioneRisorse'
+import Skeleton from '../components/Skeleton'
+import ErrorState from '../components/ErrorState'
+import EmptyState from '../components/EmptyState'
 
 function formatDataApertura(iso: string): string {
   const d = new Date(iso)
@@ -90,9 +93,9 @@ function badgeStyle(_stato: Cantiere['stato']): React.CSSProperties {
 function SkeletonHeader() {
   return (
     <div>
-      <div style={{ ...styles.skeletonLine, width: '60%', height: 22, marginBottom: 8 }} />
-      <div style={{ ...styles.skeletonLine, width: '30%', height: 13, marginBottom: 4 }} />
-      <div style={{ ...styles.skeletonLine, width: '45%', height: 11 }} />
+      <Skeleton width="60%" height={22} marginBottom={8} />
+      <Skeleton width="30%" height={13} marginBottom={4} />
+      <Skeleton width="45%" height={11} />
     </div>
   )
 }
@@ -102,14 +105,14 @@ function SkeletonModuli() {
     <div style={{ marginTop: 18 }}>
       {[0, 1, 2].map((i) => (
         <div key={i} style={{ marginBottom: 18 }}>
-          <div style={{ ...styles.skeletonLine, width: '40%', height: 11, marginBottom: 8 }} />
+          <Skeleton width="40%" height={11} marginBottom={8} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {[0, 1].map((j) => (
               <div key={j} style={{ ...styles.cardModulo, alignItems: 'center' }}>
-                <div style={{ ...styles.iconWrap, background: 'var(--bg-toggle)' }} />
+                <div style={{ ...styles.iconWrap, background: 'var(--skeleton-bg)' }} />
                 <div style={{ flex: 1 }}>
-                  <div style={{ ...styles.skeletonLine, width: '50%', height: 14, marginBottom: 6 }} />
-                  <div style={{ ...styles.skeletonLine, width: '30%', height: 10 }} />
+                  <Skeleton width="50%" height={14} marginBottom={6} />
+                  <Skeleton width="30%" height={10} />
                 </div>
               </div>
             ))}
@@ -147,20 +150,16 @@ export default function PaginaCantiere() {
       )}
 
       {!loading && error && (
-        <div style={styles.errorBox}>
-          <div style={styles.errorIcon}>!</div>
-          <div style={styles.errorTitle}>Errore di caricamento</div>
-          <div style={styles.errorMessage}>{error}</div>
-          <button type="button" onClick={() => refetch()} style={styles.retryBtn}>Riprova</button>
-        </div>
+        <ErrorState message={error} onRetry={() => refetch()} />
       )}
 
       {!loading && !error && notFound && (
-        <div style={styles.emptyBox}>
-          <div style={styles.emptyTitle}>Cantiere non trovato</div>
-          <div style={styles.emptyMessage}>Il cantiere che cerchi non esiste o è stato rimosso.</div>
-          <button type="button" onClick={() => navigate('/')} style={styles.retryBtn}>Torna ai cantieri</button>
-        </div>
+        <EmptyState
+          title="Cantiere non trovato"
+          message="Il cantiere che cerchi non esiste o è stato rimosso."
+          actionLabel="Torna ai cantieri"
+          onAction={() => navigate('/')}
+        />
       )}
 
       {!loading && !error && cantiere && (
@@ -338,67 +337,5 @@ const styles: Record<string, React.CSSProperties> = {
     color: 'var(--text-tertiary)',
     fontSize: 16,
     alignSelf: 'center',
-  },
-  skeletonLine: {
-    background: 'var(--bg-toggle)',
-    borderRadius: 4,
-    animation: 'skeleton-pulse 1.4s ease-in-out infinite',
-  },
-  emptyBox: {
-    background: 'var(--bg-card)',
-    border: '0.5px solid var(--border)',
-    borderRadius: 'var(--radius-card)',
-    padding: 28,
-    textAlign: 'center',
-    marginTop: 18,
-  },
-  emptyTitle: {
-    fontSize: 14,
-    fontWeight: 500,
-    color: 'var(--text-primary)',
-    marginBottom: 6,
-  },
-  emptyMessage: {
-    fontSize: 12,
-    color: 'var(--text-secondary)',
-    lineHeight: 1.5,
-    marginBottom: 14,
-  },
-  errorBox: {
-    background: '#FCEBEB',
-    border: '0.5px solid #F09595',
-    borderRadius: 'var(--radius-card)',
-    padding: 20,
-    textAlign: 'center',
-    marginTop: 18,
-  },
-  errorIcon: {
-    fontSize: 28,
-    color: '#A32D2D',
-    fontWeight: 500,
-    marginBottom: 6,
-  },
-  errorTitle: {
-    fontSize: 14,
-    fontWeight: 500,
-    color: '#501313',
-    marginBottom: 4,
-  },
-  errorMessage: {
-    fontSize: 11,
-    color: '#791F1F',
-    marginBottom: 14,
-    wordBreak: 'break-word',
-  },
-  retryBtn: {
-    background: 'var(--accent)',
-    color: 'var(--text-on-accent)',
-    border: 'none',
-    padding: '8px 16px',
-    borderRadius: 16,
-    fontSize: 12,
-    fontWeight: 500,
-    cursor: 'pointer',
-    fontFamily: 'inherit',
   },
 }

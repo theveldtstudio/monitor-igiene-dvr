@@ -11,6 +11,8 @@ import type { CardAction } from '../components/CardActionsMenu'
 import ConfirmDialog from '../components/ConfirmDialog'
 import EmptyState from '../components/EmptyState'
 import { IconCantiere } from '../components/icons/EmptyIcons'
+import Skeleton from '../components/Skeleton'
+import ErrorState from '../components/ErrorState'
 
 type FiltroStato = 'aperti' | 'archiviati'
 type StatoCantiere = Cantiere['stato']
@@ -189,14 +191,7 @@ export default function Home() {
       {loading && <SkeletonList />}
 
       {!loading && error && (
-        <div style={styles.errorBox}>
-          <div style={styles.errorIcon}>!</div>
-          <div style={styles.errorTitle}>Errore di caricamento</div>
-          <div style={styles.errorMessage}>{error}</div>
-          <button type="button" onClick={() => refetch()} style={styles.retryBtn}>
-            Riprova
-          </button>
-        </div>
+        <ErrorState message={error} onRetry={() => refetch()} />
       )}
 
       {!loading && !error && cantieriFiltrati.length === 0 && (
@@ -301,9 +296,9 @@ function SkeletonList() {
     <div style={styles.list}>
       {[0, 1, 2].map((i) => (
         <div key={i} style={styles.card}>
-          <div style={{ ...styles.skeletonLine, width: '70%', height: 14, marginBottom: 8 }} />
-          <div style={{ ...styles.skeletonLine, width: '40%', height: 10, marginBottom: 8 }} />
-          <div style={{ ...styles.skeletonLine, width: '55%', height: 9 }} />
+          <Skeleton width="70%" height={14} marginBottom={8} />
+          <Skeleton width="40%" height={10} marginBottom={8} />
+          <Skeleton width="55%" height={9} />
         </div>
       ))}
     </div>
@@ -486,46 +481,6 @@ const styles: Record<string, React.CSSProperties> = {
     right: 8,
     width: 0,
     height: 0,
-  },
-  skeletonLine: {
-    background: 'var(--bg-toggle)',
-    borderRadius: 4,
-    animation: 'skeleton-pulse 1.4s ease-in-out infinite',
-  },
-  errorBox: {
-    background: '#FCEBEB',
-    border: '0.5px solid #F09595',
-    borderRadius: 'var(--radius-card)',
-    padding: 20,
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  errorIcon: {
-    fontSize: 28,
-    color: '#A32D2D',
-    fontWeight: 500,
-    marginBottom: 6,
-  },
-  errorTitle: {
-    fontSize: 14,
-    fontWeight: 500,
-    color: '#501313',
-    marginBottom: 4,
-  },
-  errorMessage: {
-    fontSize: 11,
-    color: '#791F1F',
-    marginBottom: 14,
-    wordBreak: 'break-word',
-  },
-  retryBtn: {
-    background: '#A32D2D',
-    color: '#FFFFFF',
-    border: 'none',
-    padding: '8px 16px',
-    borderRadius: 16,
-    fontSize: 12,
-    fontWeight: 500,
   },
   fabWrap: {
     display: 'flex',
