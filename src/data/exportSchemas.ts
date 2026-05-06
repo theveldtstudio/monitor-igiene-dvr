@@ -944,6 +944,85 @@ const exportSchemaIpa: ExportSchema = {
   },
 }
 
+// ─── Amianto ─────────────────────────────────────────────────────────────────
+// Template: public/templates/amianto.xlsx — 4 pagine × 8 misure = 32 max
+// Colonne A-M: n°, fase, postazione, tipo misura, macchine, codice filtro,
+//   pompa, Q(L/min), durata(min), volume(L), fibre filtro(ff/mm²),
+//   conc fibre tot.(ff/L), conc amianto(ff/L)
+// Nota: temperatura e velocita_aria NON in colonne.
+const exportSchemaAmianto: ExportSchema = {
+  templateUrl: '/templates/amianto.xlsx',
+
+  buildFilename: (ctx) => {
+    const safe = ctx.cantiere.nome.replace(/[^a-zA-Z0-9_-]/g, '_')
+    const data = ctx.campagna.data_ora ? new Date(ctx.campagna.data_ora).toISOString().slice(0, 10) : 'data'
+    return `${safe}_Amianto_${data}.xlsx`
+  },
+
+  applyData: (ctx, workbook) => {
+    const ws = workbook.getWorksheet('Foglio1')
+    if (!ws) throw new Error("Foglio 'Foglio1' non trovato nel template Amianto")
+
+    const blocchi = [
+      { headerRow: 1,  dataStartRow: 4,  footerRow: 12 },
+      { headerRow: 14, dataStartRow: 17, footerRow: 25 },
+      { headerRow: 27, dataStartRow: 30, footerRow: 38 },
+      { headerRow: 40, dataStartRow: 43, footerRow: 51 },
+    ]
+    const dataFormatted = ctx.campagna.data_ora ? new Date(ctx.campagna.data_ora).toLocaleDateString('it-IT') : ''
+    const committente = ctx.cantiere.committente ?? ''
+    const cantiereNome = ctx.cantiere.nome
+    const nomiTecnici = ctx.tecnici.map((t) => `${t.nome} ${t.cognome}`.trim()).join(', ')
+    const strumentoStr = ctx.strumento
+      ? `Strumentazione: ${ctx.strumento.nome} ${ctx.strumento.modello} (${ctx.strumento.matricola})`
+      : 'Strumentazione:'
+
+    blocchi.forEach((b) => {
+      const c = ws.getCell(`B${b.headerRow}`)
+      c.value = committente || null
+      c.alignment = { horizontal: 'center', vertical: 'middle' }
+      const d = ws.getCell(`D${b.headerRow}`)
+      d.value = dataFormatted ? `Data: ${dataFormatted}` : 'Data:'
+      d.alignment = { horizontal: 'center', vertical: 'middle' }
+      const k = ws.getCell(`F${b.headerRow}`)
+      k.value = cantiereNome
+      k.alignment = { horizontal: 'center', vertical: 'middle' }
+      if (nomiTecnici) ws.getCell(`C${b.footerRow}`).value = nomiTecnici
+      ws.getCell(`H${b.footerRow}`).value = strumentoStr
+    })
+
+    const tipoLabel = (v: unknown): string | null => {
+      if (typeof v !== 'string' || !v) return null
+      const map: Record<string, string> = { personale: 'Personale', ambientale: 'Ambientale', statico: 'Ambientale statico' }
+      return map[v] ?? v
+    }
+
+    const misure = [...ctx.misure].sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0))
+    misure.forEach((m, idx) => {
+      const bi = Math.floor(idx / 8)
+      if (bi >= blocchi.length) { console.warn(`Amianto: misura ${idx + 1} oltre 32 — ignorata`); return }
+      const r = blocchi[bi].dataStartRow + (idx % 8)
+      const dati = (m.dati ?? {}) as Record<string, unknown>
+      const macchine = (dati.macchine_nomi as string[] | undefined) ?? []
+
+      ws.getCell(`B${r}`).value = (dati.fase_nome as string | undefined) ?? null
+      ws.getCell(`C${r}`).value = (dati.postazione_nome as string | undefined) ?? null
+      ws.getCell(`D${r}`).value = tipoLabel(dati.tipo_misura)
+      ws.getCell(`E${r}`).value = macchine.length > 0 ? macchine.join(', ') : null
+      ws.getCell(`F${r}`).value = (dati.codice_filtro as string | undefined) ?? null
+      ws.getCell(`G${r}`).value = (dati.pompa as string | undefined) ?? null
+      ws.getCell(`H${r}`).value = toNumber(dati.portata_q)
+      ws.getCell(`I${r}`).value = toNumber(dati.durata_prelievo)
+      ws.getCell(`J${r}`).value = toNumber(dati.volume_campionato)
+      ws.getCell(`K${r}`).value = toNumber(dati.fibre_filtro)
+      ws.getCell(`L${r}`).value = toNumber(dati.conc_fibre_totali)
+      // conc amianto: prefissa "<" se sotto soglia
+      const concAmianto = toNumber(dati.conc_amianto)
+      ws.getCell(`M${r}`).value = concAmianto !== null && dati.amianto_sotto_soglia === true ? `<${concAmianto}` : concAmianto
+    })
+  },
+}
+
 export const EXPORT_SCHEMAS: Record<string, ExportSchema> = {
   rumore: exportSchemaRumore,
   'vibrazioni-wbv': exportSchemaWbv,
@@ -955,7 +1034,7 @@ export const EXPORT_SCHEMAS: Record<string, ExportSchema> = {
   polveri: exportSchemaPolveri,
   'carbonio-elementare': exportSchemaCarbonio,
   ipa: exportSchemaIpa,
-  amianto: buildSchemaGenerico('amianto', 'Amianto'),
+  amianto: exportSchemaAmianto,
   'biologico-sas': buildSchemaGenerico('biologico-sas', 'Biologico SAS'),
   acqua: buildSchemaGenerico('acqua', 'Monitoraggio acqua'),
   mmc: buildSchemaGenerico('mmc', 'MMC'),
