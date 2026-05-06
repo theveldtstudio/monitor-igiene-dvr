@@ -32,6 +32,46 @@ async function downloadAndCompress(pathLocale: string): Promise<ArrayBuffer | nu
   }
 }
 
+function readStringField(obj: Record<string, unknown>, keys: string[]): string | null {
+  for (const k of keys) {
+    const v = obj[k]
+    if (typeof v === 'string' && v.trim().length > 0) return v.trim()
+  }
+  return null
+}
+
+function getSecondoCampoHeader(misura: Misura, risorse: RisorsaCantiere[]): string {
+  const dati = (misura.dati ?? {}) as Record<string, unknown>
+
+  const direct = readStringField(dati, [
+    'mansione', 'mansione_descrizione',
+    'attivita', 'attivita_descrizione',
+    'descrizione_mansione', 'descrizione',
+    'descrizioneMansione', 'descrizioneAttivita',
+  ])
+  if (direct) return direct
+
+  const faseId = readStringField(dati, ['fase_id', 'faseId', 'fase_lavorativa_id'])
+  if (faseId) {
+    const fase = risorse.find((r) => r.id === faseId && r.tipo === 'fase')
+    if (fase?.valore) return fase.valore
+  }
+
+  const macchineIds = Array.isArray(dati.macchine_ids)
+    ? (dati.macchine_ids as string[])
+    : Array.isArray(dati.macchineIds)
+      ? (dati.macchineIds as string[])
+      : []
+  const singolaMacchinaId = readStringField(dati, ['macchina_id', 'macchinaId'])
+  const candidatoId = macchineIds[0] ?? singolaMacchinaId
+  if (candidatoId) {
+    const macchina = risorse.find((r) => r.id === candidatoId && r.tipo === 'macchina')
+    if (macchina?.valore) return macchina.valore
+  }
+
+  return ''
+}
+
 function buildMisuraHeader(misura: Misura, risorse: RisorsaCantiere[]): string {
   const dati = (misura.dati ?? {}) as Record<string, unknown>
 
@@ -43,21 +83,11 @@ function buildMisuraHeader(misura: Misura, risorse: RisorsaCantiere[]): string {
     if (risorsa) postazione = risorsa.valore
   }
 
-  const mansioneCandidates: unknown[] = [
-    dati.mansione,
-    dati.attivita,
-    dati.descrizione_mansione,
-    dati.descrizioneMansione,
-    dati.descrizione,
-  ]
-  const mansione = mansioneCandidates.find(
-    (v): v is string => typeof v === 'string' && v.trim() !== '',
-  )
-
-  let header = `Misura #${misura.numero}`
-  if (postazione) header += ` — ${postazione}`
-  if (mansione) header += ` — ${mansione}`
-  return header
+  const secondoCampo = getSecondoCampoHeader(misura, risorse)
+  const parti = [`Misura #${misura.numero}`]
+  if (postazione) parti.push(postazione)
+  if (secondoCampo) parti.push(secondoCampo)
+  return parti.join(' — ')
 }
 
 export async function addFotoSheet(
