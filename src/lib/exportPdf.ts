@@ -1,6 +1,8 @@
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import type { ExportContext } from '../data/exportSchemas'
+import { addPdfFotoAppendix } from './pdfFotoAppendix'
+import type { PdfFotoContext } from './pdfFotoAppendix'
 
 function parseDurataMinuti(value: unknown): number | null {
   if (value === null || value === undefined) return null
@@ -40,7 +42,7 @@ function buildPdfFilename(ctx: ExportContext, moduloId: string): string {
   return `${cantiereSafe}_${moduloId}_${data}.pdf`
 }
 
-export function exportPdfRumore(ctx: ExportContext): void {
+export async function exportPdfRumore(ctx: ExportContext, fotoCtx?: PdfFotoContext): Promise<void> {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
 
   const PAGE_W = 297
@@ -97,7 +99,7 @@ export function exportPdfRumore(ctx: ExportContext): void {
   // --- TABLE ---
   const misure = [...ctx.misure].sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0))
 
-  const head = [['#', 'Postazione', 'Fase', 'Macchine', 'Durata', 'Leq dBA', 'Lpeak dBC', 'Note']]
+  const head = [['#', 'Postazione', 'Fase', 'Macchine', 'Durata', 'Leq dBA', 'Leq dBC', 'Lpeak', 'Note']]
 
   const body = misure.map((m, idx) => {
     const dati = (m.dati ?? {}) as Record<string, unknown>
@@ -108,9 +110,12 @@ export function exportPdfRumore(ctx: ExportContext): void {
     const durataMin = parseDurataMinuti(dati.durata)
     const durataStr = durataMin !== null ? minutesToHhMmSs(durataMin) : ''
 
-    const leq = typeof dati.leq_dba === 'number'
+    const leqDba = typeof dati.leq_dba === 'number'
       ? dati.leq_dba.toFixed(1)
       : (dati.leq_dba != null ? String(dati.leq_dba) : '')
+    const leqDbc = typeof dati.leq_dbc === 'number'
+      ? dati.leq_dbc.toFixed(1)
+      : (dati.leq_dbc != null ? String(dati.leq_dbc) : '')
     const lpeak = typeof dati.lpeak_dbc === 'number'
       ? dati.lpeak_dbc.toFixed(1)
       : (dati.lpeak_dbc != null ? String(dati.lpeak_dbc) : '')
@@ -121,7 +126,8 @@ export function exportPdfRumore(ctx: ExportContext): void {
       fase,
       macchine.join(', '),
       durataStr,
-      leq,
+      leqDba,
+      leqDbc,
       lpeak,
       m.note ?? '',
     ]
@@ -136,28 +142,21 @@ export function exportPdfRumore(ctx: ExportContext): void {
     headStyles: { fillColor: [221, 221, 221], textColor: [0, 0, 0], fontStyle: 'bold', halign: 'center' },
     columnStyles: {
       0: { cellWidth: 10, halign: 'center' },
-      1: { cellWidth: 30 },
-      2: { cellWidth: 30 },
-      3: { cellWidth: 40 },
-      4: { cellWidth: 22, halign: 'center' },
-      5: { cellWidth: 18, halign: 'center' },
-      6: { cellWidth: 18, halign: 'center' },
-      7: { cellWidth: 'auto' },
+      1: { cellWidth: 28 },
+      2: { cellWidth: 28 },
+      3: { cellWidth: 38 },
+      4: { cellWidth: 18, halign: 'center' },
+      5: { cellWidth: 16, halign: 'center' },
+      6: { cellWidth: 16, halign: 'center' },
+      7: { cellWidth: 16, halign: 'center' },
+      8: { cellWidth: 'auto' },
     },
     margin: { left: MARGIN, right: MARGIN },
   })
 
-  // --- PAGE NUMBERS (tutte le pagine) ---
-  const pageCount = doc.getNumberOfPages()
-  for (let i = 1; i <= pageCount; i++) {
-    doc.setPage(i)
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(9)
-    doc.text(`Pag. ${i} di ${pageCount}`, PAGE_W - MARGIN, 7, { align: 'right' })
-  }
-
-  // --- FOOTER firma (solo ultima pagina) ---
-  doc.setPage(pageCount)
+  // --- FOOTER firma (solo ultima pagina tabella) ---
+  const tablePageCount = doc.getNumberOfPages()
+  doc.setPage(tablePageCount)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const finalY: number = (doc as any).lastAutoTable?.finalY ?? 170
   const footerY = Math.min(finalY + 10, 190)
@@ -168,6 +167,20 @@ export function exportPdfRumore(ctx: ExportContext): void {
   doc.setFontSize(9)
   doc.text('Tecnico rilevatore: ___________________________', MARGIN, footerY + 7)
   doc.text('Data: _______________  Firma: ___________________________', MARGIN, footerY + 13)
+
+  // --- APPENDICE FOTO ---
+  if (fotoCtx) {
+    await addPdfFotoAppendix(doc, fotoCtx)
+  }
+
+  // --- PAGE NUMBERS (tutte le pagine, dopo appendice) ---
+  const totalPages = doc.getNumberOfPages()
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(9)
+    doc.text(`Pag. ${i} di ${totalPages}`, PAGE_W - MARGIN, 7, { align: 'right' })
+  }
 
   doc.save(buildPdfFilename(ctx, 'Rumore'))
 }

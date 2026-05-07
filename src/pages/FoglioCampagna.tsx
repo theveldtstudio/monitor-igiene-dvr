@@ -21,6 +21,8 @@ import type { ModuloCampionamento } from '../data/moduliCampionamento'
 import CardMisuraGenerica from '../components/CardMisuraGenerica'
 import { getModuloEntry } from '../data/moduliRegistry'
 import { exportFromTemplate, type FotoSheetContext } from '../lib/exportExcel'
+import { exportPdfRumore } from '../lib/exportPdf'
+import type { PdfFotoContext } from '../lib/pdfFotoAppendix'
 import { getExportSchema } from '../data/exportSchemas'
 import Spinner from '../components/Spinner'
 import Skeleton from '../components/Skeleton'
@@ -101,6 +103,7 @@ export default function FoglioCampagna() {
   const numeroMisure = misure.length
   const [confirmEliminaCampagnaOpen, setConfirmEliminaCampagnaOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
+  const [exportingPdf, setExportingPdf] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
 
   const { data: fotoTutte } = useQuery({
@@ -205,6 +208,16 @@ export default function FoglioCampagna() {
         fotoCtx = { misure, fotoPerMisura, risorse }
       }
 
+      // J2 DEBUG — rimuovere dopo il debug
+      console.log('J2 DEBUG fotoCtx:', {
+        moduloId,
+        fotoTutteLength: fotoTutte?.length,
+        fotoTutteUndefined: fotoTutte === undefined,
+        misureLength: misure.length,
+        misureIds: misure.map((m) => m.id),
+        fotoCtx,
+      })
+
       await exportFromTemplate(
         schema.templateUrl,
         (workbook) => schema.applyData(ctx, workbook),
@@ -216,6 +229,45 @@ export default function FoglioCampagna() {
       setExportError(msg)
     } finally {
       setExporting(false)
+    }
+  }
+
+  const handleEsportaPdf = async () => {
+    if (!cantiere || !campagna) return
+    setExportingPdf(true)
+    setExportError(null)
+    try {
+      const ctx = {
+        cantiere,
+        campagna,
+        misure,
+        tecnici: tecniciSelezionati,
+        strumento: strumentoSelezionato,
+        risorse,
+      }
+
+      let fotoCtx: PdfFotoContext | undefined
+      if ((fotoTutte ?? []).length > 0) {
+        const fotoPerMisura = new Map<string, FotoMisura[]>()
+        for (const f of (fotoTutte ?? [])) {
+          const arr = fotoPerMisura.get(f.misura_id) ?? []
+          arr.push(f)
+          fotoPerMisura.set(f.misura_id, arr)
+        }
+        fotoCtx = {
+          misure,
+          fotoPerMisura,
+          risorse: { postazioni: risorsePostazioni, fasi: risorseFasi, macchine: risorseMacchine },
+        }
+      }
+
+      await exportPdfRumore(ctx, fotoCtx)
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Errore export PDF'
+      setExportError(msg)
+      console.error('[exportPdfRumore]', e)
+    } finally {
+      setExportingPdf(false)
     }
   }
 
@@ -453,15 +505,28 @@ export default function FoglioCampagna() {
             </>
           )}
 
-          <button
-            type="button"
-            onClick={handleEsportaExcel}
-            disabled={exporting || !getExportSchema(moduloId)}
-            style={styles.btnEsportaExcel}
-            aria-label="Esporta in Excel"
-          >
-            {exporting ? <><Spinner /><span style={{ marginLeft: 6 }}>Esportazione…</span></> : 'Esporta in Excel'}
-          </button>
+          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+            <button
+              type="button"
+              onClick={handleEsportaExcel}
+              disabled={exporting || !getExportSchema(moduloId)}
+              style={{ ...styles.btnEsportaExcel, marginTop: 0, flex: 1 }}
+              aria-label="Esporta in Excel"
+            >
+              {exporting ? <><Spinner /><span style={{ marginLeft: 6 }}>Esportazione…</span></> : 'Esporta in Excel'}
+            </button>
+            {moduloId === 'rumore' && (
+              <button
+                type="button"
+                onClick={handleEsportaPdf}
+                disabled={exportingPdf}
+                style={{ ...styles.btnEsportaExcel, marginTop: 0, flex: 1 }}
+                aria-label="Esporta PDF"
+              >
+                {exportingPdf ? <><Spinner /><span style={{ marginLeft: 6 }}>Esportazione PDF…</span></> : 'Esporta PDF'}
+              </button>
+            )}
+          </div>
           {exportError && (
             <div style={styles.exportErrorBox}>{exportError}</div>
           )}
