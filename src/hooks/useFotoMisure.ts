@@ -88,6 +88,7 @@ export function useUploadFotoMisura() {
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY, variables.misuraId] });
+      queryClient.invalidateQueries({ queryKey: ['foto-misure-campagna'] });
     },
   });
 }
@@ -120,6 +121,7 @@ export function useDeleteFotoMisura() {
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY, variables.misuraId] });
+      queryClient.invalidateQueries({ queryKey: ['foto-misure-campagna'] });
     },
   });
 }
