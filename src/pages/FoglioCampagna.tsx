@@ -106,8 +106,13 @@ export default function FoglioCampagna() {
   const [exportingPdf, setExportingPdf] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
 
+  const misureIdsKey = useMemo(
+    () => misure.map((m) => m.id).sort().join(','),
+    [misure],
+  )
+
   const { data: fotoTutte } = useQuery({
-    queryKey: ['foto-misure-campagna', campagnaId],
+    queryKey: ['foto-misure-campagna', campagnaId, misureIdsKey],
     queryFn: async () => {
       const misureIds = misure.map((m) => m.id)
       if (misureIds.length === 0) return []
@@ -207,16 +212,6 @@ export default function FoglioCampagna() {
         }
         fotoCtx = { misure, fotoPerMisura, risorse }
       }
-
-      // J2 DEBUG — rimuovere dopo il debug
-      console.log('J2 DEBUG fotoCtx:', {
-        moduloId,
-        fotoTutteLength: fotoTutte?.length,
-        fotoTutteUndefined: fotoTutte === undefined,
-        misureLength: misure.length,
-        misureIds: misure.map((m) => m.id),
-        fotoCtx,
-      })
 
       await exportFromTemplate(
         schema.templateUrl,

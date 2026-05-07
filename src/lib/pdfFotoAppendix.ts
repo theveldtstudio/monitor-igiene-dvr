@@ -12,11 +12,12 @@ type FotoWithCreatedAt = FotoMisura & { created_at?: string | null }
 
 async function downloadAndCompressToDataUrl(pathLocale: string): Promise<string | null> {
   try {
-    const { data: blob, error } = await supabase.storage.from('misure-foto').download(pathLocale)
-    if (error || !blob) {
-      console.warn('[pdfFotoAppendix] foto non scaricabile:', pathLocale, error)
-      return null
-    }
+    const { data: signedData, error: signError } = await supabase.storage
+      .from('misure-foto').createSignedUrl(pathLocale, 300)
+    if (signError || !signedData?.signedUrl) return null
+    const resp = await fetch(signedData.signedUrl)
+    if (!resp.ok) return null
+    const blob = await resp.blob()
     const img = await createImageBitmap(blob)
     const ratio = 800 / Math.max(img.width, img.height)
     const w = ratio < 1 ? Math.round(img.width * ratio) : img.width
