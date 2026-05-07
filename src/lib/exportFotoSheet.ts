@@ -123,6 +123,7 @@ export async function addFotoSheet(
     const headerCell = headerExcelRow.getCell(1)
     headerCell.value = buildMisuraHeader(misura, risorse)
     headerCell.font = { bold: true, size: 11 }
+    headerCell.alignment = { vertical: 'middle', horizontal: 'left' }
     headerExcelRow.height = 18
     currentRow++
 
