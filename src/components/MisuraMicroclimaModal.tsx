@@ -138,9 +138,12 @@ export default function MisuraMicroclimaModal({ open, onClose, onSaved, cantiere
         setAttivita(''); setVestiario(''); setNote('')
       }
       setPostazioneModalOpen(false); setFaseModalOpen(false)
-      resetError()
     }
-  }, [open, initialSnapshot, resetError])
+  }, [open, initialSnapshot])
+
+  useEffect(() => {
+    if (open) resetError()
+  }, [open, resetError])
 
   useEffect(() => {
     if (open) {

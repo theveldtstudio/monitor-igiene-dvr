@@ -131,9 +131,12 @@ export default function MisuraWbvModal({ open, onClose, onSaved, cantiereId, cam
         setAwX(''); setAwY(''); setAwZ(''); setTemp(''); setNote('')
       }
       setMacchinaModalOpen(false); setFaseModalOpen(false)
-      resetError()
     }
-  }, [open, initialSnapshot, resetError])
+  }, [open, initialSnapshot])
+
+  useEffect(() => {
+    if (open) resetError()
+  }, [open, resetError])
 
   useEffect(() => {
     if (open) {

@@ -112,9 +112,12 @@ export default function MisuraCemModal({ open, onClose, onSaved, cantiereId, cam
         setLimite(''); setIndice(''); setNote('')
       }
       setPostazioneModalOpen(false); setFaseModalOpen(false)
-      resetError()
     }
-  }, [open, initialSnapshot, resetError])
+  }, [open, initialSnapshot])
+
+  useEffect(() => {
+    if (open) resetError()
+  }, [open, resetError])
 
   useEffect(() => {
     if (open) {

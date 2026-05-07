@@ -118,9 +118,12 @@ export default function MisuraRoaModal({ open, onClose, onSaved, cantiereId, cam
         setTempoEsposizione(''); setHManuale(''); setLimite(''); setIndice(''); setNote('')
       }
       setPostazioneModalOpen(false); setFaseModalOpen(false)
-      resetError()
     }
-  }, [open, initialSnapshot, resetError])
+  }, [open, initialSnapshot])
+
+  useEffect(() => {
+    if (open) resetError()
+  }, [open, resetError])
 
   useEffect(() => {
     if (open) {

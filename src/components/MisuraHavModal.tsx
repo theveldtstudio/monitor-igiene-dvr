@@ -117,9 +117,12 @@ export default function MisuraHavModal({ open, onClose, onSaved, cantiereId, cam
         setAwX(''); setAwY(''); setAwZ(''); setTemp(''); setNote('')
       }
       setFaseModalOpen(false)
-      resetError()
     }
-  }, [open, initialSnapshot, resetError])
+  }, [open, initialSnapshot])
+
+  useEffect(() => {
+    if (open) resetError()
+  }, [open, resetError])
 
   useEffect(() => {
     if (open) {
