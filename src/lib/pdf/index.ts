@@ -1,5 +1,8 @@
 export { exportPdfRumore } from './moduli/rumore'
 export { exportPdfWbv } from './moduli/wbv'
 export { exportPdfHav } from './moduli/hav'
+export { exportPdfMicroclima } from './moduli/microclima'
+export { exportPdfCem } from './moduli/cem'
+export { exportPdfRoa } from './moduli/roa'
 export { exportPdfModulo } from './core'
 export type { PdfModuloConfig, PdfFotoContext } from './core'

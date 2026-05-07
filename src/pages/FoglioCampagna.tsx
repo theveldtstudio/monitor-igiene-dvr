@@ -21,7 +21,7 @@ import type { ModuloCampionamento } from '../data/moduliCampionamento'
 import CardMisuraGenerica from '../components/CardMisuraGenerica'
 import { getModuloEntry } from '../data/moduliRegistry'
 import { exportFromTemplate, type FotoSheetContext } from '../lib/exportExcel'
-import { exportPdfRumore, exportPdfWbv, exportPdfHav } from '../lib/exportPdf'
+import { exportPdfRumore, exportPdfWbv, exportPdfHav, exportPdfMicroclima, exportPdfCem, exportPdfRoa } from '../lib/exportPdf'
 import type { PdfFotoContext } from '../lib/pdfFotoAppendix'
 import { getExportSchema } from '../data/exportSchemas'
 import Spinner from '../components/Spinner'
@@ -265,6 +265,15 @@ export default function FoglioCampagna() {
           break
         case 'vibrazioni-hav':
           await exportPdfHav(ctx, fotoCtx)
+          break
+        case 'microclima':
+          await exportPdfMicroclima(ctx, fotoCtx)
+          break
+        case 'cem':
+          await exportPdfCem(ctx, fotoCtx)
+          break
+        case 'roa':
+          await exportPdfRoa(ctx, fotoCtx)
           break
         default:
           console.warn(`Export PDF non implementato per ${moduloId}`)
