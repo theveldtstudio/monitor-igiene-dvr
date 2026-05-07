@@ -113,9 +113,12 @@ export default function MisuraGasModal({ open, onClose, onSaved, cantiereId, cam
         setAltroGasNome(''); setAltroGasValore(''); setNote('')
       }
       setPostazioneModalOpen(false); setFaseModalOpen(false); setMacchineModalOpen(false)
-      resetError()
     }
-  }, [open, initialSnapshot, resetError])
+  }, [open, initialSnapshot])
+
+  useEffect(() => {
+    if (open) resetError()
+  }, [open, resetError])
 
   useEffect(() => {
     if (open) {

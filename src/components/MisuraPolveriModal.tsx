@@ -136,9 +136,12 @@ export default function MisuraPolveriModal({ open, onClose, onSaved, cantiereId,
         setPolveri(''); setSiliceRaw(''); setNote('')
       }
       setPostazioneModalOpen(false); setFaseModalOpen(false); setMacchineModalOpen(false)
-      resetError()
     }
-  }, [open, initialSnapshot, resetError])
+  }, [open, initialSnapshot])
+
+  useEffect(() => {
+    if (open) resetError()
+  }, [open, resetError])
 
   useEffect(() => {
     if (open) {
