@@ -70,14 +70,32 @@ function buildPdfFilename(ctx: ExportContext, moduloId: string): string {
   return `${cantiereSafe}_${moduloId}_${data}.pdf`
 }
 
-export interface PdfModuloConfig {
-  moduloId: string
-  titoloHeader: string
-  tabella: {
+export interface PdfTabellaStatica {
+  variante?: 'statica'
+  head: string[][]
+  columnStyles: Record<number, { cellWidth?: number | 'auto'; halign?: 'left' | 'center' | 'right' }>
+  mapMisuraToRow: (m: Misura, idx: number) => string[]
+}
+
+export interface PdfTabellaAdattiva {
+  variante: 'adattiva'
+  hasLabData: (m: Misura) => boolean
+  cantiere: {
     head: string[][]
     columnStyles: Record<number, { cellWidth?: number | 'auto'; halign?: 'left' | 'center' | 'right' }>
     mapMisuraToRow: (m: Misura, idx: number) => string[]
   }
+  completa: {
+    head: string[][]
+    columnStyles: Record<number, { cellWidth?: number | 'auto'; halign?: 'left' | 'center' | 'right' }>
+    mapMisuraToRow: (m: Misura, idx: number) => string[]
+  }
+}
+
+export interface PdfModuloConfig {
+  moduloId: string
+  titoloHeader: string
+  tabella: PdfTabellaStatica | PdfTabellaAdattiva
 }
 
 export async function exportPdfModulo(
@@ -129,14 +147,33 @@ export async function exportPdfModulo(
   // --- TABLE ---
   const sorted = [...misure].sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0))
 
+  let tHead: string[][]
+  let tColumnStyles: Record<number, { cellWidth?: number | 'auto'; halign?: 'left' | 'center' | 'right' }>
+  let tMapRow: (m: Misura, idx: number) => string[]
+
+  if (config.tabella.variante === 'adattiva') {
+    const hasAnyLab = misure.some(m => (config.tabella as PdfTabellaAdattiva).hasLabData(m))
+    const sub = hasAnyLab
+      ? (config.tabella as PdfTabellaAdattiva).completa
+      : (config.tabella as PdfTabellaAdattiva).cantiere
+    tHead = sub.head
+    tColumnStyles = sub.columnStyles
+    tMapRow = sub.mapMisuraToRow
+  } else {
+    const t = config.tabella as PdfTabellaStatica
+    tHead = t.head
+    tColumnStyles = t.columnStyles
+    tMapRow = t.mapMisuraToRow
+  }
+
   autoTable(doc, {
     startY: y,
-    head: config.tabella.head,
-    body: sorted.map(config.tabella.mapMisuraToRow),
+    head: tHead,
+    body: sorted.map(tMapRow),
     theme: 'grid',
     styles: { font: 'helvetica', fontSize: 9, textColor: [0, 0, 0] },
     headStyles: { fillColor: [221, 221, 221], textColor: [0, 0, 0], fontStyle: 'bold', halign: 'center' },
-    columnStyles: config.tabella.columnStyles,
+    columnStyles: tColumnStyles,
     margin: { left: MARGIN, right: MARGIN },
   })
 
