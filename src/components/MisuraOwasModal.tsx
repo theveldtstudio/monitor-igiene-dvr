@@ -120,9 +120,12 @@ export default function MisuraOwasModal({ open, onClose, onSaved, campagnaId, mi
         setNote('')
       }
       setPickerOpen(false)
-      resetError()
     }
-  }, [open, initialSnapshot, resetError])
+  }, [open, initialSnapshot])
+
+  useEffect(() => {
+    if (open) resetError()
+  }, [open, resetError])
 
   useEffect(() => {
     if (open) {

@@ -121,9 +121,12 @@ export default function MisuraBiologicoModal({ open, onClose, onSaved, cantiereI
         setConta22Raw(''); setConta36Raw(''); setMuffeRaw(''); setNote('')
       }
       setPostazioneModalOpen(false); setFaseModalOpen(false); setMacchineModalOpen(false)
-      resetError()
     }
-  }, [open, initialSnapshot, resetError])
+  }, [open, initialSnapshot])
+
+  useEffect(() => {
+    if (open) resetError()
+  }, [open, resetError])
 
   useEffect(() => {
     if (open) {

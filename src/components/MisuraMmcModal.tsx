@@ -110,9 +110,12 @@ export default function MisuraMmcModal({ open, onClose, onSaved, campagnaId, mis
         setForzaMantenimento(''); setSpinta(''); setTraino(''); setDistanzaTrasporto('')
         setNote('')
       }
-      resetError()
     }
-  }, [open, initialSnapshot, resetError])
+  }, [open, initialSnapshot])
+
+  useEffect(() => {
+    if (open) resetError()
+  }, [open, resetError])
 
   useEffect(() => {
     if (open) {

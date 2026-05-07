@@ -85,9 +85,12 @@ export default function MisuraAcquaModal({ open, onClose, onSaved, campagnaId, m
         setPh(''); setConducibilita(''); setTAcqua(''); setTAmbiente('')
         setO2Perc(''); setO2MgL(''); setNote('')
       }
-      resetError()
     }
-  }, [open, initialSnapshot, resetError])
+  }, [open, initialSnapshot])
+
+  useEffect(() => {
+    if (open) resetError()
+  }, [open, resetError])
 
   useEffect(() => {
     if (open) {

@@ -110,9 +110,12 @@ export default function MisuraOcraModal({ open, onClose, onSaved, campagnaId, mi
         setArto(''); setMinutiCompito(''); setDenominazione(''); setRisposte({}); setNote('')
       }
       setSezioniAperte({})
-      resetError()
     }
-  }, [open, initialSnapshot, resetError])
+  }, [open, initialSnapshot])
+
+  useEffect(() => {
+    if (open) resetError()
+  }, [open, resetError])
 
   useEffect(() => {
     if (open) {
