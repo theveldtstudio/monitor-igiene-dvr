@@ -109,7 +109,8 @@ export async function addFotoSheet(
 
   let currentRow = 0 // 0-indexed per addImage; ws.getRow usa 1-indexed (currentRow+1)
 
-  for (const misura of misureConFoto) {
+  for (let mi = 0; mi < misureConFoto.length; mi++) {
+    const misura = misureConFoto[mi]
     const fotos = (fotoPerMisura.get(misura.id) ?? [])
       .slice()
       .sort((a, b) => {
@@ -119,18 +120,20 @@ export async function addFotoSheet(
       })
 
     // Header misura
-    const headerExcelRow = ws.getRow(currentRow + 1)
-    const headerCell = headerExcelRow.getCell(1)
+    const headerRow = ws.getRow(currentRow + 1)
+    headerRow.height = 18
+    const headerCell = headerRow.getCell(1)
     headerCell.value = buildMisuraHeader(misura, risorse)
     headerCell.font = { bold: true, size: 11 }
     headerCell.alignment = { vertical: 'middle', horizontal: 'left' }
-    headerExcelRow.height = 18
+    headerRow.commit()
     currentRow++
 
     // Righe foto (2 per riga)
     for (let i = 0; i < fotos.length; i += 2) {
-      const photoExcelRow = ws.getRow(currentRow + 1)
-      photoExcelRow.height = 256 // ~340px a ~1.33px/pt
+      const fotoRow = ws.getRow(currentRow + 1)
+      fotoRow.height = 256 // ~340px a ~1.33px/pt
+      fotoRow.getCell(1).value = null // forza materializzazione della riga
 
       // Foto sinistra → col B (tl.col=1)
       const buf1 = await downloadAndCompress(fotos[i].path_locale)
@@ -141,7 +144,7 @@ export async function addFotoSheet(
           ext: { width: 454, height: 340 },
         })
       } else {
-        photoExcelRow.getCell(2).value = '[foto non disponibile]'
+        fotoRow.getCell(2).value = '[foto non disponibile]'
       }
 
       // Foto destra → col D (tl.col=3)
@@ -154,14 +157,21 @@ export async function addFotoSheet(
             ext: { width: 454, height: 340 },
           })
         } else {
-          photoExcelRow.getCell(4).value = '[foto non disponibile]'
+          fotoRow.getCell(4).value = '[foto non disponibile]'
         }
       }
 
+      fotoRow.commit()
       currentRow++
     }
 
-    // Riga separatrice vuota tra misure
-    currentRow++
+    // Riga separatrice tra misure (non dopo l'ultima)
+    if (mi < misureConFoto.length - 1) {
+      const sepRow = ws.getRow(currentRow + 1)
+      sepRow.height = 80
+      sepRow.getCell(1).value = null
+      sepRow.commit()
+      currentRow++
+    }
   }
 }
