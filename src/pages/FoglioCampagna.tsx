@@ -18,10 +18,26 @@ import SelezioneStrumentoModal from '../components/SelezioneStrumentoModal'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { MODULI } from '../data/moduliCampionamento'
 import type { ModuloCampionamento } from '../data/moduliCampionamento'
+
+const MODULI_PDF_SUPPORTATI = [
+  'rumore',
+  'vibrazioni-wbv',
+  'vibrazioni-hav',
+  'microclima',
+  'cem',
+  'roa',
+  'polveri',
+  'carbonio-elementare',
+  'gas',
+  'ipa',
+  'amianto',
+  'biologico-sas',
+  'acqua',
+] as const
 import CardMisuraGenerica from '../components/CardMisuraGenerica'
 import { getModuloEntry } from '../data/moduliRegistry'
 import { exportFromTemplate, type FotoSheetContext } from '../lib/exportExcel'
-import { exportPdfRumore, exportPdfWbv, exportPdfHav, exportPdfMicroclima, exportPdfCem, exportPdfRoa } from '../lib/exportPdf'
+import { exportPdfRumore, exportPdfWbv, exportPdfHav, exportPdfMicroclima, exportPdfCem, exportPdfRoa, exportPdfPolveri, exportPdfCarbonio, exportPdfGas, exportPdfIpa, exportPdfAmianto, exportPdfBiologicoSas, exportPdfAcqua } from '../lib/exportPdf'
 import type { PdfFotoContext } from '../lib/pdfFotoAppendix'
 import { getExportSchema } from '../data/exportSchemas'
 import Spinner from '../components/Spinner'
@@ -274,6 +290,27 @@ export default function FoglioCampagna() {
           break
         case 'roa':
           await exportPdfRoa(ctx, fotoCtx)
+          break
+        case 'polveri':
+          await exportPdfPolveri(ctx, fotoCtx)
+          break
+        case 'carbonio-elementare':
+          await exportPdfCarbonio(ctx, fotoCtx)
+          break
+        case 'gas':
+          await exportPdfGas(ctx, fotoCtx)
+          break
+        case 'ipa':
+          await exportPdfIpa(ctx, fotoCtx)
+          break
+        case 'amianto':
+          await exportPdfAmianto(ctx, fotoCtx)
+          break
+        case 'biologico-sas':
+          await exportPdfBiologicoSas(ctx, fotoCtx)
+          break
+        case 'acqua':
+          await exportPdfAcqua(ctx, fotoCtx)
           break
         default:
           console.warn(`Export PDF non implementato per ${moduloId}`)
@@ -533,7 +570,7 @@ export default function FoglioCampagna() {
             >
               {exporting ? <><Spinner /><span style={{ marginLeft: 6 }}>Esportazione…</span></> : 'Esporta in Excel'}
             </button>
-            {(moduloId === 'rumore' || moduloId === 'vibrazioni-wbv' || moduloId === 'vibrazioni-hav') && (
+            {MODULI_PDF_SUPPORTATI.includes(moduloId as typeof MODULI_PDF_SUPPORTATI[number]) && (
               <button
                 type="button"
                 onClick={handleEsportaPdf}
