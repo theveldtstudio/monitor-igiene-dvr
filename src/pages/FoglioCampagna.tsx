@@ -21,7 +21,7 @@ import type { ModuloCampionamento } from '../data/moduliCampionamento'
 import CardMisuraGenerica from '../components/CardMisuraGenerica'
 import { getModuloEntry } from '../data/moduliRegistry'
 import { exportFromTemplate, type FotoSheetContext } from '../lib/exportExcel'
-import { exportPdfRumore } from '../lib/exportPdf'
+import { exportPdfRumore, exportPdfWbv, exportPdfHav } from '../lib/exportPdf'
 import type { PdfFotoContext } from '../lib/pdfFotoAppendix'
 import { getExportSchema } from '../data/exportSchemas'
 import Spinner from '../components/Spinner'
@@ -256,11 +256,25 @@ export default function FoglioCampagna() {
         }
       }
 
-      await exportPdfRumore(ctx, fotoCtx)
+      switch (moduloId) {
+        case 'rumore':
+          await exportPdfRumore(ctx, fotoCtx)
+          break
+        case 'vibrazioni-wbv':
+          await exportPdfWbv(ctx, fotoCtx)
+          break
+        case 'vibrazioni-hav':
+          await exportPdfHav(ctx, fotoCtx)
+          break
+        default:
+          console.warn(`Export PDF non implementato per ${moduloId}`)
+          setExportError(`Export PDF non ancora disponibile per questo modulo`)
+          return
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Errore export PDF'
       setExportError(msg)
-      console.error('[exportPdfRumore]', e)
+      console.error('[exportPdf]', e)
     } finally {
       setExportingPdf(false)
     }
@@ -510,7 +524,7 @@ export default function FoglioCampagna() {
             >
               {exporting ? <><Spinner /><span style={{ marginLeft: 6 }}>Esportazione…</span></> : 'Esporta in Excel'}
             </button>
-            {moduloId === 'rumore' && (
+            {(moduloId === 'rumore' || moduloId === 'vibrazioni-wbv' || moduloId === 'vibrazioni-hav') && (
               <button
                 type="button"
                 onClick={handleEsportaPdf}

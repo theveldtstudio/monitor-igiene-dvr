@@ -1,3 +1,5 @@
 export { exportPdfRumore } from './moduli/rumore'
+export { exportPdfWbv } from './moduli/wbv'
+export { exportPdfHav } from './moduli/hav'
 export { exportPdfModulo } from './core'
 export type { PdfModuloConfig, PdfFotoContext } from './core'
