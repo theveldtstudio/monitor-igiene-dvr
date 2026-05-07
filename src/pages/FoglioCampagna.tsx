@@ -115,7 +115,7 @@ export default function FoglioCampagna() {
       if (error) throw error
       return (data ?? []) as FotoMisura[]
     },
-    enabled: misure.length > 0 && moduloId === 'rumore',
+    enabled: misure.length > 0,
   })
 
   const handleApriModifica = (m: Misura) => {
@@ -195,7 +195,7 @@ export default function FoglioCampagna() {
       }
 
       let fotoCtx: FotoSheetContext | undefined
-      if (moduloId === 'rumore') {
+      if ((fotoTutte ?? []).length > 0) {
         const fotoPerMisura = new Map<string, FotoMisura[]>()
         for (const f of (fotoTutte ?? [])) {
           const arr = fotoPerMisura.get(f.misura_id) ?? []
