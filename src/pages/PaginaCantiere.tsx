@@ -8,6 +8,8 @@ import SezioneRisorse from '../components/SezioneRisorse'
 import Skeleton from '../components/Skeleton'
 import ErrorState from '../components/ErrorState'
 import EmptyState from '../components/EmptyState'
+import { useEsportaCantiere } from '../hooks/useEsportaCantiere'
+import { EsportaCantiereModal } from '../components/EsportaCantiereModal'
 
 function formatDataApertura(iso: string): string {
   const d = new Date(iso)
@@ -77,7 +79,7 @@ function CardModulo({ modulo, cantiereId }: { modulo: ModuloCampionamento; canti
   )
 }
 
-function badgeStyle(_stato: Cantiere['stato']): React.CSSProperties {
+function badgeStyle(): React.CSSProperties {
   return {
     background: 'var(--bg-badge-open)',
     color: 'var(--text-badge-open)',
@@ -127,6 +129,7 @@ export default function PaginaCantiere() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { cantiere, loading, error, notFound, refetch } = useCantiere(id)
+  const exportZip = useEsportaCantiere(cantiere ?? ({ id: '', nome: '', indirizzo: '', committente: null, stato: 'aperto', created_at: '' } as Cantiere))
 
   return (
     <div style={styles.page}>
@@ -167,11 +170,33 @@ export default function PaginaCantiere() {
           <div style={styles.headerCantiere}>
             <div style={styles.headerTopRow}>
               <h1 style={styles.titleCantiere}>{cantiere.nome}</h1>
-              <span style={badgeStyle(cantiere.stato)}>{cantiere.stato.toUpperCase()}</span>
+              <div style={styles.headerActions}>
+                <span style={badgeStyle()}>{cantiere.stato.toUpperCase()}</span>
+                <button
+                  type="button"
+                  onClick={() => { void exportZip.avvia() }}
+                  disabled={exportZip.stato === 'in-corso'}
+                  style={styles.btnEsportaZip}
+                  title="Esporta tutte le campagne del cantiere in un file zip"
+                >
+                  📦 Esporta cantiere (zip)
+                </button>
+              </div>
             </div>
             {cantiere.indirizzo && <div style={styles.headerIndirizzo}>{cantiere.indirizzo}</div>}
             <div style={styles.headerData}>{formatDataApertura(cantiere.created_at)}</div>
           </div>
+
+          {exportZip.stato !== 'idle' && (
+            <EsportaCantiereModal
+              open={true}
+              onClose={() => exportZip.reset()}
+              onAnnulla={() => { exportZip.annulla(); exportZip.reset() }}
+              progress={exportZip.progress}
+              stato={exportZip.stato}
+              errore={exportZip.errore ?? undefined}
+            />
+          )}
 
           <section style={styles.section}>
             <div style={styles.sectionTitle}>CONFIGURAZIONE</div>
@@ -337,5 +362,32 @@ const styles: Record<string, React.CSSProperties> = {
     color: 'var(--text-tertiary)',
     fontSize: 16,
     alignSelf: 'center',
+  },
+  headerActions: {
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flexShrink: 0,
+  },
+  btnEsportaZip: {
+    backgroundColor: 'var(--accent)',
+    color: 'white',
+    borderWidth: 0,
+    borderStyle: 'solid',
+    borderColor: 'transparent',
+    borderRadius: 8,
+    paddingTop: 8,
+    paddingBottom: 8,
+    paddingLeft: 14,
+    paddingRight: 14,
+    fontSize: 13,
+    fontWeight: 500,
+    fontFamily: 'var(--font-sans)',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap' as const,
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6,
   },
 }
