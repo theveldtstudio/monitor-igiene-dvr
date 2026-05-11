@@ -4,6 +4,7 @@ import type { ExportContext } from '../../data/exportSchemas'
 import type { Misura } from '../../types'
 import { addPdfFotoAppendix } from './fotoAppendix'
 import type { PdfFotoContext } from './fotoAppendix'
+import { MODULI } from '../../data/moduliCampionamento'
 
 export type { PdfFotoContext }
 
@@ -62,12 +63,17 @@ export function buildStrumentoStr(ctx: ExportContext): string {
     : ''
 }
 
-function buildPdfFilename(ctx: ExportContext, moduloId: string): string {
+export function buildPdfFilename(ctx: ExportContext, label: string): string {
   const cantiereSafe = ctx.cantiere.nome.replace(/[^a-zA-Z0-9_-]/g, '_')
   const data = ctx.campagna.data_ora
     ? new Date(ctx.campagna.data_ora).toISOString().slice(0, 10)
     : 'data'
-  return `${cantiereSafe}_${moduloId}_${data}.pdf`
+  const labelSafe = label.replace(/[^a-zA-Z0-9_-]/g, '_')
+  return `${cantiereSafe}_${labelSafe}_${data}.pdf`
+}
+
+export function getPdfModuloLabel(moduloId: string): string {
+  return MODULI.find(m => m.id === moduloId)?.nome ?? moduloId
 }
 
 export interface PdfTabellaStatica {
