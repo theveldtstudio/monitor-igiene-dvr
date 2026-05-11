@@ -60,3 +60,10 @@ coverage/
 *.tmp
 *.temp
 *.bak
+
+# Claude Code — eccezioni per file di contesto progetto
+!.claude/
+.claude/*
+!.claude/current-state.md
+!.claude/playbooks/
+!.claude/playbooks/**
