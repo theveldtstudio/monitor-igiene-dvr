@@ -21,11 +21,26 @@ const configMmc: PdfModuloConfig = {
     head: [
       [
         { content: '', colSpan: 1 },
-        { content: 'Sollevamento (NIOSH)', colSpan: 8, styles: { halign: 'center' } },
-        { content: 'Spinta·Traino·Trasporto (Snook-Ciriello)', colSpan: 4, styles: { halign: 'center' } },
+        { content: 'Sollevamento (NIOSH)', colSpan: 8, styles: { halign: 'center', lineWidth: 0.4, lineColor: [60, 60, 60] as [number, number, number] } },
+        { content: 'Spinta·Traino·Trasporto (Snook-Ciriello)', colSpan: 4, styles: { halign: 'center', lineWidth: 0.4, lineColor: [60, 60, 60] as [number, number, number] } },
         { content: '', colSpan: 1 },
       ],
-      ['#', 'Carico (kg)', 'H. mani (cm)', 'Dist. vert. (cm)', 'Dist. peso/corpo (cm)', 'Disloc. (°)', 'Freq. gesti', 'Giudizio presa', 'N° pers.', 'F. manten. (kg)', 'Spinta (kg)', 'Traino (kg)', 'Dist. trasp. (m)', 'Note'],
+      [
+        { content: '#',                    styles: { lineWidth: 0.3, lineColor: [80, 80, 80] as [number, number, number] } },
+        { content: 'Carico (kg)',          styles: { lineWidth: 0.3, lineColor: [80, 80, 80] as [number, number, number] } },
+        { content: 'H. mani (cm)',         styles: { lineWidth: 0.3, lineColor: [80, 80, 80] as [number, number, number] } },
+        { content: 'Dist. vert. (cm)',     styles: { lineWidth: 0.3, lineColor: [80, 80, 80] as [number, number, number] } },
+        { content: 'Dist. peso/corpo (cm)', styles: { lineWidth: 0.3, lineColor: [80, 80, 80] as [number, number, number] } },
+        { content: 'Disloc. (°)',          styles: { lineWidth: 0.3, lineColor: [80, 80, 80] as [number, number, number] } },
+        { content: 'Freq. gesti',          styles: { lineWidth: 0.3, lineColor: [80, 80, 80] as [number, number, number] } },
+        { content: 'Giudizio presa',       styles: { lineWidth: 0.3, lineColor: [80, 80, 80] as [number, number, number] } },
+        { content: 'N° pers.',             styles: { lineWidth: 0.3, lineColor: [80, 80, 80] as [number, number, number] } },
+        { content: 'F. manten. (kg)',      styles: { lineWidth: 0.3, lineColor: [80, 80, 80] as [number, number, number] } },
+        { content: 'Spinta (kg)',          styles: { lineWidth: 0.3, lineColor: [80, 80, 80] as [number, number, number] } },
+        { content: 'Traino (kg)',          styles: { lineWidth: 0.3, lineColor: [80, 80, 80] as [number, number, number] } },
+        { content: 'Dist. trasp. (m)',     styles: { lineWidth: 0.3, lineColor: [80, 80, 80] as [number, number, number] } },
+        { content: 'Note',                 styles: { lineWidth: 0.3, lineColor: [80, 80, 80] as [number, number, number] } },
+      ],
     ],
     columnStyles: {
       0:  { cellWidth: 8,      halign: 'center' },   // #
