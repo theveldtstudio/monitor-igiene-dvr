@@ -1,11 +1,23 @@
-﻿import type { Misura } from '../../../types'
+import type { Misura } from '../../../types'
 import type { ExportContext } from '../../../data/exportSchemas'
 import { exportPdfModulo } from '../core'
 import type { PdfModuloConfig, PdfFotoContext } from '../core'
 import { fmtNum } from './_helpers'
+import type { Styles } from 'jspdf-autotable'
 
 const fmt0 = fmtNum(0)
 const fmt1 = fmtNum(1)
+
+function defaultHeaderCellStyle(): Partial<Styles> {
+  return {
+    fillColor: [235, 235, 235],
+    textColor: [0, 0, 0],
+    fontStyle: 'bold',
+    halign: 'center',
+    lineWidth: 0.2,
+    lineColor: [0, 0, 0],
+  }
+}
 
 const freqConcat = (m: Misura): string => {
   const d = m.dati as Record<string, unknown>
@@ -20,26 +32,42 @@ const configMmc: PdfModuloConfig = {
   tabella: {
     head: [
       [
-        { content: '', colSpan: 1 },
-        { content: 'Sollevamento (NIOSH)', colSpan: 8, styles: { halign: 'center', lineWidth: 0.4, lineColor: [60, 60, 60] as [number, number, number] } },
-        { content: 'Spinta·Traino·Trasporto (Snook-Ciriello)', colSpan: 4, styles: { halign: 'center', lineWidth: 0.4, lineColor: [60, 60, 60] as [number, number, number] } },
-        { content: '', colSpan: 1 },
+        { content: '', colSpan: 1, styles: { fillColor: [255, 255, 255], lineWidth: 0 } },
+        { content: 'Sollevamento (NIOSH)', colSpan: 8, styles: {
+            halign: 'center',
+            fillColor: [50, 50, 50],
+            textColor: [255, 255, 255],
+            fontStyle: 'bold',
+            lineWidth: 0.2,
+            lineColor: [0, 0, 0],
+            cellPadding: 2,
+          } },
+        { content: 'Spinta·Traino·Trasporto (Snook-Ciriello)', colSpan: 4, styles: {
+            halign: 'center',
+            fillColor: [50, 50, 50],
+            textColor: [255, 255, 255],
+            fontStyle: 'bold',
+            lineWidth: 0.2,
+            lineColor: [0, 0, 0],
+            cellPadding: 2,
+          } },
+        { content: '', colSpan: 1, styles: { fillColor: [255, 255, 255], lineWidth: 0 } },
       ],
       [
-        { content: '#',                    styles: { lineWidth: 0.3, lineColor: [80, 80, 80] as [number, number, number] } },
-        { content: 'Carico (kg)',          styles: { lineWidth: 0.3, lineColor: [80, 80, 80] as [number, number, number] } },
-        { content: 'H. mani (cm)',         styles: { lineWidth: 0.3, lineColor: [80, 80, 80] as [number, number, number] } },
-        { content: 'Dist. vert. (cm)',     styles: { lineWidth: 0.3, lineColor: [80, 80, 80] as [number, number, number] } },
-        { content: 'Dist. peso/corpo (cm)', styles: { lineWidth: 0.3, lineColor: [80, 80, 80] as [number, number, number] } },
-        { content: 'Disloc. (°)',          styles: { lineWidth: 0.3, lineColor: [80, 80, 80] as [number, number, number] } },
-        { content: 'Freq. gesti',          styles: { lineWidth: 0.3, lineColor: [80, 80, 80] as [number, number, number] } },
-        { content: 'Giudizio presa',       styles: { lineWidth: 0.3, lineColor: [80, 80, 80] as [number, number, number] } },
-        { content: 'N° pers.',             styles: { lineWidth: 0.3, lineColor: [80, 80, 80] as [number, number, number] } },
-        { content: 'F. manten. (kg)',      styles: { lineWidth: 0.3, lineColor: [80, 80, 80] as [number, number, number] } },
-        { content: 'Spinta (kg)',          styles: { lineWidth: 0.3, lineColor: [80, 80, 80] as [number, number, number] } },
-        { content: 'Traino (kg)',          styles: { lineWidth: 0.3, lineColor: [80, 80, 80] as [number, number, number] } },
-        { content: 'Dist. trasp. (m)',     styles: { lineWidth: 0.3, lineColor: [80, 80, 80] as [number, number, number] } },
-        { content: 'Note',                 styles: { lineWidth: 0.3, lineColor: [80, 80, 80] as [number, number, number] } },
+        { content: '#',                     styles: defaultHeaderCellStyle() },
+        { content: 'Carico (kg)',           styles: defaultHeaderCellStyle() },
+        { content: 'H. mani (cm)',          styles: defaultHeaderCellStyle() },
+        { content: 'Dist. vert. (cm)',      styles: defaultHeaderCellStyle() },
+        { content: 'Dist. peso/corpo (cm)', styles: defaultHeaderCellStyle() },
+        { content: 'Disloc. (°)',           styles: defaultHeaderCellStyle() },
+        { content: 'Freq. gesti',           styles: defaultHeaderCellStyle() },
+        { content: 'Giudizio presa',        styles: defaultHeaderCellStyle() },
+        { content: 'N° pers.',              styles: defaultHeaderCellStyle() },
+        { content: 'F. manten. (kg)',       styles: defaultHeaderCellStyle() },
+        { content: 'Spinta (kg)',           styles: defaultHeaderCellStyle() },
+        { content: 'Traino (kg)',           styles: defaultHeaderCellStyle() },
+        { content: 'Dist. trasp. (m)',      styles: defaultHeaderCellStyle() },
+        { content: 'Note',                  styles: defaultHeaderCellStyle() },
       ],
     ],
     columnStyles: {
