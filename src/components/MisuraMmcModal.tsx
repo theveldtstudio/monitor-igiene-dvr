@@ -213,7 +213,7 @@ export default function MisuraMmcModal({ open, onClose, onSaved, campagnaId, mis
       saveError={error}
       onSubmit={handleSubmit}
     >
-      <div style={styles.sectionHeader}>Sollevamento</div>
+      <div style={styles.sectionHeader}>Sollevamento (NIOSH)</div>
 
       <div style={styles.grid2col}>
         <div style={styles.cell}>
@@ -274,7 +274,7 @@ export default function MisuraMmcModal({ open, onClose, onSaved, campagnaId, mis
         </div>
       </div>
 
-      <div style={styles.sectionHeader}>Spinta / Traino</div>
+      <div style={styles.sectionHeader}>Spinta / Traino (Snook-Ciriello)</div>
 
       <div style={styles.field}>
         <label htmlFor="mmc-fm" style={styles.label}>Forza di mantenimento (kg)</label>
@@ -295,7 +295,7 @@ export default function MisuraMmcModal({ open, onClose, onSaved, campagnaId, mis
         </div>
       </div>
 
-      <div style={styles.sectionHeader}>Trasporto</div>
+      <div style={styles.sectionHeader}>Trasporto (Snook-Ciriello)</div>
 
       <div style={styles.field}>
         <label htmlFor="mmc-dt" style={styles.label}>Distanza di trasporto del peso (m)</label>
