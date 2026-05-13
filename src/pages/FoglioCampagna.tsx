@@ -33,11 +33,15 @@ const MODULI_PDF_SUPPORTATI = [
   'amianto',
   'biologico-sas',
   'acqua',
+  'mmc',
+  'owas',
+  'ocra',
 ] as const
 import CardMisuraGenerica from '../components/CardMisuraGenerica'
 import { getModuloEntry } from '../data/moduliRegistry'
 import { exportFromTemplate, type FotoSheetContext } from '../lib/exportExcel'
 import { exportPdfRumore, exportPdfWbv, exportPdfHav, exportPdfMicroclima, exportPdfCem, exportPdfRoa, exportPdfPolveri, exportPdfCarbonio, exportPdfGas, exportPdfIpa, exportPdfAmianto, exportPdfBiologicoSas, exportPdfAcqua } from '../lib/exportPdf'
+import { exportPdfMmc, exportPdfOwas, exportPdfOcra } from '../lib/pdf'
 import type { PdfFotoContext } from '../lib/pdfFotoAppendix'
 import { getExportSchema } from '../data/exportSchemas'
 import Spinner from '../components/Spinner'
@@ -311,6 +315,15 @@ export default function FoglioCampagna() {
           break
         case 'acqua':
           await exportPdfAcqua(ctx, fotoCtx)
+          break
+        case 'mmc':
+          await exportPdfMmc(ctx, fotoCtx)
+          break
+        case 'owas':
+          await exportPdfOwas(ctx, fotoCtx)
+          break
+        case 'ocra':
+          await exportPdfOcra(ctx, fotoCtx)
           break
         default:
           console.warn(`Export PDF non implementato per ${moduloId}`)
