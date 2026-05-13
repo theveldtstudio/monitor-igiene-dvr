@@ -28,20 +28,20 @@ const configMmc: PdfModuloConfig = {
       ['#', 'Carico (kg)', 'H. mani (cm)', 'Dist. vert. (cm)', 'Dist. peso/corpo (cm)', 'Disloc. (°)', 'Freq. gesti', 'Giudizio presa', 'N° pers.', 'F. manten. (kg)', 'Spinta (kg)', 'Traino (kg)', 'Dist. trasp. (m)', 'Note'],
     ],
     columnStyles: {
-      0:  { cellWidth: 18,     halign: 'center' },
-      1:  { cellWidth: 48,     halign: 'center' },
-      2:  { cellWidth: 48,     halign: 'center' },
-      3:  { cellWidth: 50,     halign: 'center' },
-      4:  { cellWidth: 62,     halign: 'center' },
-      5:  { cellWidth: 48,     halign: 'center' },
-      6:  { cellWidth: 52,     halign: 'center' },
-      7:  { cellWidth: 56,     halign: 'center' },
-      8:  { cellWidth: 38,     halign: 'center' },
-      9:  { cellWidth: 56,     halign: 'center' },
-      10: { cellWidth: 48,     halign: 'center' },
-      11: { cellWidth: 48,     halign: 'center' },
-      12: { cellWidth: 52,     halign: 'center' },
-      13: { cellWidth: 'auto', halign: 'left'   },
+      0:  { cellWidth: 8,      halign: 'center' },   // #
+      1:  { cellWidth: 18,     halign: 'center' },   // Carico (kg)
+      2:  { cellWidth: 18,     halign: 'center' },   // H. mani (cm)
+      3:  { cellWidth: 20,     halign: 'center' },   // Dist. vert. (cm)
+      4:  { cellWidth: 24,     halign: 'center' },   // Dist. peso/corpo (cm)
+      5:  { cellWidth: 18,     halign: 'center' },   // Disloc. (°)
+      6:  { cellWidth: 20,     halign: 'center' },   // Freq. gesti
+      7:  { cellWidth: 22,     halign: 'center' },   // Giudizio presa
+      8:  { cellWidth: 14,     halign: 'center' },   // N° pers.
+      9:  { cellWidth: 22,     halign: 'center' },   // F. manten. (kg)
+      10: { cellWidth: 18,     halign: 'center' },   // Spinta (kg)
+      11: { cellWidth: 18,     halign: 'center' },   // Traino (kg)
+      12: { cellWidth: 20,     halign: 'center' },   // Dist. trasp. (m)
+      13: { cellWidth: 'auto', halign: 'left'   },   // Note
     },
     mapMisuraToRow: (m, idx) => {
       const d = m.dati as Record<string, unknown>
