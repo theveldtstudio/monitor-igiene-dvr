@@ -212,7 +212,7 @@ export default function Home() {
             const menuOpen = menuApertoId === c.id
             return (
               <div key={c.id} style={styles.cardWrapper}>
-                <Link to={`/cantieri/${c.id}`} style={styles.cardLink}>
+                <Link to={`/cantieri/${c.id}`} data-testid="cantiere-card" style={styles.cardLink}>
                   <article style={styles.card}>
                     <div style={styles.cardHeader}>
                       <span style={styles.cardTitle}>{c.nome}</span>

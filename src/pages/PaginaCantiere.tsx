@@ -61,7 +61,7 @@ function ModuloIcona({ id, color }: { id: string; color: string }) {
 function CardModulo({ modulo, cantiereId }: { modulo: ModuloCampionamento; cantiereId: string }) {
   const cat = CATEGORIE[modulo.categoria]
   return (
-    <Link to={`/cantieri/${cantiereId}/moduli/${modulo.id}`} style={styles.cardLink}>
+    <Link to={`/cantieri/${cantiereId}/moduli/${modulo.id}`} data-testid={`modulo-card-${modulo.id}`} style={styles.cardLink}>
       <article style={styles.cardModulo}>
         <div style={{ ...styles.iconWrap, background: cat.bgIcona }}>
           <ModuloIcona id={modulo.id} color={cat.colorAccento} />
