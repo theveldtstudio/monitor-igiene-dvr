@@ -47,12 +47,16 @@ COL_WIDTHS = {
 }
 ROW_H_HEADER = 30.0
 ROW_H_TITLE  = 24.95
+ROW_H_GROUP  = 22.0
 ROW_H_COLHDR = 36.0
 ROW_H_DATA   = 36.0
 ROW_H_FOOTER = 27.75
 ROW_H_EMPTY  = 15.0
 
-PAGE_ROWS = 13
+PAGE_ROWS = 14
+
+GROUP_NIOSH = "Sollevamento (NIOSH)"
+GROUP_SNOOK = "Spinta·Traino·Trasporto (Snook-Ciriello)"
 DATA_ROWS_PER_PAGE = 8
 NUM_COLS = 14
 NUM_PAGES = 4
@@ -107,17 +111,35 @@ def build_page(ws, page_num: int, base_row: int, slot_start: int):
     c.alignment = CENTER
     c.fill = FILL_TITLE
 
+    # group row
     r3 = base_row + 2
-    ws.row_dimensions[r3].height = ROW_H_COLHDR
+    ws.row_dimensions[r3].height = ROW_H_GROUP
+    ws.cell(r3, 1).border = BORDER_ALL
+    ws.merge_cells(start_row=r3, start_column=2, end_row=r3, end_column=9)
+    cg = ws.cell(r3, 2, GROUP_NIOSH)
+    cg.font = FONT_HDR
+    cg.alignment = CENTER
+    cg.fill = FILL_TITLE
+    cg.border = BORDER_ALL
+    ws.merge_cells(start_row=r3, start_column=10, end_row=r3, end_column=13)
+    cs = ws.cell(r3, 10, GROUP_SNOOK)
+    cs.font = FONT_HDR
+    cs.alignment = CENTER
+    cs.fill = FILL_TITLE
+    cs.border = BORDER_ALL
+    ws.cell(r3, 14).border = BORDER_ALL
+
+    r4 = base_row + 3
+    ws.row_dimensions[r4].height = ROW_H_COLHDR
     for col, txt in enumerate(HEADERS, start=1):
-        c = ws.cell(r3, col, txt)
+        c = ws.cell(r4, col, txt)
         c.font = FONT_HDR
         c.alignment = CENTER
         c.fill = FILL_COLHDR
         c.border = BORDER_ALL
 
     for i in range(DATA_ROWS_PER_PAGE):
-        rr = base_row + 3 + i
+        rr = base_row + 4 + i
         ws.row_dimensions[rr].height = ROW_H_DATA
         for col in range(1, NUM_COLS + 1):
             ws.cell(rr, col).border = BORDER_ALL
@@ -125,7 +147,7 @@ def build_page(ws, page_num: int, base_row: int, slot_start: int):
             ws.cell(rr, col).font = FONT_NORMAL
         ws.cell(rr, 1, slot_start + i).font = FONT_HDR
 
-    r_foot = base_row + 11
+    r_foot = base_row + 12
     ws.row_dimensions[r_foot].height = ROW_H_FOOTER
     ws.merge_cells(start_row=r_foot, start_column=1, end_row=r_foot, end_column=2)
     c = ws.cell(r_foot, 1, "Tecnico rilevatore")
@@ -138,7 +160,7 @@ def build_page(ws, page_num: int, base_row: int, slot_start: int):
     c.font = FONT_NORMAL
     c.alignment = LEFT
 
-    r_sep = base_row + 12
+    r_sep = base_row + 13
     if r_sep <= base_row + PAGE_ROWS - 1:
         ws.row_dimensions[r_sep].height = ROW_H_EMPTY
 

@@ -802,10 +802,10 @@ const exportSchemaMmc: ExportSchema = {
     if (!ws) throw new Error("Foglio 'Foglio1' non trovato nel template MMC")
 
     const blocchi = [
-      { headerRow: 1,  dataStartRow: 4,  footerRow: 12 },
-      { headerRow: 14, dataStartRow: 17, footerRow: 25 },
-      { headerRow: 27, dataStartRow: 30, footerRow: 38 },
-      { headerRow: 40, dataStartRow: 43, footerRow: 51 },
+      { headerRow: 1,  dataStartRow: 5,  footerRow: 13 },
+      { headerRow: 15, dataStartRow: 19, footerRow: 27 },
+      { headerRow: 29, dataStartRow: 33, footerRow: 41 },
+      { headerRow: 43, dataStartRow: 47, footerRow: 55 },
     ]
     const dataFormatted = ctx.campagna.data_ora ? new Date(ctx.campagna.data_ora).toLocaleDateString('it-IT') : ''
     const committente = ctx.cantiere.committente ?? ''
