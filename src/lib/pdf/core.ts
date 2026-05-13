@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import type { RowInput } from 'jspdf-autotable'
 import type { ExportContext } from '../../data/exportSchemas'
 import type { Misura } from '../../types'
 import { addPdfFotoAppendix } from './fotoAppendix'
@@ -78,7 +79,7 @@ export function getPdfModuloLabel(moduloId: string): string {
 
 export interface PdfTabellaStatica {
   variante?: 'statica'
-  head: string[][]
+  head: RowInput[]
   columnStyles: Record<number, { cellWidth?: number | 'auto'; halign?: 'left' | 'center' | 'right' }>
   mapMisuraToRow: (m: Misura, idx: number) => string[]
 }
@@ -87,12 +88,12 @@ export interface PdfTabellaAdattiva {
   variante: 'adattiva'
   hasLabData: (m: Misura) => boolean
   cantiere: {
-    head: string[][]
+    head: RowInput[]
     columnStyles: Record<number, { cellWidth?: number | 'auto'; halign?: 'left' | 'center' | 'right' }>
     mapMisuraToRow: (m: Misura, idx: number) => string[]
   }
   completa: {
-    head: string[][]
+    head: RowInput[]
     columnStyles: Record<number, { cellWidth?: number | 'auto'; halign?: 'left' | 'center' | 'right' }>
     mapMisuraToRow: (m: Misura, idx: number) => string[]
   }
@@ -153,7 +154,7 @@ export async function exportPdfModulo(
   // --- TABLE ---
   const sorted = [...misure].sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0))
 
-  let tHead: string[][]
+  let tHead: RowInput[]
   let tColumnStyles: Record<number, { cellWidth?: number | 'auto'; halign?: 'left' | 'center' | 'right' }>
   let tMapRow: (m: Misura, idx: number) => string[]
 
