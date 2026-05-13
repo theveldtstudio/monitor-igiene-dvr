@@ -7,13 +7,6 @@ import { fmtNum } from './_helpers'
 const fmt0 = fmtNum(0)
 const fmt1 = fmtNum(1)
 
-const presaShort = (v: unknown): string => {
-  if (v === 'Buona') return 'B'
-  if (v === 'Discreta') return 'D'
-  if (v === 'Scarsa') return 'S'
-  return ''
-}
-
 const freqConcat = (m: Misura): string => {
   const d = m.dati as Record<string, unknown>
   if (typeof d.frequenza_gesti !== 'number') return ''
@@ -28,39 +21,43 @@ const configMmc: PdfModuloConfig = {
     head: [
       [
         { content: '', colSpan: 1 },
-        { content: 'Sollevamento (NIOSH)', colSpan: 6, styles: { halign: 'center' } },
+        { content: 'Sollevamento (NIOSH)', colSpan: 8, styles: { halign: 'center' } },
         { content: 'Spinta·Traino·Trasporto (Snook-Ciriello)', colSpan: 4, styles: { halign: 'center' } },
         { content: '', colSpan: 1 },
       ],
-      ['#', 'Carico (kg)', 'Δ Vert (cm)', 'Dist. corpo (cm)', 'Disloc. (°)', 'Freq.', 'Presa', 'Spinta (kg)', 'Traino (kg)', 'F. mant. (kg)', 'Dist. trasp. (m)', 'Note'],
+      ['#', 'Carico (kg)', 'H. mani (cm)', 'Δ Vert (cm)', 'Dist. peso/corpo (cm)', 'Disloc. (°)', 'Freq. gesti', 'Giudizio presa', 'N° pers.', 'F. manten. (kg)', 'Spinta (kg)', 'Traino (kg)', 'Dist. trasp. (m)', 'Note'],
     ],
     columnStyles: {
-      0: { cellWidth: 8, halign: 'center' },
-      1: { cellWidth: 20, halign: 'right' },
-      2: { cellWidth: 22, halign: 'right' },
-      3: { cellWidth: 26, halign: 'right' },
-      4: { cellWidth: 20, halign: 'right' },
-      5: { cellWidth: 26, halign: 'center' },
-      6: { cellWidth: 14, halign: 'center' },
-      7: { cellWidth: 22, halign: 'right' },
-      8: { cellWidth: 22, halign: 'right' },
-      9: { cellWidth: 24, halign: 'right' },
-      10: { cellWidth: 26, halign: 'right' },
-      11: {},
+      0:  { cellWidth: 18,     halign: 'center' },
+      1:  { cellWidth: 55,     halign: 'center' },
+      2:  { cellWidth: 55,     halign: 'center' },
+      3:  { cellWidth: 55,     halign: 'center' },
+      4:  { cellWidth: 75,     halign: 'center' },
+      5:  { cellWidth: 55,     halign: 'center' },
+      6:  { cellWidth: 60,     halign: 'center' },
+      7:  { cellWidth: 65,     halign: 'center' },
+      8:  { cellWidth: 45,     halign: 'center' },
+      9:  { cellWidth: 65,     halign: 'center' },
+      10: { cellWidth: 55,     halign: 'center' },
+      11: { cellWidth: 55,     halign: 'center' },
+      12: { cellWidth: 60,     halign: 'center' },
+      13: { cellWidth: 'auto', halign: 'left'   },
     },
     mapMisuraToRow: (m, idx) => {
       const d = m.dati as Record<string, unknown>
       return [
         String(idx + 1),
         fmt1(d.carico),
+        fmt0(d.altezza_mani),
         fmt0(d.distanza_verticale),
         fmt0(d.distanza_peso_corpo),
         fmt0(d.dislocazione_angolare),
         freqConcat(m),
-        presaShort(d.giudizio_presa),
+        String(d.giudizio_presa ?? ''),
+        fmt0(d.n_persone),
+        fmt1(d.forza_mantenimento),
         fmt1(d.spinta),
         fmt1(d.traino),
-        fmt1(d.forza_mantenimento),
         fmt0(d.distanza_trasporto),
         (m.note as string) ?? '',
       ]
