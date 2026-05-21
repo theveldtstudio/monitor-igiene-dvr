@@ -13,7 +13,7 @@ import {
   getPdfModuloLabel,
   buildPdfFilename,
 } from './pdf'
-import { exportFromTemplate, sanitizeFilename } from './exportExcel'
+import { buildWorkbookBlob, sanitizeFilename } from './exportExcel'
 import type { FotoSheetContext } from './exportFotoSheet'
 import { saveBlob } from './saveBlob'
 
@@ -111,7 +111,7 @@ export async function exportCantiereZip(params: ExportCantiereParams): Promise<v
             }
           : undefined
 
-        const xlsxBlob = await exportFromTemplate(
+        const xlsxBlob = await buildWorkbookBlob(
           schema.templateUrl,
           (wb) => schema.applyData(ctx, wb),
           fotoSheetCtx,
