@@ -32,11 +32,7 @@ export function EsportaCantiereModal({ open, onClose, onAnnulla, progress, stato
     ? `File ${progress.fileCorrente} di ${progress.totaleFile}`
     : 'Preparazione…'
 
-  const faseLabel = progress?.fase === 'xlsx'
-    ? 'Generazione Excel'
-    : progress?.fase === 'pdf'
-    ? 'Generazione PDF'
-    : ''
+  const faseLabel = progress?.fase === 'xlsx' ? 'Generazione Excel' : ''
 
   const isFinished = stato !== 'in-corso'
 

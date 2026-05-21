@@ -5,7 +5,6 @@ import type { Cantiere, Campagna, Misura, RisorsaCantiere, FotoMisura } from '..
 import type { Tecnico, Strumento } from '../types'
 import { supabase } from '../lib/supabase'
 import type { ExportContext } from '../data/exportSchemas'
-import type { PdfFotoContext } from '../lib/pdf'
 
 export type EsportaStato = 'idle' | 'in-corso' | 'completato' | 'annullato' | 'errore'
 
@@ -101,11 +100,7 @@ export function useEsportaCantiere(cantiere: Cantiere): UseEsportaCantiereResult
 
       if (abortController.signal.aborted) throw new DOMException('Annullato', 'AbortError')
 
-      // Risorse separate per categoria (per PdfFotoContext)
       const risorseAll = (risorse ?? []) as RisorsaCantiere[]
-      const postazioni = risorseAll.filter((r) => r.tipo === 'postazione')
-      const fasi = risorseAll.filter((r) => r.tipo === 'fase')
-      const macchine = risorseAll.filter((r) => r.tipo === 'macchina')
 
       // 6. Raggruppa campagne per moduloId (tipo_campionamento)
       const campagnePerModulo = new Map<string, CampagnaCompleta[]>()
@@ -120,20 +115,12 @@ export function useEsportaCantiere(cantiere: Cantiere): UseEsportaCantiereResult
           if (f && f.length > 0) fotoMisuraSubset.set(m.id, f)
         }
 
-        const fotoCtx: PdfFotoContext | undefined = fotoMisuraSubset.size > 0
-          ? {
-              misure: misureC,
-              fotoPerMisura: fotoMisuraSubset,
-              risorse: { postazioni, fasi, macchine },
-            }
-          : undefined
-
         if (!campagnePerModulo.has(moduloId)) campagnePerModulo.set(moduloId, [])
         campagnePerModulo.get(moduloId)!.push({
           campagna: c,
           misure: misureC,
           risorse: risorseAll,
-          fotoCtx,
+          fotoPerMisura: fotoMisuraSubset.size > 0 ? fotoMisuraSubset : undefined,
         })
       }
 

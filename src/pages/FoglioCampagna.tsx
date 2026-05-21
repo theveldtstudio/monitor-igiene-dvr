@@ -19,30 +19,9 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import { MODULI } from '../data/moduliCampionamento'
 import type { ModuloCampionamento } from '../data/moduliCampionamento'
 
-const MODULI_PDF_SUPPORTATI = [
-  'rumore',
-  'vibrazioni-wbv',
-  'vibrazioni-hav',
-  'microclima',
-  'cem',
-  'roa',
-  'polveri',
-  'carbonio-elementare',
-  'gas',
-  'ipa',
-  'amianto',
-  'biologico-sas',
-  'acqua',
-  'mmc',
-  'owas',
-  'ocra',
-] as const
 import CardMisuraGenerica from '../components/CardMisuraGenerica'
 import { getModuloEntry } from '../data/moduliRegistry'
 import { exportFromTemplate, type FotoSheetContext } from '../lib/exportExcel'
-import { exportPdfRumore, exportPdfWbv, exportPdfHav, exportPdfMicroclima, exportPdfCem, exportPdfRoa, exportPdfPolveri, exportPdfCarbonio, exportPdfGas, exportPdfIpa, exportPdfAmianto, exportPdfBiologicoSas, exportPdfAcqua } from '../lib/exportPdf'
-import { exportPdfMmc, exportPdfOwas, exportPdfOcra } from '../lib/pdf'
-import type { PdfFotoContext } from '../lib/pdfFotoAppendix'
 import { getExportSchema } from '../data/exportSchemas'
 import Spinner from '../components/Spinner'
 import Skeleton from '../components/Skeleton'
@@ -123,7 +102,6 @@ export default function FoglioCampagna() {
   const numeroMisure = misure.length
   const [confirmEliminaCampagnaOpen, setConfirmEliminaCampagnaOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
-  const [exportingPdf, setExportingPdf] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
 
   const misureIdsKey = useMemo(
@@ -244,98 +222,6 @@ export default function FoglioCampagna() {
       setExportError(msg)
     } finally {
       setExporting(false)
-    }
-  }
-
-  const handleEsportaPdf = async () => {
-    if (!cantiere || !campagna) return
-    setExportingPdf(true)
-    setExportError(null)
-    try {
-      const ctx = {
-        cantiere,
-        campagna,
-        misure,
-        tecnici: tecniciSelezionati,
-        strumento: strumentoSelezionato,
-        risorse,
-      }
-
-      let fotoCtx: PdfFotoContext | undefined
-      if ((fotoTutte ?? []).length > 0) {
-        const fotoPerMisura = new Map<string, FotoMisura[]>()
-        for (const f of (fotoTutte ?? [])) {
-          const arr = fotoPerMisura.get(f.misura_id) ?? []
-          arr.push(f)
-          fotoPerMisura.set(f.misura_id, arr)
-        }
-        fotoCtx = {
-          misure,
-          fotoPerMisura,
-          risorse: { postazioni: risorsePostazioni, fasi: risorseFasi, macchine: risorseMacchine },
-        }
-      }
-
-      switch (moduloId) {
-        case 'rumore':
-          await exportPdfRumore(ctx, fotoCtx)
-          break
-        case 'vibrazioni-wbv':
-          await exportPdfWbv(ctx, fotoCtx)
-          break
-        case 'vibrazioni-hav':
-          await exportPdfHav(ctx, fotoCtx)
-          break
-        case 'microclima':
-          await exportPdfMicroclima(ctx, fotoCtx)
-          break
-        case 'cem':
-          await exportPdfCem(ctx, fotoCtx)
-          break
-        case 'roa':
-          await exportPdfRoa(ctx, fotoCtx)
-          break
-        case 'polveri':
-          await exportPdfPolveri(ctx, fotoCtx)
-          break
-        case 'carbonio-elementare':
-          await exportPdfCarbonio(ctx, fotoCtx)
-          break
-        case 'gas':
-          await exportPdfGas(ctx, fotoCtx)
-          break
-        case 'ipa':
-          await exportPdfIpa(ctx, fotoCtx)
-          break
-        case 'amianto':
-          await exportPdfAmianto(ctx, fotoCtx)
-          break
-        case 'biologico-sas':
-          await exportPdfBiologicoSas(ctx, fotoCtx)
-          break
-        case 'acqua':
-          await exportPdfAcqua(ctx, fotoCtx)
-          break
-        case 'mmc':
-          await exportPdfMmc(ctx, fotoCtx)
-          break
-        case 'owas':
-          await exportPdfOwas(ctx, fotoCtx)
-          break
-        case 'ocra':
-          await exportPdfOcra(ctx, fotoCtx)
-          break
-        default:
-          console.warn(`Export PDF non implementato per ${moduloId}`)
-          setExportError(`Export PDF non ancora disponibile per questo modulo`)
-          return
-      }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Errore export PDF'
-      setExportError(msg)
-      console.error('[exportPdf]', e)
-    } finally {
-      setExportingPdf(false)
     }
   }
 
@@ -573,28 +459,15 @@ export default function FoglioCampagna() {
             </>
           )}
 
-          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-            <button
-              type="button"
-              onClick={handleEsportaExcel}
-              disabled={exporting || !getExportSchema(moduloId)}
-              style={{ ...styles.btnEsportaExcel, marginTop: 0, flex: 1 }}
-              aria-label="Esporta in Excel"
-            >
-              {exporting ? <><Spinner /><span style={{ marginLeft: 6 }}>Esportazione…</span></> : 'Esporta in Excel'}
-            </button>
-            {MODULI_PDF_SUPPORTATI.includes(moduloId as typeof MODULI_PDF_SUPPORTATI[number]) && (
-              <button
-                type="button"
-                onClick={handleEsportaPdf}
-                disabled={exportingPdf}
-                style={{ ...styles.btnEsportaExcel, marginTop: 0, flex: 1 }}
-                aria-label="Esporta PDF"
-              >
-                {exportingPdf ? <><Spinner /><span style={{ marginLeft: 6 }}>Esportazione PDF…</span></> : 'Esporta PDF'}
-              </button>
-            )}
-          </div>
+          <button
+            type="button"
+            onClick={handleEsportaExcel}
+            disabled={exporting || !getExportSchema(moduloId)}
+            style={styles.btnEsportaExcel}
+            aria-label="Esporta in Excel"
+          >
+            {exporting ? <><Spinner /><span style={{ marginLeft: 6 }}>Esportazione…</span></> : 'Esporta in Excel'}
+          </button>
           {exportError && (
             <div style={styles.exportErrorBox}>{exportError}</div>
           )}
