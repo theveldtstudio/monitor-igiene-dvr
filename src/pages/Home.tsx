@@ -217,7 +217,7 @@ export default function Home() {
                     <div style={styles.cardHeader}>
                       <span style={styles.cardTitle}>{c.nome}</span>
                       <div style={styles.cardHeaderRight}>
-                        <span style={badgeStyle(c.stato)}>{c.stato.toUpperCase()}</span>
+                        <span style={badgeStyle()}>{c.stato.toUpperCase()}</span>
                         <button
                           type="button"
                           aria-label="Azioni cantiere"
@@ -305,7 +305,7 @@ function SkeletonList() {
   )
 }
 
-function badgeStyle(_stato: Cantiere['stato']): React.CSSProperties {
+function badgeStyle(): React.CSSProperties {
   return {
     background: 'var(--bg-badge-open)',
     color: 'var(--text-badge-open)',

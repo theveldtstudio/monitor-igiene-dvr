@@ -2,7 +2,6 @@ import type { ReactNode } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import Home from './pages/Home'
 import Anagrafica from './pages/Anagrafica'
-import Cantiere from './pages/Cantiere'
 import NuovoCantiere from './pages/NuovoCantiere'
 import PaginaCantiere from './pages/PaginaCantiere'
 import ListaCampagne from './pages/ListaCampagne'
@@ -46,7 +45,6 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/anagrafica" element={<Anagrafica />} />
-          <Route path="/cantiere/:id" element={<Cantiere />} />
           <Route path="/cantieri/:id" element={<PaginaCantiere />} />
           <Route path="/cantieri/:id/moduli/:moduloId" element={<ListaCampagne />} />
           <Route path="/cantieri/:id/moduli/:moduloId/campagne/:campagnaId" element={<FoglioCampagna />} />

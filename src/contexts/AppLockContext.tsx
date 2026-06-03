@@ -58,6 +58,7 @@ export function AppLockProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAppLock() {
   const ctx = useContext(AppLockContext);
   if (!ctx) throw new Error('useAppLock must be used within AppLockProvider');

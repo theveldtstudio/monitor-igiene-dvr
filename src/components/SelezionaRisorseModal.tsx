@@ -94,12 +94,9 @@ export default function SelezionaRisorseModal(props: SelezionaRisorseModalProps)
 
   const handleSave = async () => {
     if (saving) return
-    let ok = false
-    if (modalita === 'singola') {
-      ok = await (props as SelezionaRisorseModalSingleProps).onSaveSingola(selectedSingola)
-    } else {
-      ok = await (props as SelezionaRisorseModalMultiProps).onSaveMultipla(Array.from(selectedMulti))
-    }
+    const ok = modalita === 'singola'
+      ? await (props as SelezionaRisorseModalSingleProps).onSaveSingola(selectedSingola)
+      : await (props as SelezionaRisorseModalMultiProps).onSaveMultipla(Array.from(selectedMulti))
     if (ok) onClose()
   }
 
