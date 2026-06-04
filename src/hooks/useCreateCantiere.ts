@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { supabase } from '../lib/supabase'
+import { cantieriRepo } from '../lib/offline'
 import type { Cantiere } from '../types'
 
 interface CreateCantiereInput {
@@ -31,20 +31,8 @@ export function useCreateCantiere(): UseCreateCantiereResult {
           stato: 'aperto' as const,
         }
 
-        const { data, error: supabaseError } = await supabase
-          .from('cantieri')
-          .insert(payload)
-          .select('id, nome, indirizzo, committente, stato, created_at')
-          .single()
-
-        if (supabaseError) {
-          throw new Error(supabaseError.message)
-        }
-        if (!data) {
-          throw new Error('Nessun dato restituito dal server')
-        }
-
-        return data as Cantiere
+        const data = await cantieriRepo.create(payload)
+        return data
       } catch (e) {
         const message = e instanceof Error ? e.message : 'Errore sconosciuto'
         setError(message)

@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { supabase } from '../lib/supabase'
+import { cantieriRepo } from '../lib/offline'
 import type { Cantiere } from '../types'
 
 interface UpdateCantiereInput {
@@ -36,21 +36,8 @@ export function useUpdateCantiere(): UseUpdateCantiereResult {
           throw new Error('Nessun campo da aggiornare')
         }
 
-        const { data, error: supabaseError } = await supabase
-          .from('cantieri')
-          .update(payload)
-          .eq('id', input.id)
-          .select('id, nome, indirizzo, committente, stato, created_at')
-          .single()
-
-        if (supabaseError) {
-          throw new Error(supabaseError.message)
-        }
-        if (!data) {
-          throw new Error('Nessun dato restituito dal server')
-        }
-
-        return data as Cantiere
+        const data = await cantieriRepo.update(input.id, payload as Partial<Cantiere>)
+        return data
       } catch (e) {
         const message = e instanceof Error ? e.message : 'Errore sconosciuto'
         setError(message)

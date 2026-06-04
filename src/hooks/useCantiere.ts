@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '../lib/supabase'
+import { cantieriRepo } from '../lib/offline'
 import type { Cantiere } from '../types'
 
 interface UseCantiereResult {
@@ -26,21 +26,13 @@ export function useCantiere(id: string | undefined): UseCantiereResult {
     setError(null)
     setNotFound(false)
     try {
-      const { data, error: supabaseError } = await supabase
-        .from('cantieri')
-        .select('id, nome, indirizzo, committente, stato, created_at')
-        .eq('id', id)
-        .maybeSingle()
-
-      if (supabaseError) {
-        throw new Error(supabaseError.message)
-      }
+      const data = await cantieriRepo.getById(id)
       if (!data) {
         setNotFound(true)
         setCantiere(null)
         return
       }
-      setCantiere(data as Cantiere)
+      setCantiere(data)
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Errore sconosciuto'
       setError(message)
