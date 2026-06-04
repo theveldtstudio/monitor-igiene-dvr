@@ -16,12 +16,12 @@ const QUERY_KEY = 'foto_misura';
 // Tipo arricchito: FotoMisura + signedUrl risolto
 // ─────────────────────────────────────────────────────────
 
-export interface FotoMisuraConUrl extends FotoMisura {
+export interface FotoMisuraConUrl extends Omit<FotoMisura, 'created_at'> {
   signedUrl: string | null;
   // sync_pending ereditato da FotoMisura: true = solo locale, non ancora su Storage
   localObjectUrl?: string; // object URL della preview locale (popolato dal componente)
   localBlob?: Blob; // blob sorgente per le foto locali pendenti
-  created_at?: string | number | null; // usato per ordinare il merge
+  created_at?: string | number | null; // usato per ordinare il merge (number per blob locali)
   sync_error?: boolean; // true = upload fallito >=3 volte (badge 'error')
 }
 
@@ -60,7 +60,6 @@ export function useFotoMisure(misuraId: string | null | undefined) {
           remote = data.map((row) => ({
             ...(row as FotoMisura),
             signedUrl: row.path_locale ? (urlMap[row.path_locale] ?? null) : null,
-            created_at: (row as { created_at?: string | null }).created_at ?? null,
           }));
         }
       }
@@ -127,6 +126,7 @@ export function useUploadFotoMisura() {
           url_storage: null,
           path_locale: '',
           sync_pending: true,
+          created_at: null,
         };
         await db.foto_misura.put(record);
         await enqueueSyncOperation('foto_misura', 'create', id, { misura_id: misuraId });

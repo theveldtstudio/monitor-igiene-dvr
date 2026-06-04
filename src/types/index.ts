@@ -51,6 +51,7 @@ export interface Campagna {
   pin_osservatore: string;
   stato: 'bozza' | 'completa';
   sync_pending: boolean;
+  created_at: string | null;
 }
 
 export interface Misura {
@@ -69,6 +70,7 @@ export interface FotoMisura {
   url_storage: string | null;
   path_locale: string;
   sync_pending: boolean;
+  created_at: string | null;
 }
 
 export type TipoRisorsa = 'macchina' | 'fase' | 'postazione'

@@ -23,7 +23,7 @@ export interface CampagneRepo {
   remove(id: string): Promise<void>
 }
 
-const CAMPAGNA_SELECT = 'id, cantiere_id, tipo_campionamento, data_ora, strumento_id, tecnici_ids, pin_tecnico, pin_osservatore, stato, sync_pending'
+const CAMPAGNA_SELECT = 'id, cantiere_id, tipo_campionamento, data_ora, strumento_id, tecnici_ids, pin_tecnico, pin_osservatore, stato, sync_pending, created_at'
 
 export const campagneRepo: CampagneRepo = {
   async list(cantiereId, tipoCampionamento) {
@@ -91,6 +91,7 @@ export const campagneRepo: CampagneRepo = {
       strumento_id: input.strumento_id ?? null,
       tecnici_ids: input.tecnici_ids ?? [],
       sync_pending: input.sync_pending ?? false,
+      created_at: null,
     }
     await db.campagne.put(local)
     await enqueueSyncOperation('campagne', 'create', local.id, local)
