@@ -17,7 +17,7 @@ export const cantieriRepo: CantieriRepo = {
         .from('cantieri')
         .select('*')
         .order('created_at', { ascending: false })
-      if (error) throw error
+      if (error) throw new Error(error.message)
       const rows = data ?? []
       void db.cantieri.bulkPut(rows).catch(err =>
         console.warn('[cantieriRepo.list] mirror Dexie failed', err)
@@ -34,7 +34,7 @@ export const cantieriRepo: CantieriRepo = {
         .select('*')
         .eq('id', id)
         .maybeSingle()
-      if (error) throw error
+      if (error) throw new Error(error.message)
       if (data) {
         void db.cantieri.put(data).catch(err =>
           console.warn('[cantieriRepo.getById] mirror Dexie failed', err)
@@ -53,7 +53,7 @@ export const cantieriRepo: CantieriRepo = {
         .insert(input)
         .select('*')
         .single()
-      if (error) throw error
+      if (error) throw new Error(error.message)
       if (!data) throw new Error('Create cantiere: nessun dato restituito da Supabase')
       void db.cantieri.put(data).catch(err =>
         console.warn('[cantieriRepo.create] mirror Dexie failed', err)
@@ -78,7 +78,7 @@ export const cantieriRepo: CantieriRepo = {
         .eq('id', id)
         .select('*')
         .single()
-      if (error) throw error
+      if (error) throw new Error(error.message)
       if (!data) throw new Error('Update cantiere: nessun dato restituito da Supabase')
       void db.cantieri.put(data).catch(err =>
         console.warn('[cantieriRepo.update] mirror Dexie failed', err)
