@@ -1,25 +1,20 @@
-import { syncPendingFoto } from './fotoSyncExecutor'
+import { syncPendingOperations } from './syncExecutor'
 
-// RISCHIO 3: il listener 'online' va registrato UNA sola volta, anche se
-// questo modulo venisse importato/valutato più volte (HMR, doppio import).
 let listenerRegistered = false
 
 /**
- * Aggancia il drain delle foto pending:
- * - al rientro online (evento 'online'), una sola registrazione;
- * - all'avvio app, se siamo già online (caso "chiusa offline con coda, riaperta online").
- * Fuori da React: non dipende dal mount di alcun componente, nessun duplicato
- * del listener di useOnlineStatus (quello serve solo alla UI dell'OfflineBanner).
+ * Aggancia il drain completo della coda offline (misure + foto) al rientro
+ * online e all'avvio app. Guard HMR-safe: il listener è registrato una sola volta.
  */
-export function initFotoSync(): void {
+export function initOfflineSync(): void {
   if (listenerRegistered) return
   listenerRegistered = true
 
   window.addEventListener('online', () => {
-    void syncPendingFoto()
+    void syncPendingOperations()
   })
 
   if (typeof navigator !== 'undefined' && navigator.onLine) {
-    void syncPendingFoto()
+    void syncPendingOperations()
   }
 }

@@ -6,12 +6,12 @@ import App from './App'
 import { ToastProvider } from './lib/toast'
 import { OfflineBanner } from './lib/offline'
 import { queryClient } from './lib/queryClient'
-import { initFotoSync } from './lib/offline/initSync'
+import { initOfflineSync } from './lib/offline/initSync'
 import './index.css'
 import './styles/globals.css'
 
-// Registra il drain delle foto pending al rientro online + drain all'avvio.
-initFotoSync()
+// Registra il drain completo della coda offline al rientro online + drain all'avvio.
+initOfflineSync()
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

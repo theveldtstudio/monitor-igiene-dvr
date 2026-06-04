@@ -37,6 +37,17 @@ class MonitorIgieneDB extends Dexie {
       _sync_queue: 'id, created_at',
       foto_blobs: 'id, misura_id',
     })
+    this.version(3).stores({
+      cantieri: 'id',
+      campagne: 'id, cantiere_id',
+      misure: 'id, campagna_id',
+      foto_misura: 'id, misura_id',
+      risorse_cantiere: 'id, cantiere_id, [cantiere_id+tipo]',
+      tecnici: 'id',
+      strumenti: 'id',
+      _sync_queue: 'id, created_at, table',
+      foto_blobs: 'id, misura_id',
+    })
   }
 }
 
