@@ -1,10 +1,40 @@
-import { useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFotoMisure, useUploadFotoMisura, useDeleteFotoMisura } from '../hooks/useFotoMisure';
+import type { FotoMisuraConUrl } from '../hooks/useFotoMisure';
 
 interface FotoUploaderProps {
   misuraId: string | null;
   maxFoto?: number;
   disabled?: boolean;
+}
+
+// Ref stabile per evitare loop di setState quando la query non ha ancora dati.
+const EMPTY_FOTO: FotoMisuraConUrl[] = [];
+
+type FotoBadgeStato = 'pending' | 'synced' | 'error';
+
+// Predisposto per lo step 3 (synced/error). In questo step le locali = 'pending'.
+function renderBadge(stato: FotoBadgeStato): React.ReactNode {
+  if (stato === 'synced') return null;
+  const title = stato === 'error' ? 'Errore di sincronizzazione' : 'In attesa di sincronizzazione';
+  return (
+    <div style={styles.badge} title={title} aria-label={title}>
+      <svg
+        width={12}
+        height={12}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" />
+        {stato === 'error' && <line x1="12" y1="13" x2="12" y2="15" />}
+        {stato === 'error' && <line x1="12" y1="17.5" x2="12.01" y2="17.5" />}
+      </svg>
+    </div>
+  );
 }
 
 export default function FotoUploader({ misuraId, maxFoto = 5, disabled = false }: FotoUploaderProps) {
@@ -13,9 +43,27 @@ export default function FotoUploader({ misuraId, maxFoto = 5, disabled = false }
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
-  const { data: foto = [], isLoading } = useFotoMisure(misuraId);
+  const { data, isLoading } = useFotoMisure(misuraId);
+  const foto = data ?? EMPTY_FOTO;
   const uploadMutation = useUploadFotoMisura();
   const deleteMutation = useDeleteFotoMisura();
+
+  // Object URL delle foto locali pendenti: creati in useMemo e revocati nel
+  // cleanup dell'effect quando l'array cambia/unmount -> nessun leak in prod.
+  const localUrls = useMemo(() => {
+    const urls: Record<string, string> = {};
+    for (const f of foto) {
+      if (f.sync_pending && f.localBlob) {
+        urls[f.id] = URL.createObjectURL(f.localBlob);
+      }
+    }
+    return urls;
+  }, [foto]);
+  useEffect(() => {
+    return () => {
+      for (const u of Object.values(localUrls)) URL.revokeObjectURL(u);
+    };
+  }, [localUrls]);
 
   const isUploading = uploadMutation.isPending;
   const fotoCount = foto.length;
@@ -68,30 +116,34 @@ export default function FotoUploader({ misuraId, maxFoto = 5, disabled = false }
         <div style={styles.placeholder}>Nessuna foto allegata.</div>
       ) : (
         <div style={styles.grid}>
-          {foto.map((f) => (
-            <div key={f.id} style={styles.thumbWrapper}>
-              {f.signedUrl ? (
-                <img
-                  src={f.signedUrl}
-                  alt="foto misura"
-                  style={styles.thumb}
-                  onClick={() => setPreviewUrl(f.signedUrl)}
-                />
-              ) : (
-                <div style={{ ...styles.thumb, ...styles.thumbBroken }}>?</div>
-              )}
-              <button
-                type="button"
-                style={styles.thumbDelete}
-                onClick={() => handleDelete(f.id, f.path_locale)}
-                disabled={deleteMutation.isPending}
-                aria-label="Cancella foto"
-                title="Cancella foto"
-              >
-                ×
-              </button>
-            </div>
-          ))}
+          {foto.map((f) => {
+            const displaySrc = f.sync_pending ? (localUrls[f.id] ?? null) : f.signedUrl;
+            return (
+              <div key={f.id} style={styles.thumbWrapper}>
+                {displaySrc ? (
+                  <img
+                    src={displaySrc}
+                    alt="foto misura"
+                    style={styles.thumb}
+                    onClick={() => setPreviewUrl(displaySrc)}
+                  />
+                ) : (
+                  <div style={{ ...styles.thumb, ...styles.thumbBroken }}>?</div>
+                )}
+                {f.sync_pending && renderBadge(f.sync_error ? 'error' : 'pending')}
+                <button
+                  type="button"
+                  style={styles.thumbDelete}
+                  onClick={() => handleDelete(f.id, f.path_locale)}
+                  disabled={deleteMutation.isPending}
+                  aria-label="Cancella foto"
+                  title="Cancella foto"
+                >
+                  ×
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -144,6 +196,13 @@ const styles: Record<string, React.CSSProperties> = {
   thumbWrapper: { position: 'relative', aspectRatio: '1 / 1' },
   thumb: { width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8, cursor: 'pointer', backgroundColor: '#f3f4f6' },
   thumbBroken: { display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: 24 },
+  badge: {
+    position: 'absolute', top: 4, left: 4, width: 16, height: 16, borderRadius: '50%',
+    backgroundColor: 'rgba(0, 0, 0, 0.55)', color: '#fff',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    paddingTop: 1, paddingRight: 1, paddingBottom: 1, paddingLeft: 1,
+    pointerEvents: 'none',
+  },
   thumbDelete: {
     position: 'absolute', top: 4, right: 4, width: 22, height: 22, borderRadius: '50%',
     backgroundColor: 'rgba(0, 0, 0, 0.6)', color: '#fff',

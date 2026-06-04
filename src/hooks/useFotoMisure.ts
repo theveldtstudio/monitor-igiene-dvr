@@ -1,6 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
-import { uploadFoto, deleteFoto, getFotoUrls } from '../utils/fotoStorage';
+import { uploadFoto, deleteFoto, getFotoUrls, compressImage } from '../utils/fotoStorage';
+import {
+  db,
+  getFotoBlobsByMisura,
+  putFotoBlob,
+  deleteFotoBlob,
+  enqueueSyncOperation,
+} from '../lib/offline';
 import type { FotoMisura } from '../types';
 
 const QUERY_KEY = 'foto_misura';
@@ -11,7 +18,15 @@ const QUERY_KEY = 'foto_misura';
 
 export interface FotoMisuraConUrl extends FotoMisura {
   signedUrl: string | null;
+  // sync_pending ereditato da FotoMisura: true = solo locale, non ancora su Storage
+  localObjectUrl?: string; // object URL della preview locale (popolato dal componente)
+  localBlob?: Blob; // blob sorgente per le foto locali pendenti
+  created_at?: string | number | null; // usato per ordinare il merge
+  sync_error?: boolean; // true = upload fallito >=3 volte (badge 'error')
 }
+
+// Soglia coerente con fotoSyncExecutor: retries>=3 = errore terminale.
+const MAX_SYNC_RETRIES = 3;
 
 // ─────────────────────────────────────────────────────────
 // useFotoMisure — query: tutte le foto di una misura
@@ -24,25 +39,64 @@ export function useFotoMisure(misuraId: string | null | undefined) {
     queryFn: async (): Promise<FotoMisuraConUrl[]> => {
       if (!misuraId) return [];
 
-      const { data, error } = await supabase
-        .from('foto_misura')
-        .select('*')
-        .eq('misura_id', misuraId)
-        .order('created_at', { ascending: true });
+      // ── Remote: solo se online (offline le signed URL fallirebbero) ──
+      let remote: FotoMisuraConUrl[] = [];
+      if (navigator.onLine) {
+        const { data, error } = await supabase
+          .from('foto_misura')
+          .select('*')
+          .eq('misura_id', misuraId)
+          .order('created_at', { ascending: true });
 
-      if (error) throw error;
-      if (!data || data.length === 0) return [];
+        if (error) throw error;
 
-      const paths = data
-        .map((row) => row.path_locale)
-        .filter((p): p is string => !!p);
+        if (data && data.length > 0) {
+          const paths = data
+            .map((row) => row.path_locale)
+            .filter((p): p is string => !!p);
 
-      const urlMap = paths.length > 0 ? await getFotoUrls(paths) : {};
+          const urlMap = paths.length > 0 ? await getFotoUrls(paths) : {};
 
-      return data.map((row) => ({
-        ...(row as FotoMisura),
-        signedUrl: row.path_locale ? (urlMap[row.path_locale] ?? null) : null,
-      }));
+          remote = data.map((row) => ({
+            ...(row as FotoMisura),
+            signedUrl: row.path_locale ? (urlMap[row.path_locale] ?? null) : null,
+            created_at: (row as { created_at?: string | null }).created_at ?? null,
+          }));
+        }
+      }
+
+      // ── Locali pendenti: sempre (online e offline) ──
+      const [blobs, localRecords, pendingOps] = await Promise.all([
+        getFotoBlobsByMisura(misuraId),
+        db.foto_misura.where('misura_id').equals(misuraId).toArray(),
+        db._sync_queue
+          .filter((op) => op.table === 'foto_misura' && op.operation === 'create')
+          .toArray(),
+      ]);
+      const pendingIds = new Set(
+        localRecords.filter((r) => r.sync_pending).map((r) => r.id),
+      );
+      // retries per foto -> stato 'error' quando >= MAX_SYNC_RETRIES
+      const retriesById = new Map(pendingOps.map((op) => [op.record_id, op.retries]));
+      const locali: FotoMisuraConUrl[] = blobs
+        .filter((b) => pendingIds.has(b.id))
+        .map((b) => ({
+          id: b.id,
+          misura_id: b.misura_id,
+          url_storage: null,
+          path_locale: '',
+          sync_pending: true,
+          signedUrl: null,
+          localBlob: b.blob,
+          created_at: b.created_at,
+          sync_error: (retriesById.get(b.id) ?? 0) >= MAX_SYNC_RETRIES,
+        }))
+        .sort((a, b) => Number(a.created_at) - Number(b.created_at));
+
+      // ── Merge + dedup per id (remote già ordinate, locali in coda) ──
+      const remoteIds = new Set(remote.map((r) => r.id));
+      const localiDedup = locali.filter((l) => !remoteIds.has(l.id));
+      return [...remote, ...localiDedup];
     },
     staleTime: 30 * 60 * 1000,
   });
@@ -62,6 +116,23 @@ export function useUploadFotoMisura() {
 
   return useMutation({
     mutationFn: async ({ misuraId, file }: UploadFotoInput): Promise<FotoMisura> => {
+      // ── Offline: salva blob + record locale, enqueue op. Nessuna Supabase. ──
+      if (!navigator.onLine) {
+        const id = crypto.randomUUID();
+        const blob = await compressImage(file);
+        await putFotoBlob({ id, misura_id: misuraId, blob, created_at: Date.now() });
+        const record: FotoMisura = {
+          id,
+          misura_id: misuraId,
+          url_storage: null,
+          path_locale: '',
+          sync_pending: true,
+        };
+        await db.foto_misura.put(record);
+        await enqueueSyncOperation('foto_misura', 'create', id, { misura_id: misuraId });
+        return record;
+      }
+
       const path = await uploadFoto(misuraId, file);
 
       const { data, error } = await supabase
@@ -108,6 +179,17 @@ export function useDeleteFotoMisura() {
 
   return useMutation({
     mutationFn: async ({ fotoId, pathLocale }: DeleteFotoInput): Promise<void> => {
+      // pathLocale vuoto/null = foto locale pendente (mai arrivata su Storage)
+      const isLocalPending = !pathLocale;
+
+      if (isLocalPending) {
+        await db.foto_misura.delete(fotoId);
+        await deleteFotoBlob(fotoId);
+        // _sync_queue.record_id non indicizzato -> filter()
+        await db._sync_queue.filter((op) => op.record_id === fotoId).delete();
+        return;
+      }
+
       const { error } = await supabase.from('foto_misura').delete().eq('id', fotoId);
       if (error) throw error;
 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '../lib/supabase'
+import { misureRepo } from '../lib/offline'
 import type { Misura } from '../types'
 
 interface UseMisureResult {
@@ -23,16 +23,8 @@ export function useMisure(campagnaId: string | undefined): UseMisureResult {
     setLoading(true)
     setError(null)
     try {
-      const { data, error: supabaseError } = await supabase
-        .from('misure')
-        .select('id, campagna_id, numero, dati, note, sync_pending, created_at')
-        .eq('campagna_id', campagnaId)
-        .order('numero', { ascending: true })
-
-      if (supabaseError) {
-        throw new Error(supabaseError.message)
-      }
-      setMisure((data ?? []) as Misura[])
+      const rows = await misureRepo.list(campagnaId)
+      setMisure(rows)
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Errore sconosciuto'
       setError(message)

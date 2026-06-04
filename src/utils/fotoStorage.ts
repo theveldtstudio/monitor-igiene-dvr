@@ -93,25 +93,38 @@ function uuid(): string {
 // ─────────────────────────────────────────────────────────
 
 /**
- * Carica una foto compressa nel bucket. Ritorna il path salvato (da memorizzare in dati.foto_urls).
+ * Carica un Blob GIÀ compresso nel bucket. Ritorna il path salvato.
+ * Usato dall'executor offline: il blob in foto_blobs è già passato da compressImage,
+ * quindi NON va ri-compresso (evita doppia compressione lossy).
  */
-export async function uploadFoto(misuraId: string | number, file: File): Promise<string> {
-  const compressed = await compressImage(file);
-  const path = `${misuraId}/${uuid()}.jpg`;
+export async function uploadFotoBlob(
+  misuraId: string | number,
+  blob: Blob,
+  opts?: { path?: string; upsert?: boolean }
+): Promise<string> {
+  const path = opts?.path ?? `${misuraId}/${uuid()}.jpg`;
 
   const { error } = await supabase.storage
     .from(BUCKET)
-    .upload(path, compressed, {
+    .upload(path, blob, {
       contentType: 'image/jpeg',
-      upsert: false,
+      upsert: opts?.upsert ?? false,
     });
 
   if (error) {
-    console.error('uploadFoto error:', error);
+    console.error('uploadFotoBlob error:', error);
     throw new Error(`Upload foto fallito: ${error.message}`);
   }
 
   return path;
+}
+
+/**
+ * Carica una foto compressa nel bucket. Ritorna il path salvato (da memorizzare in dati.foto_urls).
+ */
+export async function uploadFoto(misuraId: string | number, file: File): Promise<string> {
+  const compressed = await compressImage(file);
+  return uploadFotoBlob(misuraId, compressed);
 }
 
 /**

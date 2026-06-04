@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { supabase } from '../lib/supabase'
+import { misureRepo } from '../lib/offline'
 
 interface UseDeleteMisuraResult {
   deleting: boolean
@@ -16,12 +16,7 @@ export function useDeleteMisura(): UseDeleteMisuraResult {
     setDeleting(true)
     setError(null)
     try {
-      const { error: supabaseError } = await supabase
-        .from('misure')
-        .delete()
-        .eq('id', id)
-
-      if (supabaseError) throw new Error(supabaseError.message)
+      await misureRepo.remove(id)
       return true
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Errore sconosciuto'

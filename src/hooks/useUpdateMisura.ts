@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { supabase } from '../lib/supabase'
+import { misureRepo } from '../lib/offline'
 import type { Misura } from '../types'
 
 interface UpdateMisuraInput {
@@ -23,25 +23,15 @@ export function useUpdateMisura(): UseUpdateMisuraResult {
     setSaving(true)
     setError(null)
     try {
-      const payload: Record<string, unknown> = {}
-      if (input.dati !== undefined) payload.dati = input.dati
-      if (input.note !== undefined) payload.note = input.note
+      const patch: Partial<Misura> = {}
+      if (input.dati !== undefined) patch.dati = input.dati
+      if (input.note !== undefined) patch.note = input.note
 
-      if (Object.keys(payload).length === 0) {
+      if (Object.keys(patch).length === 0) {
         throw new Error('Nessun campo da aggiornare')
       }
 
-      const { data, error: supabaseError } = await supabase
-        .from('misure')
-        .update(payload)
-        .eq('id', input.id)
-        .select('id, campagna_id, numero, dati, note, sync_pending, created_at')
-        .single()
-
-      if (supabaseError) throw new Error(supabaseError.message)
-      if (!data) throw new Error('Nessun dato restituito dal server')
-
-      return data as Misura
+      return await misureRepo.update(input.id, patch)
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Errore sconosciuto'
       setError(message)

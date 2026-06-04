@@ -1,3 +1,10 @@
+export interface FotoBlobLocale {
+  id: string
+  misura_id: string
+  blob: Blob
+  created_at: number
+}
+
 export interface SyncQueueItem {
   id: string
   table: string
