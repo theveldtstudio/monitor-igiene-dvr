@@ -1,5 +1,6 @@
 import type React from 'react'
 import { useState, useEffect, useMemo } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import type { RisorsaCantiere, TipoRisorsa } from '../types'
 import { useRisorseCantiere } from '../hooks/useRisorseCantiere'
 import { useCreateRisorsa } from '../hooks/useCreateRisorsa'
@@ -41,6 +42,7 @@ export default function SelezionaRisorseModal(props: SelezionaRisorseModalProps)
   const { open, onClose, modalita, cantiereId, tipo, titolo, labelSingolare, labelPlurale, saving, saveError } = props
   const permettiNessuno = modalita === 'singola' ? (props.permettiNessuno ?? true) : false
 
+  const queryClient = useQueryClient()
   const { risorse, loading: loadingList, error: errorList, refetch } = useRisorseCantiere(cantiereId, tipo)
   const createHook = useCreateRisorsa()
 
@@ -110,8 +112,8 @@ export default function SelezionaRisorseModal(props: SelezionaRisorseModalProps)
       esistenti: risorse,
     })
     if (created) {
-      // Refresh della lista DAL DB prima di selezionare, così la nuova risorsa è in `risorse`
-      await refetch()
+      // Invalida tutte le istanze ['risorse', cantiereId, *] — parent inclusi
+      await queryClient.invalidateQueries({ queryKey: ['risorse', cantiereId] })
       // Auto-seleziona la nuova risorsa (id stabile dal server)
       if (modalita === 'singola') {
         setSelectedSingola(created.id)
