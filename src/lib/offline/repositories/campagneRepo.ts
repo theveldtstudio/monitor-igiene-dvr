@@ -23,7 +23,7 @@ export interface CampagneRepo {
   remove(id: string): Promise<void>
 }
 
-const CAMPAGNA_SELECT = 'id, cantiere_id, tipo_campionamento, data_ora, strumento_id, tecnici_ids, pin_tecnico, pin_osservatore, stato, sync_pending, created_at'
+export const CAMPAGNA_SELECT = 'id, cantiere_id, tipo_campionamento, data_ora, strumento_id, tecnici_ids, pin_tecnico, pin_osservatore, stato, sync_pending, created_at'
 
 export const campagneRepo: CampagneRepo = {
   async list(cantiereId, tipoCampionamento) {

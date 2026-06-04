@@ -17,7 +17,7 @@ export interface MisureRepo {
   remove(id: string): Promise<void>
 }
 
-const MISURA_SELECT = 'id, campagna_id, numero, dati, note, sync_pending, created_at'
+export const MISURA_SELECT = 'id, campagna_id, numero, dati, note, sync_pending, created_at'
 
 async function nextNumeroLocale(campagnaId: string): Promise<number> {
   const esistenti = await db.misure.where('campagna_id').equals(campagnaId).toArray()
