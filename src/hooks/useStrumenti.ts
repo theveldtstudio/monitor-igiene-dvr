@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '../lib/supabase'
+import { strumentiRepo } from '../lib/offline'
 import type { Strumento } from '../types'
 
 interface UseStrumentiResult {
@@ -18,15 +18,8 @@ export function useStrumenti(): UseStrumentiResult {
     setLoading(true)
     setError(null)
     try {
-      const { data, error: supabaseError } = await supabase
-        .from('strumenti')
-        .select('id, nome, modello, matricola, created_at')
-        .order('nome', { ascending: true })
-
-      if (supabaseError) {
-        throw new Error(supabaseError.message)
-      }
-      setStrumenti((data ?? []) as Strumento[])
+      const rows = await strumentiRepo.list()
+      setStrumenti(rows)
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Errore sconosciuto'
       setError(message)

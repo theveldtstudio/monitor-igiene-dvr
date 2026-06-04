@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { supabase } from '../lib/supabase'
+import { risorseCantiereRepo } from '../lib/offline'
 
 interface UseDeleteRisorsaResult {
   deleting: boolean
@@ -16,14 +16,7 @@ export function useDeleteRisorsa(): UseDeleteRisorsaResult {
     setDeleting(true)
     setError(null)
     try {
-      const { error: supabaseError } = await supabase
-        .from('risorse_cantiere')
-        .delete()
-        .eq('id', id)
-
-      if (supabaseError) {
-        throw new Error(supabaseError.message)
-      }
+      await risorseCantiereRepo.remove(id)
       return true
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Errore sconosciuto'

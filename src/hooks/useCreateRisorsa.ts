@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { supabase } from '../lib/supabase'
+import { risorseCantiereRepo } from '../lib/offline'
 import type { RisorsaCantiere, TipoRisorsa } from '../types'
 
 interface CreateRisorsaInput {
@@ -44,21 +44,7 @@ export function useCreateRisorsa(): UseCreateRisorsaResult {
         tipo: input.tipo,
         valore: valoreTrimmed,
       }
-
-      const { data, error: supabaseError } = await supabase
-        .from('risorse_cantiere')
-        .insert(payload)
-        .select('id, cantiere_id, tipo, valore, created_at')
-        .single()
-
-      if (supabaseError) {
-        throw new Error(supabaseError.message)
-      }
-      if (!data) {
-        throw new Error('Nessun dato restituito dal server')
-      }
-
-      return data as RisorsaCantiere
+      return await risorseCantiereRepo.create(payload)
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Errore sconosciuto'
       setError(message)

@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { supabase } from '../lib/supabase'
+import { strumentiRepo } from '../lib/offline'
 import type { Strumento } from '../types'
 
 interface CreateStrumentoInput {
@@ -28,21 +28,7 @@ export function useCreateStrumento(): UseCreateStrumentoResult {
         modello: input.modello.trim(),
         matricola: input.matricola.trim(),
       }
-
-      const { data, error: supabaseError } = await supabase
-        .from('strumenti')
-        .insert(payload)
-        .select('id, nome, modello, matricola, created_at')
-        .single()
-
-      if (supabaseError) {
-        throw new Error(supabaseError.message)
-      }
-      if (!data) {
-        throw new Error('Nessun dato restituito dal server')
-      }
-
-      return data as Strumento
+      return await strumentiRepo.create(payload)
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Errore sconosciuto'
       setError(message)

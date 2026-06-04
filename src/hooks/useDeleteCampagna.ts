@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { supabase } from '../lib/supabase'
+import { campagneRepo } from '../lib/offline'
 
 interface UseDeleteCampagnaResult {
   deleting: boolean
@@ -16,12 +16,7 @@ export function useDeleteCampagna(): UseDeleteCampagnaResult {
     setDeleting(true)
     setError(null)
     try {
-      const { error: supabaseError } = await supabase
-        .from('campagne')
-        .delete()
-        .eq('id', id)
-
-      if (supabaseError) throw new Error(supabaseError.message)
+      await campagneRepo.remove(id)
       return true
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Errore sconosciuto'

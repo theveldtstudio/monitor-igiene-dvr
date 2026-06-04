@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '../lib/supabase'
+import { campagneRepo } from '../lib/offline'
 import type { Campagna } from '../types'
 
 interface UseCampagnaResult {
@@ -26,21 +26,13 @@ export function useCampagna(id: string | undefined): UseCampagnaResult {
     setError(null)
     setNotFound(false)
     try {
-      const { data, error: supabaseError } = await supabase
-        .from('campagne')
-        .select('id, cantiere_id, tipo_campionamento, data_ora, strumento_id, tecnici_ids, pin_tecnico, pin_osservatore, stato, sync_pending, created_at')
-        .eq('id', id)
-        .maybeSingle()
-
-      if (supabaseError) {
-        throw new Error(supabaseError.message)
-      }
+      const data = await campagneRepo.getById(id)
       if (!data) {
         setNotFound(true)
         setCampagna(null)
         return
       }
-      setCampagna(data as Campagna)
+      setCampagna(data)
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Errore sconosciuto'
       setError(message)

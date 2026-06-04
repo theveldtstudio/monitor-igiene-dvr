@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { supabase } from '../lib/supabase'
+import { campagneRepo } from '../lib/offline'
 import type { Campagna } from '../types'
 
 interface CreateCampagnaInput {
@@ -31,21 +31,7 @@ export function useCreateCampagna(): UseCreateCampagnaResult {
         pin_osservatore: '',
         stato: 'bozza' as const,
       }
-
-      const { data, error: supabaseError } = await supabase
-        .from('campagne')
-        .insert(payload)
-        .select('id, cantiere_id, tipo_campionamento, data_ora, strumento_id, tecnici_ids, pin_tecnico, pin_osservatore, stato, sync_pending, created_at')
-        .single()
-
-      if (supabaseError) {
-        throw new Error(supabaseError.message)
-      }
-      if (!data) {
-        throw new Error('Nessun dato restituito dal server')
-      }
-
-      return data as Campagna
+      return await campagneRepo.create(payload)
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Errore sconosciuto'
       setError(message)

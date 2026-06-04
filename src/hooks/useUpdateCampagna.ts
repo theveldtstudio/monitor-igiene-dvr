@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { supabase } from '../lib/supabase'
+import { campagneRepo } from '../lib/offline'
 import type { Campagna } from '../types'
 
 interface UpdateCampagnaInput {
@@ -25,31 +25,17 @@ export function useUpdateCampagna(): UseUpdateCampagnaResult {
     setSaving(true)
     setError(null)
     try {
-      const payload: Record<string, unknown> = {}
-      if (input.data_ora !== undefined) payload.data_ora = input.data_ora
-      if (input.tecnici_ids !== undefined) payload.tecnici_ids = input.tecnici_ids
-      if (input.strumento_id !== undefined) payload.strumento_id = input.strumento_id
-      if (input.stato !== undefined) payload.stato = input.stato
+      const patch: Partial<Campagna> = {}
+      if (input.data_ora !== undefined) patch.data_ora = input.data_ora
+      if (input.tecnici_ids !== undefined) patch.tecnici_ids = input.tecnici_ids
+      if (input.strumento_id !== undefined) patch.strumento_id = input.strumento_id
+      if (input.stato !== undefined) patch.stato = input.stato
 
-      if (Object.keys(payload).length === 0) {
+      if (Object.keys(patch).length === 0) {
         throw new Error('Nessun campo da aggiornare')
       }
 
-      const { data, error: supabaseError } = await supabase
-        .from('campagne')
-        .update(payload)
-        .eq('id', input.id)
-        .select('id, cantiere_id, tipo_campionamento, data_ora, strumento_id, tecnici_ids, pin_tecnico, pin_osservatore, stato, sync_pending, created_at')
-        .single()
-
-      if (supabaseError) {
-        throw new Error(supabaseError.message)
-      }
-      if (!data) {
-        throw new Error('Nessun dato restituito dal server')
-      }
-
-      return data as Campagna
+      return await campagneRepo.update(input.id, patch)
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Errore sconosciuto'
       setError(message)

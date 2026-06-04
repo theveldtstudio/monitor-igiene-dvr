@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { supabase } from '../lib/supabase'
+import { tecniciRepo } from '../lib/offline'
 import type { Tecnico } from '../types'
 
 interface CreateTecnicoInput {
@@ -26,21 +26,7 @@ export function useCreateTecnico(): UseCreateTecnicoResult {
         nome: input.nome.trim(),
         cognome: input.cognome.trim(),
       }
-
-      const { data, error: supabaseError } = await supabase
-        .from('tecnici')
-        .insert(payload)
-        .select('id, nome, cognome, created_at')
-        .single()
-
-      if (supabaseError) {
-        throw new Error(supabaseError.message)
-      }
-      if (!data) {
-        throw new Error('Nessun dato restituito dal server')
-      }
-
-      return data as Tecnico
+      return await tecniciRepo.create(payload)
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Errore sconosciuto'
       setError(message)

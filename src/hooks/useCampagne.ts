@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '../lib/supabase'
-import type { Campagna } from '../types'
+import { campagneRepo } from '../lib/offline'
+import type { Campagna, TipoCampionamento } from '../types'
 
 interface UseCampagneResult {
   campagne: Campagna[]
@@ -23,17 +23,8 @@ export function useCampagne(cantiereId: string | undefined, tipoCampionamento: s
     setLoading(true)
     setError(null)
     try {
-      const { data, error: supabaseError } = await supabase
-        .from('campagne')
-        .select('id, cantiere_id, tipo_campionamento, data_ora, strumento_id, tecnici_ids, pin_tecnico, pin_osservatore, stato, sync_pending, created_at')
-        .eq('cantiere_id', cantiereId)
-        .eq('tipo_campionamento', tipoCampionamento)
-        .order('data_ora', { ascending: false })
-
-      if (supabaseError) {
-        throw new Error(supabaseError.message)
-      }
-      setCampagne((data ?? []) as Campagna[])
+      const rows = await campagneRepo.list(cantiereId, tipoCampionamento as TipoCampionamento)
+      setCampagne(rows)
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Errore sconosciuto'
       setError(message)
