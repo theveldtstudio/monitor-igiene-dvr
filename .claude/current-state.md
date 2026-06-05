@@ -1,6 +1,6 @@
 ﻿# Current State
 
-> Aggiornato: 2026-05-11
+> Aggiornato: 2026-06-05
 > Aggiornare a OGNI milestone importante.
 
 ## Completato
@@ -24,20 +24,32 @@ Tutti i moduli misura completi (vedi `CLAUDE.md` per elenco).
 - Compressione client 1280px/q0.7
 - Max 5 foto/misura
 
-### Phase J — Export
+### Phase J — Export (Excel-only — PDF rimosso 21 mag 2026)
 - J1 + J1-bis: Excel 16/16 moduli con `ExportContext` arricchito
 - J2 + J2.1: foto in Excel (foglio dedicato, 16/16 moduli)
-- J3a: PDF caso A (stampa fronte FC), 16/16 moduli
+- Paginazione multi-foglio: overflow misure genera fogli "Misure X-Y" via `cloneSheet` (`src/lib/exportPaginazione.ts`)
+- Fix committente vuoto + strumentazione/label tecnico footer su rumore/wbv/hav
 - MMC step A: labels normative xlsx ("(NIOSH)", "(Snook-Ciriello)")
-- J4 (prima implementazione): export cantiere completo come ZIP con UI progress + AbortController
+- PDF: RIMOSSO completamente (engine cancellato sotto `src/lib`, i pacchetti PDF fuori da package.json). Branch backup conserva la history.
+
+### Fase I — Offline + sync + PWA  ✅ COMPLETATA E PUSHATA
+- Offline-first con Dexie (`src/lib/offline/db.ts`)
+- Sync queue FK-ordered (syncQueue.ts + syncExecutor.ts): drain record poi foto (fotoSyncExecutor.ts)
+- Pull cloud->locale (pullExecutor.ts) con local-wins guard su `sync_pending`
+- `initSync` su online + visibilitychange; `useOnlineStatus` + `OfflineBanner`
+- queryClient networkMode `offlineFirst`
+- PWA completa: vite-plugin-pwa, service worker, manifest, avviso aggiornamento nuova versione
+- Conflict resolution: last-pusher-wins (NO LWW — manca `updated_at` su 7 tabelle); LWW rimandato a commercializzazione
+
+### UX3 — Sistema toast  ✅ COMPLETATO
+- `src/lib/toast/` (ToastProvider, toastApi, useToast, styles, types, index)
+- API imperativa `toast.success/error/warning/info`, nessuna libreria esterna
+
+### Lint  ✅
+- 0 errori. 49 warning `react-hooks/set-state-in-effect` silenziati con `disable-line` mirati (bug runtime già risolto col pattern split useEffect)
 
 ### Bug fix sistemici
 - Bug modali risolto su 15 modali residui (split useEffect)
-
-### Recovery 2026-05-11
-- Recuperati 9 file da working dir non committata dopo corruzione .git/
-- 5 moduli PDF (gas, ipa, mmc, ocra, owas) -> completa J3a a 16/16
-- 4 file feature J4 (exportCantiereZip, saveBlob, useEsportaCantiere, EsportaCantiereModal)
 
 ---
 
@@ -47,13 +59,12 @@ Tutti i moduli misura completi (vedi `CLAUDE.md` per elenco).
 
 ---
 
-## Prossimi fronti (ordine consigliato)
+## Prossimi fronti reali
 
-1. **MMC step B** — labels normative su PDF (decisione di posizionamento da prendere)
-2. **Validazione J4 end-to-end** — testare export ZIP cantiere su scenario reale
-3. **J3b** — PDF narrativo (caso B: tabella + commenti + valutazioni)
-4. **Estensioni lab** — IPA, acqua microbiologici, biologico-SAS specie
-5. **Phase I — Offline + sync** (per ULTIMA, dopo che tutto J e validato)
+1. **Validazione end-to-end offline/sync** — zero test oggi: verificare drain queue, pull cloud->locale, comportamento offline->online su scenario reale
+2. **Copertura E2E** — solo 2 spec su 16 moduli (home + rumore-modal)
+3. **Code-split bundle** — ~2MB, nessun code splitting dinamico
+4. **Debt minore** — routing legacy `/cantiere/:id`, naming OWAS camelCase
 
 ---
 
@@ -61,16 +72,19 @@ Tutti i moduli misura completi (vedi `CLAUDE.md` per elenco).
 
 - Routing legacy `/cantiere/:id` (singolare) da rimuovere
 - Naming OWAS camelCase -> da normalizzare a snake_case
-- Bucket B audit: overflow >32 misure (decisione di design pendente)
-- Bucket C cosmetici: strumento Rumore hardcoded, label tecnico inconsistenti, statistiche WBV per gruppo
+- Bundle ~2MB senza code-split dinamico
 
 ---
 
 ## NON aprire (task chiusi)
 
+- PDF: rimosso 21 mag 2026, non reintrodurre senza decisione esplicita
+- Conflict resolution LWW: rimandato a commercializzazione (manca `updated_at`)
+- Estensioni lab M1/M2/M3: chiuse non-necessarie (copertura fogli campagna 100%, dati lab nei referti)
+- B1 overflow >32 misure: risolto con paginazione multi-foglio
 - Workflow OCRA: deciso UI digitale nativa (no OCR cartaceo)
 - Regression numFmt OWAS: risolto via Python script
-- Bug committente vuoto WBV/HAV/Rumore: risolto (Bucket A audit)
+- Bug committente vuoto WBV/HAV/Rumore: risolto
 - Data HAV come stringa: risolto (template `mm-dd-yy` -> `dd/mm/yyyy`)
 - Label `DURATA [SEC.]` Rumore: risolto (-> `[hh:mm:ss]`)
 - DurationPicker OWAS: chiuso 6 maggio (gia su main, non riaprire)

@@ -2,9 +2,9 @@
 
 Invocare PRIMA di modificare:
 - `MisuraModalShell`
-- `lib/pdf/core.ts` o `lib/pdf/_helpers.ts`
-- `exportSchemas.ts`
+- `exportSchemas.ts` / `exportExcel.ts` / `exportPaginazione.ts`
 - `FotoUploader`
+- `src/lib/offline/` (sync queue, pull, repositories)
 - Hook condivisi (`useFotoMisure`, `useRisorseCantiere`, ecc.)
 
 ---
@@ -32,22 +32,24 @@ Per ogni modulo toccato, verifica:
 
 ## Step 3 — Checklist Excel
 
-- [ ] Header anagrafica (committente, data, cantiere) popolato correttamente
+- [ ] Header anagrafica (committente, data, cantiere) popolato correttamente — committente NON vuoto su rumore/wbv/hav
+- [ ] Footer: strumentazione + label tecnico presenti su rumore/wbv/hav
 - [ ] numFmt rispettato per colonna: durata `[hh:mm:ss]`, numerici `0` o `0.0`, testo `General`
 - [ ] Merges: i merge del template sono preservati
 - [ ] Foglio Foto: foto presenti, layout 2/riga, header per ogni misura
 - [ ] Slave-cells: formule `=+C1` etc. nei blocchi 2-4 funzionano (no reset!)
 - [ ] Risorse: postazioni/fasi/macchine risolte via `_nome` o lookup
+- [ ] **Paginazione multi-foglio**: con misure oltre il limite del foglio si generano fogli "Misure X-Y" (`exportPaginazione.ts` / `cloneSheet`), nessun dato perso, ogni foglio mantiene header/footer/merges
 
 ---
 
-## Step 4 — Checklist PDF
+## Step 4 — Checklist offline / sync
 
-- [ ] Page break: nessun overlap tra header e tabella
-- [ ] Foto appendix: si genera in coda, 2/riga, no overlap
-- [ ] Tabelle adattive: si adattano al numero di misure senza overflow
-- [ ] Header anagrafica: presente su ogni pagina
-- [ ] Firma vuota: footer pronto per stampa
+- [ ] **Drain queue**: operazioni create offline vengono sincronizzate al reconnect, in ordine FK (record poi foto)
+- [ ] **Pull cloud→locale**: i dati remoti aggiornano Dexie SENZA sovrascrivere record con `sync_pending` (local-wins guard)
+- [ ] **Offline→online**: `initSync` parte su evento `online` + `visibilitychange`; `OfflineBanner` riflette lo stato
+- [ ] **Foto sync**: le foto pendenti salgono dopo il drain dei record (FK-ordered)
+- [ ] **Conflitti**: comportamento last-pusher-wins atteso (NO LWW — manca `updated_at`)
 
 ---
 
@@ -70,8 +72,8 @@ Per ciascuno:
 1. Crea cantiere demo + campagna
 2. Aggiungi 2 misure (1 con foto, 1 senza)
 3. Modifica una misura
-4. Export Excel -> apri -> verifica header + dati + foto
-5. Export PDF -> apri -> verifica header + tabella + appendice foto
+4. Export Excel -> apri -> verifica header + dati + foto + footer
+5. Se modifica tocca offline: vai offline, crea/modifica misura, torna online -> verifica sync
 
 ---
 
@@ -84,9 +86,10 @@ Modifiche a questi file richiedono SEMPRE smoke test sui 3 moduli rappresentativ
 - `src/data/exportSchemas.ts`
 - `src/lib/exportExcel.ts`
 - `src/lib/exportFotoSheet.ts`
-- `src/lib/pdf/core.ts`
-- `src/lib/pdf/_helpers.ts`
-- `src/lib/pdf/fotoAppendix.ts`
+- `src/lib/exportPaginazione.ts`
+- `src/lib/offline/syncExecutor.ts`
+- `src/lib/offline/pullExecutor.ts`
+- `src/lib/offline/repositories/`
 - `src/hooks/useFotoMisure.ts`
 - `src/hooks/useRisorseCantiere.ts`
 - `src/components/FotoUploader.tsx`
@@ -98,6 +101,6 @@ Modifiche a questi file richiedono SEMPRE smoke test sui 3 moduli rappresentativ
 Quando un prompt invoca questa skill, Claude Code deve produrre:
 
 1. Lista moduli impattati: quali dei 16 vengono toccati
-2. Risk assessment: livello (basso/medio/alto) per ogni area (modali/Excel/PDF/mobile)
+2. Risk assessment: livello (basso/medio/alto) per ogni area (modali/Excel/offline-sync/mobile)
 3. Smoke test plan: quali dei 3 moduli rappresentativi testare
 4. Patch: con commit message Conventional Commits

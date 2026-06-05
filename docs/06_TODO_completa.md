@@ -1,37 +1,37 @@
-# Monitor Igiene — TODO al 2026-06-03
+# Monitor Igiene — TODO al 2026-06-05
 
 Backlog reale dopo tagliato il deprecato.
 
-> **Storia**: la versione del 13 mag 2026 era scaduta. Cancellati: A1/A2 (PDF rimosso 21 mag), A3 J4 granularità (Davide 3 giu: "tutte va bene"), M1/M2/M3 lab (Davide 3 giu: "non servono"), B1 overflow >32 (Davide 3 giu: "mai capitato"), T1 Vitest (superato da Playwright), RdP (cancellati 3 giu). Vedi `HANDOVER-app-monitoraggi.md` per fotografia attuale.
+> **Storia**: la versione del 13 mag 2026 era scaduta. Cancellati: A1/A2 (PDF rimosso 21 mag), A3 J4 granularità (Davide 3 giu: "tutte va bene"), M1/M2/M3 lab (Davide 3 giu: "non servono"), T1 Vitest (superato da Playwright), RdP (cancellati 3 giu). Vedi `HANDOVER-app-monitoraggi.md` per fotografia attuale.
 
 ---
 
-## GROSSO — Fase I: Offline + Sync
+## ✅ COMPLETATI (5 giu 2026)
 
-Ultima fase del progetto. Non ancora iniziata.
+### Fase I — Offline + Sync + PWA  ✅ COMPLETATA E PUSHATA
+Architettura reale in `src/lib/offline/`:
+- Offline-first con **Dexie** (`db.ts`)
+- **Sync queue FK-ordered** (`syncQueue.ts` + `syncExecutor.ts`): drain record poi foto (`fotoSyncExecutor.ts`)
+- **Pull cloud→locale** (`pullExecutor.ts`) con local-wins guard su `sync_pending`
+- `initSync` su `online` + `visibilitychange` (`initSync.ts`, `useOnlineStatus.ts`, `OfflineBanner.tsx`)
+- queryClient `networkMode: 'offlineFirst'`
+- **PWA completa**: vite-plugin-pwa, service worker, manifest, avviso aggiornamento nuova versione
+- **Conflict resolution**: NO LWW (manca `updated_at` su 7 tabelle) → **last-pusher-wins**, LWW rimandato a commercializzazione
 
-**Decisioni preliminari (8 mag 2026):**
-- Coda operazioni + Last-Write-Wins (LWW)
-- Realtime Supabase incluso
-- PWA installabile via vite-plugin-pwa
-- Storage locale: Dexie raccomandato (SQLite WASM scartato, troppo pesante 600KB)
-- Modello dati ha già `sync_pending` bool su Misura/Campagna/FotoMisura/RisorsaCantiere
+### UX3 — Sistema toast  ✅ COMPLETATO
+- `src/lib/toast/` (ToastProvider, toastApi, useToast, styles, types, index)
+- API imperativa `toast.success/error/warning/info`, nessuna libreria esterna
 
-**Da decidere prima di iniziare:**
-- Conflict resolution strategy nei dettagli (LWW per quali campi? Merge su quali?)
-- Comportamento UI in offline (banner? badge? blur?)
-- Sync trigger (manuale? auto on reconnect? polling?)
-- Foto: upload bucket Supabase + cache locale?
+### B1 — Overflow >32 misure  ✅ RISOLTO
+- Paginazione multi-foglio: overflow genera fogli "Misure X-Y" via `cloneSheet` (`src/lib/exportPaginazione.ts`), niente perdita dati
 
-**Sotto-fasi previste:**
-1. Setup Dexie + schema locale
-2. Repository pattern (Supabase ↔ Dexie astrazione)
-3. Service worker + PWA installabile
-4. Coda operazioni offline
-5. Sync engine + conflict resolution
-6. Realtime Supabase channel
-7. UI feedback (online/offline/pending)
-8. Test E2E offline
+### B2 — Cosmetici export (parziale)  ✅
+- Fix committente vuoto su rumore/wbv/hav
+- Strumentazione + label tecnico nel footer su rumore/wbv/hav
+
+### Estensioni lab M1/M2/M3  ✅ CHIUSE — non necessarie
+- Verifica fogli campagna vs moduli app: copertura **100%** (acqua 8/8, IPA 11/11, biologico 8/8)
+- I fogli non contengono campi lab di concentrazione/microbiologici: quei dati stanno nei **referti**, non nell'app. Chiuse come non necessarie.
 
 ---
 
@@ -57,12 +57,7 @@ Pattern dirty-guard già presente in MisuraModalShell. Da applicare a NuovoCanti
 ### UX2 — Focus management
 Primo input focus su open. Ritorno focus al trigger su close. ESC ovunque.
 
-### UX3 — Sistema toast
-Decisioni design da prendere:
-- Posizione (top-right? bottom-center?)
-- Durata default (3s? 5s?)
-- Tipi (success/error/info/warning)
-- Stack policy
+### UX3 — Sistema toast  ✅ COMPLETATO (vedi sezione COMPLETATI sopra)
 
 ### UX4 — Strategy unificata error React Query
 Retry automatici, error boundary, toast su 5xx — definire pattern.
@@ -71,10 +66,10 @@ Retry automatici, error boundary, toast su 5xx — definire pattern.
 
 ## BASSO — Cosmetici export (Bucket C)
 
-**Non urgente** (Davide 3 giu: "non ora").
+**Non urgente** (Davide 3 giu: "non ora"). Parzialmente chiuso: footer rumore/wbv/hav fatto (vedi B2 sopra).
 
-- Strumento Rumore hardcoded → leggere da `ctx.strumento`
-- Label "Tecnico rilevatore" inconsistenti tra moduli
+- ~~Strumento Rumore hardcoded~~ → fatto su rumore/wbv/hav (footer strumentazione)
+- ~~Label "Tecnico rilevatore"~~ → fatto su rumore/wbv/hav (footer label tecnico)
 - Data WBV scritta come stringa anziché Date
 - Statistiche WBV per gruppo (medie/max calcolate in export)
 - Numerazione HAV blocchi
@@ -93,8 +88,8 @@ Quando un flusso save di modale diventa critico da proteggere:
 - Test che salvano + cleanup automatico
 - Replicare pattern Rumore agli altri 15 modali
 
-### T5 — Test E2E export (Excel/PDF parse)
-Idea: Playwright scarica file → parser xlsx (openpyxl) → assert contenuto. 
+### T5 — Test E2E export (Excel parse)
+Idea: Playwright scarica file → parser xlsx (openpyxl) → assert contenuto (incluso overflow paginazione multi-foglio).
 Stima: 2-3 giornate. Da fare se bug export diventano ricorrenti.
 
 ---
@@ -134,7 +129,11 @@ Riferimento rapido (vedi `HANDOVER` per dettagli):
 
 ---
 
-## Prossimo step
+## Prossimi fronti reali
 
-**Fase I — Offline + sync** (deciso 3 giu 2026).
-Da iniziare con discussione decisioni di design prima del codice.
+Fase I, toast, B1, B2 (parziale) e estensioni lab sono CHIUSI (vedi sopra). Fronti aperti:
+
+1. **Validazione end-to-end offline/sync** — ZERO test oggi: verificare drain queue, pull cloud→locale, comportamento offline→online su scenario reale
+2. **Copertura E2E** — solo 2 spec su 16 moduli (home + rumore-modal)
+3. **Code-split bundle** — ~2MB (gzip ~487KB) senza code splitting dinamico
+4. **Debt minore** — routing legacy `/cantiere/:id`, naming OWAS camelCase

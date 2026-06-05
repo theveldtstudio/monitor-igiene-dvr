@@ -10,9 +10,10 @@ Repo: `https://github.com/theveldtstudio/monitor-igiene.git`
 
 - React 19 + Vite + TypeScript strict
 - Supabase (DB + Storage + RLS)
-- TanStack Query v5
-- ExcelJS (export Excel)
-- jsPDF 4.2.1 + jspdf-autotable 5.0.7 (export PDF)
+- TanStack Query v5 (networkMode `offlineFirst`)
+- ExcelJS (export Excel — unico formato export; PDF rimosso 21 mag 2026)
+- Offline-first: Dexie + sync queue + PWA (vite-plugin-pwa, service worker, manifest) — `src/lib/offline/`
+- Sistema toast custom (no libreria esterna) — `src/lib/toast/`
 - CSS-in-JS inline + design tokens in `src/styles/globals.css`
 
 NO Tailwind, NO CSS modules, NO styled-components.
@@ -73,16 +74,24 @@ Pattern uniforme su tutti i modali:
 - Compressione upload: 1280px lato lungo, JPEG q0.7
 - Compressione export: 800px, q0.6 via OffscreenCanvas
 
-### Export Excel
+### Export Excel (unico formato — PDF rimosso 21 mag 2026)
 - Schemi in `src/data/exportSchemas.ts`
 - 3 schemi specifici (rumore, wbv, hav) + 13 generici via `applyDataGenerico`
 - `ExportContext` arricchito con `RisorsaCantiere[]`
 - Strategia ibrida: prima `_nome` denormalizzato, fallback ID->nome lookup
+- Paginazione multi-foglio: overflow misure genera fogli "Misure X-Y" via `cloneSheet` (`src/lib/exportPaginazione.ts`), niente perdita dati
 
-### Export PDF
-- Engine in `lib/pdf/` (orchestratore + 16 moduli + helpers + appendice foto)
-- Usa autotable, NO coordinate manuali
-- NON mettere logica PDF dentro componenti React
+### Offline-first + sync (`src/lib/offline/`)
+- Dexie (db.ts) come store locale, strategia offline-first
+- Sync queue FK-ordered (syncQueue.ts + syncExecutor.ts): drain record poi foto (fotoSyncExecutor.ts)
+- Pull cloud->locale (pullExecutor.ts) con local-wins guard su `sync_pending`
+- `initSync` su online + visibilitychange (initSync.ts, useOnlineStatus.ts)
+- `OfflineBanner` per feedback UI
+- Conflict resolution: last-pusher-wins (NO LWW — manca `updated_at` su 7 tabelle); LWW rimandato a commercializzazione
+
+### Sistema toast (`src/lib/toast/`)
+- API imperativa `toast.success/error/warning/info` (ToastProvider + toastApi + useToast)
+- Nessuna libreria esterna
 
 ### Fix template Excel (numFmt)
 Bug ExcelJS: condivisione `xfId` tra colonne -> `numFmt` "bleed".
@@ -125,8 +134,8 @@ ATTENZIONE: `getRow()` e 1-indexed, `addImage` `tl.row` e 0-indexed: off-by-one.
 
 - `.claude/current-state.md` -> milestone + focus corrente (consultare sempre)
 - `.claude/playbooks/patterns.md` -> 4 pattern consolidati dettagliati
-- `.claude/playbooks/pdf-engine.md` -> architettura `lib/pdf/`
-- `.claude/playbooks/regression-checklist.md` -> checklist cross-modulo (invocare prima di toccare modali/export/PDF)
+- `.claude/playbooks/regression-checklist.md` -> checklist cross-modulo (invocare prima di toccare modali/export/offline)
+- `.claude/playbooks/_archive/pdf-engine-REMOVED.md` -> SOLO memoria storica (engine PDF rimosso 21 mag 2026)
 
 ---
 
@@ -136,6 +145,5 @@ ATTENZIONE: `getRow()` e 1-indexed, `addImage` `tl.row` e 0-indexed: off-by-one.
 - Workaround code-level per bug template Excel
 - `.download()` su bucket Supabase privato
 - Modificare `MisuraModalShell` per un singolo modulo
-- Logica PDF dentro componenti React
 - Prompt monolitici che toccano molti file insieme
 - Fix alla cieca senza diagnosi quando un bug ritorna

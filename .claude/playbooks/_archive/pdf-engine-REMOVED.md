@@ -1,4 +1,6 @@
-﻿# PDF Engine — architettura e regole
+﻿> ⚠️ ARCHIVIATO — l'engine PDF è stato RIMOSSO dal progetto il 21 mag 2026. Questo file è conservato solo come memoria storica nel caso il PDF venga reintrodotto. NON descrive lo stato attuale.
+
+# PDF Engine — architettura e regole
 
 Invocare quando si lavora su `lib/pdf/`.
 

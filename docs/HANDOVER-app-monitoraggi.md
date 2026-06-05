@@ -1,6 +1,6 @@
 # 🤝 HANDOVER — App Monitoraggi 81/08
 
-**Stato al 13 maggio 2026**
+**Stato al 5 giugno 2026**
 Documento di passaggio di consegne / fotografia attuale del progetto.
 
 ---
@@ -23,8 +23,9 @@ Cartella di lavoro Claude Code: `monitor-igiene/app-web`
 - **TanStack Query v5** (state server, in `src/hooks/use*`)
 - **Supabase** (DB cloud + Storage + RLS) — client in `src/lib/supabase.ts`
 - **CSS-in-JS inline** (oggetti `styles: Record<string, React.CSSProperties>`) + design tokens CSS custom properties in `src/styles/globals.css`
-- **ExcelJS** per export `.xlsx`
-- **jsPDF 4.2.1 + jspdf-autotable 5.0.7** per export PDF
+- **ExcelJS** per export `.xlsx` (unico formato export — PDF rimosso 21 mag 2026, vedi branch backup)
+- **Offline-first**: Dexie (store locale) + sync queue + PWA (vite-plugin-pwa, service worker, manifest) — in `src/lib/offline/`
+- **Sistema toast** custom (no libreria esterna) — in `src/lib/toast/`
 - **Playwright 1.60+** per test E2E (solo Chromium, headless, scope `e2e/`)
 - **Chrome DevTools MCP** (ufficiale Google) configurato scope user di Claude Code per diagnostica live: aprire app, leggere console/network, ispezionare DOM, screenshot
 - ESLint configurato, no Prettier
@@ -50,12 +51,13 @@ src/
 │   ├── supabase.ts
 │   ├── exportExcel.ts          (orchestratore Excel)
 │   ├── exportFotoSheet.ts      (foglio foto Excel)
-│   └── pdf/
-│       ├── core.ts             (orchestratore + PdfTabellaStatica/Adattiva)
-│       ├── _helpers.ts
-│       ├── fotoAppendix.ts
-│       ├── moduli/             (16 moduli .ts)
-│       └── index.ts            (barrel)
+│   ├── exportPaginazione.ts    (paginazione multi-foglio + cloneSheet)
+│   ├── offline/                (offline-first: db.ts, syncQueue.ts, syncExecutor.ts,
+│   │                            pullExecutor.ts, fotoSyncExecutor.ts, initSync.ts,
+│   │                            useOnlineStatus.ts, OfflineBanner.tsx, repositories/,
+│   │                            types.ts, index.ts)
+│   └── toast/                  (ToastProvider, toastApi, useToast, styles, types, index)
+│       (engine PDF rimosso 21 mag 2026: la sua cartella sotto src/lib non esiste più)
 ├── types/           index.ts (Cantiere, Campagna, Misura, RisorsaCantiere, FotoMisura, ...)
 ├── constants/       campionamenti.ts
 ├── styles/          globals.css (design tokens)
@@ -144,19 +146,36 @@ tools/               script Python per fix template .xlsx (numFmt, build)
 - ⚠️ **Learning**: foto-row "vuote" (solo `addImage`, nessuna cella scritta) NON vengono materializzate nell'XML → `row.height` non viene applicata e Excel usa default 1pt (foto sovrapposte). Fix: dopo `row.height = N` fare anche `row.getCell(1).value = null` per forzare la materializzazione. ExcelJS `getRow()` è 1-indexed, `addImage` `tl.row` è 0-indexed: attenzione off-by-one.
 - ⚠️ **Learning download foto**: per scaricare da bucket Supabase privato (`misure-foto`), usare SEMPRE `createSignedUrl(path, 300)` + `fetch(url).blob()`, NON `.download(path)` diretto che fallisce silenziosamente con RLS standard. `queryKey` di `useFotoMisure` include `misureIdsKey` contro cache stale.
 
-**J3a ✅** — Export PDF su 16/16 moduli (caso A: stampa fronte FC)
-- Stack: jsPDF 4.2.1 + jspdf-autotable 5.0.7
-- Architettura `lib/pdf/`: `core.ts` orchestratore + `PdfTabellaStatica`/`PdfTabellaAdattiva`, `_helpers.ts`, 16 moduli/*.ts, `fotoAppendix.ts`, `index.ts` barrel
-- A4 landscape uniforme, firma vuota per stampa, appendice foto in coda
-- `FoglioCampagna.tsx`: `MODULI_PDF_SUPPORTATI` 16 voci + switch 16 case
-- Strategia adattiva cantiere/lab su polveri/carbonio/amianto/biologico-sas
-- Fix bug cache foto stale in `useFotoMisure` (invalidazione prefisso campagna)
+**Paginazione multi-foglio ✅** — overflow misure
+- `src/lib/exportPaginazione.ts` + `cloneSheet`: quando le misure superano il limite del foglio, genera fogli aggiuntivi "Misure X-Y" invece di perdere dati
+- Fix committente vuoto + strumentazione/label tecnico nel footer su rumore/wbv/hav
+
+**Export PDF — RIMOSSO 21 mag 2026** ❌
+- L'intero engine PDF è stato cancellato (cartella sotto `src/lib` eliminata) e i pacchetti PDF rimossi da `package.json` (commit "rimuovi completamente l'export PDF").
+- Export oggi = **solo Excel**. La history dell'engine PDF resta nel branch backup nel caso venga reintrodotto.
 
 **MMC step A ✅** — Labels normative xlsx
 - Etichette "(NIOSH)" e "(Snook-Ciriello)" in `MisuraMmcModal` sezioni form
 - Group row in template `mmc.xlsx` (B-I e J-M con merge su 4 blocchi righe 3/17/31/45)
-- Header multi-row in PDF `mmc.ts` (`RowInput[]` con colSpan 1+6+4+1=12)
-- Modificati: `build-mmc-template.py` (PAGE_ROWS 13→14, +ROW_H_GROUP), `exportSchemas.ts` (headerRow shiftata di +1 su 4 blocchi), `core.ts` (head `string[][]` → `RowInput[]`)
+- Modificati: `build-mmc-template.py` (PAGE_ROWS 13→14, +ROW_H_GROUP), `exportSchemas.ts` (headerRow shiftata di +1 su 4 blocchi)
+
+### 📴 Fase I — Offline + sync + PWA ✅ (COMPLETATA E PUSHATA)
+
+Architettura reale in `src/lib/offline/`:
+- **Dexie** (`db.ts`) come store locale, strategia **offline-first**
+- **Sync queue FK-ordered** (`syncQueue.ts` + `syncExecutor.ts`): drain dei record nell'ordine delle foreign key, poi le foto (`fotoSyncExecutor.ts`)
+- **Pull cloud→locale** (`pullExecutor.ts`) con **local-wins guard** su `sync_pending` (un record con modifiche locali pendenti non viene sovrascritto dal pull)
+- **`initSync`** (`initSync.ts`) innescato su `online` + `visibilitychange`; `useOnlineStatus.ts` + `OfflineBanner.tsx` per feedback UI
+- `queryClient` con `networkMode: 'offlineFirst'`
+- Repository pattern in `repositories/`, tipi in `types.ts`, barrel `index.ts`
+- **PWA completa**: vite-plugin-pwa, service worker, manifest, avviso aggiornamento nuova versione
+- **Conflict resolution**: NO LWW (manca `updated_at` su 7 tabelle) → **last-pusher-wins**, LWW rimandato a commercializzazione
+
+### 🔔 Sistema toast ✅ (UX3)
+
+- `src/lib/toast/` (ToastProvider, toastApi, useToast, styles, types, index)
+- API imperativa `toast.success/error/warning/info`
+- Nessuna libreria esterna
 
 ### 🧪 Testing E2E ✅ (nuovo — 13 maggio 2026)
 
@@ -192,22 +211,20 @@ Usato per diagnostica live (es. "apri localhost:5173 e leggi errori console", "f
 
 ## ⏸️ Cosa resta da fare
 
+> Fase I (offline + sync + PWA) e sistema toast sono **COMPLETATI** (vedi sopra), non più nel backlog. Export PDF e relative estensioni lab (che implicavano PDF) sono chiusi: PDF rimosso, estensioni lab non necessarie (copertura fogli campagna 100%, dati di concentrazione/microbiologici nei referti).
+
 ### Priorità alta
-1. **MMC step B** — labels normative su PDF (posizionamento da decidere insieme)
-2. **J3b** — PDF narrativo (caso B): tabella + commenti + valutazioni discorsive
-3. **J4** — Granularità export (1 campagna / tutto cantiere / personalizzato)
+1. **Validazione end-to-end offline/sync** — oggi ZERO test sul flusso offline. Verificare drain queue, pull cloud→locale, comportamento offline→online su scenario reale
+2. **Copertura E2E** — solo 2 spec su 16 moduli (`home.spec.ts` + `rumore-modal.spec.ts`)
 
-### Priorità media (estensioni modello dati lab)
-4. **IPA lab** — oggi nessun campo lab persistito
-5. **Acqua lab** — oggi solo fisico-chimico, mancano microbiologici (coliformi, E. coli, enterococchi)
-6. **Biologico-SAS** — espliciti + specie identificate
+### Priorità media
+3. **Code-split bundle** — bundle ~2MB senza code splitting dinamico
+4. **Test E2E con salvataggio DB** — aggiungere `E2E_SUPABASE_SERVICE_KEY` in `.env.local`, test che salvano misure + cleanup automatico
+5. **Test E2E altri 15 modali** — replicare pattern di `rumore-modal.spec.ts`. Solo quando serve davvero
 
-Tutte e 3 implicano: modale + DB schema + exportSchemas + PDF.
-
-### Priorità bassa
-7. **Fase I — Offline + sync** (SQLite locale ↔ Supabase) — la più rischiosa, da fare per ULTIMA dopo che J ha validato tutti gli output
-8. **Test E2E con salvataggio DB** — aggiungere `E2E_SUPABASE_SERVICE_KEY` in `.env.local`, scrivere test che salvano misure e fanno cleanup automatico. Da fare quando il flusso save di un modale è critico da proteggere
-9. **Test E2E altri 15 modali** — replicare pattern di `rumore-modal.spec.ts`. Solo quando serve davvero (quando si toccano i modali in modo invasivo)
+### Debt minore
+6. Routing legacy `/cantiere/:id` (singolare) da rimuovere
+7. Naming OWAS camelCase → da normalizzare a snake_case
 
 ---
 
@@ -348,9 +365,9 @@ Per scrivere un test E2E di un modale `MisuraXxxModal`:
 4. **Pattern dirty-guard**: dopo `Annulla` su modale con form compilato, cliccare `Scarta` per chiudere il dialog di conferma
 5. **Non salvare** finché non c'è `E2E_SUPABASE_SERVICE_KEY` configurata: limitarsi a verificare UI fino al bottone Salva
 
-### Sync offline-first (preparato, non attivo)
+### Sync offline-first (ATTIVO — Fase I completata)
 
-Tipi `Misura`, `Campagna`, `FotoMisura`, `RisorsaCantiere` hanno già `sync_pending: boolean`. Sincronizzazione effettiva = Fase I.
+Tipi `Misura`, `Campagna`, `FotoMisura`, `RisorsaCantiere` hanno `sync_pending: boolean`, usato dal local-wins guard del pull. Engine reale in `src/lib/offline/` (Dexie + sync queue + pull + PWA). Vedi sezione "Fase I — Offline + sync + PWA" sopra.
 
 ---
 
@@ -431,7 +448,7 @@ Sono read-only di riferimento.
 2. **Naming OWAS camelCase**: tutti gli altri schemi usano snake_case, OWAS è camelCase. Da normalizzare.
 3. **Bucket B audit (R-4)**: overflow >32 misure per modulo. Decisione di design pendente: split file numerati / multi-pagina dentro stesso file / limite hard 32 con warning.
 4. **Bucket C audit cosmetici**: strumento Rumore hardcoded → leggere da `ctx.strumento`; label "Tecnico rilevatore" inconsistenti tra moduli; statistiche WBV per gruppo; numerazione HAV blocchi; decimali OWAS.
-5. **Lint warning `react-hooks/set-state-in-effect`** (al 13 mag 2026) su numerosi modali (MisuraAcquaModal, MisuraAmiantoModal, MisuraModalShell, MisuraOcraModal, MisuraOwasModal e altri). Pre-esistenti, non bloccanti, bug runtime già risolto col pattern split useEffect. Da pulire quando si fa giro di linting/refactor.
+5. **Lint warning `react-hooks/set-state-in-effect`** — RISOLTO: 0 errori lint. I 49 warning sui modali sono stati silenziati con `disable-line` mirati (bug runtime già risolto col pattern split useEffect). Refactor architetturale dell'antipattern rimandato.
 
 ---
 
