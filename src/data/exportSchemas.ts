@@ -159,16 +159,22 @@ function fillRumoreSheet(ws: Worksheet, ctx: ExportContext, misureFetta: Misura[
     cellaNote.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
   })
 
-  // Nel template:
-  //   A{row}:B{row} è merged → scriviamo "Tecnico" sul master A{row}
-  //   C{row}:D{row} è merged → scriviamo i nomi sul master C{row}
+  // Footer (4 blocchi). Nel template ogni blocco ha:
+  //   A{row}:B{row} merged → label "Tecnico rilevatore:" sul master A{row}
+  //   C{row}:D{row} merged → nomi tecnici (slot valore) sul master C{row}
+  //   E{row}:I{row} merged → "Strumentazione: ..." sul master E{row}
+  //     (label+valore inline: la stringa include già il prefisso "Strumentazione:")
   const nomiTecnici = ctx.tecnici.length > 0 ? ctx.tecnici.map((t) => t.nome).join(', ') : ''
-  const tecnicoRows = [13, 28, 43, 58]
-  tecnicoRows.forEach((row) => {
-    ws.getCell(`A${row}`).value = 'Tecnico'
+  const strumentoStr = ctx.strumento
+    ? `Strumentazione: ${ctx.strumento.nome} ${ctx.strumento.modello} (${ctx.strumento.matricola})`
+    : 'Strumentazione:'
+  const footerRows = [13, 28, 43, 58]
+  footerRows.forEach((row) => {
+    ws.getCell(`A${row}`).value = 'Tecnico rilevatore:'
     if (nomiTecnici) {
       ws.getCell(`C${row}`).value = nomiTecnici
     }
+    ws.getCell(`E${row}`).value = strumentoStr
   })
 }
 
@@ -306,6 +312,18 @@ export const exportSchemaWbv: ExportSchema = {
       cellaNote.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
       ws.getCell(`Q${r}`).value = (dati.temperatura as string | undefined) ?? null
     })
+
+    // === Footer riga 205 ===
+    //   A205:B205 merged → label "Tecnico rilevatore:" (master A205)
+    //   C205:J205 merged → nomi tecnici (master C205)
+    //   K205:Q205 merged → "Strumentazione: ..." inline (master K205)
+    const nomiTecnici = ctx.tecnici.length > 0 ? ctx.tecnici.map((t) => t.nome).join(', ') : ''
+    const strumentoStr = ctx.strumento
+      ? `Strumentazione: ${ctx.strumento.nome} ${ctx.strumento.modello} (${ctx.strumento.matricola})`
+      : 'Strumentazione:'
+    ws.getCell('A205').value = 'Tecnico rilevatore:'
+    if (nomiTecnici) ws.getCell('C205').value = nomiTecnici
+    ws.getCell('K205').value = strumentoStr
   },
 }
 
@@ -413,6 +431,18 @@ export const exportSchemaHav: ExportSchema = {
       cellaNote.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
       ws.getCell(`O${r}`).value = (dati.temperatura as string | undefined) ?? null
     })
+
+    // === Footer riga 205 ===
+    //   A205:B205 merged → label "Tecnico rilevatore:" (master A205)
+    //   C205:H205 merged → nomi tecnici (master C205)
+    //   I205:O205 merged → "Strumentazione: ..." inline (master I205)
+    const nomiTecnici = ctx.tecnici.length > 0 ? ctx.tecnici.map((t) => t.nome).join(', ') : ''
+    const strumentoStr = ctx.strumento
+      ? `Strumentazione: ${ctx.strumento.nome} ${ctx.strumento.modello} (${ctx.strumento.matricola})`
+      : 'Strumentazione:'
+    ws.getCell('A205').value = 'Tecnico rilevatore:'
+    if (nomiTecnici) ws.getCell('C205').value = nomiTecnici
+    ws.getCell('I205').value = strumentoStr
   },
 }
 
