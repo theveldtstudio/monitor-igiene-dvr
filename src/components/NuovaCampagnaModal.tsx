@@ -1,5 +1,5 @@
 import type React from 'react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { Campagna } from '../types'
 import type { ModuloCampionamento } from '../data/moduliCampionamento'
 import { CATEGORIE } from '../data/moduliCampionamento'
@@ -70,12 +70,15 @@ export default function NuovaCampagnaModal({ open, onClose, onCreated, cantiereI
   const [dataOra, setDataOra] = useState<string>('')
   const { saving, error, createCampagna, resetError } = useCreateCampagna()
   const cat = CATEGORIE[modulo.categoria]
+  const dataInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (open) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setDataOra(nowLocalDatetimeInputValue())
       resetError()
+      const t = setTimeout(() => dataInputRef.current?.focus(), 50)
+      return () => clearTimeout(t)
     }
   }, [open, resetError])
 
@@ -134,6 +137,7 @@ export default function NuovaCampagnaModal({ open, onClose, onCreated, cantiereI
           </label>
           <input
             id="campagna-datetime"
+            ref={dataInputRef}
             type="datetime-local"
             value={dataOra}
             onChange={(e) => setDataOra(e.target.value)}
