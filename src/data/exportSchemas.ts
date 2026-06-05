@@ -1,5 +1,7 @@
-﻿import type { Misura, Cantiere, Campagna, Tecnico, Strumento, RisorsaCantiere } from '../types'
+﻿import type { Worksheet } from 'exceljs'
+import type { Misura, Cantiere, Campagna, Tecnico, Strumento, RisorsaCantiere } from '../types'
 import { toNumber } from '../lib/exportExcel'
+import { cloneSheet } from '../lib/exportPaginazione'
 
 /**
  * Parsa una stringa di durata in vari formati e ritorna i minuti come number.
@@ -83,6 +85,93 @@ export interface ExportSchema {
  *   H = Lpeak dBC
  *   I = note
  */
+/**
+ * Riempie UN foglio rumore (template o clonato) con header, fino a 32 misure
+ * (4 blocchi × 8) e footer tecnici. `misureFetta` contiene al massimo 32 misure.
+ */
+function fillRumoreSheet(ws: Worksheet, ctx: ExportContext, misureFetta: Misura[]): void {
+  const blocchi = [
+    { headerRow: 1,  dataStartRow: 4  },
+    { headerRow: 16, dataStartRow: 19 },
+    { headerRow: 31, dataStartRow: 34 },
+    { headerRow: 46, dataStartRow: 49 },
+  ]
+
+  const dataFormatted = ctx.campagna.data_ora
+    ? new Date(ctx.campagna.data_ora).toLocaleDateString('it-IT')
+    : ''
+  const cantiereNome = ctx.cantiere.nome
+
+  const committente = ctx.cantiere.committente ?? ''
+  blocchi.forEach((b) => {
+    // B{headerRow} = committente (subito dopo la label "Impresa:" in A{headerRow})
+    const cellaCommittente = ws.getCell(`B${b.headerRow}`)
+    cellaCommittente.value = committente || null
+    cellaCommittente.alignment = { horizontal: 'center', vertical: 'middle' }
+
+    // D{headerRow} = "Data: gg/mm/aaaa" — etichetta + valore inline
+    // (il template aveva solo "Data:" come label senza una cella valore disponibile)
+    const cellaData = ws.getCell(`D${b.headerRow}`)
+    cellaData.value = dataFormatted ? `Data: ${dataFormatted}` : 'Data:'
+    cellaData.alignment = { horizontal: 'center', vertical: 'middle' }
+
+    // F{headerRow} = cantiere
+    const cellaCantiere = ws.getCell(`F${b.headerRow}`)
+    cellaCantiere.value = cantiereNome
+    cellaCantiere.alignment = { horizontal: 'center', vertical: 'middle' }
+  })
+
+  // Larghezze colonne ottimali per header (Impresa + committente)
+  ws.getColumn('A').width = 12
+  ws.getColumn('B').width = 28
+
+  misureFetta.forEach((m, idx) => {
+    const blockIdx = Math.floor(idx / 8)
+    if (blockIdx >= blocchi.length) return
+    const localRow = idx % 8
+    const r = blocchi[blockIdx].dataStartRow + localRow
+
+    const dati = m.dati as Record<string, unknown>
+    const macchine = (dati.macchine_nomi as string[] | undefined) ?? []
+
+    const durataMin = parseDurataMinuti(dati.durata)
+    // Excel rappresenta gli orari come frazione di giorno (1 = 24h, 1/1440 = 1 min).
+    // Applichiamo runtime il format hh:mm:ss alla cella per garantire la visualizzazione corretta
+    // anche se il template non lo specifica.
+    const cellaDurata = ws.getCell(`B${r}`)
+    cellaDurata.value = durataMin !== null ? durataMin / 1440 : null
+    cellaDurata.numFmt = 'hh:mm:ss'
+    cellaDurata.alignment = { horizontal: 'center', vertical: 'middle' }
+    const cfLeqDba = ws.getCell(`F${r}`)
+    cfLeqDba.value = toNumber(dati.leq_dba)
+    cfLeqDba.numFmt = 'General'
+    const cfLeqDbc = ws.getCell(`G${r}`)
+    cfLeqDbc.value = toNumber(dati.leq_dbc)
+    cfLeqDbc.numFmt = 'General'
+    const cfLpeak = ws.getCell(`H${r}`)
+    cfLpeak.value = toNumber(dati.lpeak_dbc)
+    cfLpeak.numFmt = 'General'
+    ws.getCell(`C${r}`).value = (dati.postazione_nome as string | undefined) ?? null
+    ws.getCell(`D${r}`).value = (dati.fase_nome as string | undefined) ?? null
+    ws.getCell(`E${r}`).value = macchine.length > 0 ? macchine.join(', ') : null
+    const cellaNote = ws.getCell(`I${r}`)
+    cellaNote.value = m.note ?? null
+    cellaNote.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
+  })
+
+  // Nel template:
+  //   A{row}:B{row} è merged → scriviamo "Tecnico" sul master A{row}
+  //   C{row}:D{row} è merged → scriviamo i nomi sul master C{row}
+  const nomiTecnici = ctx.tecnici.length > 0 ? ctx.tecnici.map((t) => t.nome).join(', ') : ''
+  const tecnicoRows = [13, 28, 43, 58]
+  tecnicoRows.forEach((row) => {
+    ws.getCell(`A${row}`).value = 'Tecnico'
+    if (nomiTecnici) {
+      ws.getCell(`C${row}`).value = nomiTecnici
+    }
+  })
+}
+
 export const exportSchemaRumore: ExportSchema = {
   templateUrl: '/templates/rumore.xlsx',
 
@@ -96,92 +185,27 @@ export const exportSchemaRumore: ExportSchema = {
     const ws = workbook.getWorksheet('Foglio1')
     if (!ws) throw new Error("Foglio 'Foglio1' non trovato nel template Rumore")
 
-    const blocchi = [
-      { headerRow: 1,  dataStartRow: 4  },
-      { headerRow: 16, dataStartRow: 19 },
-      { headerRow: 31, dataStartRow: 34 },
-      { headerRow: 46, dataStartRow: 49 },
-    ]
+    const L = 32 // 4 blocchi × 8 misure per foglio
+    // Rumore non riordina: mantiene l'ordine di ctx.misure come da comportamento storico.
+    const misure = ctx.misure
 
-    const dataFormatted = ctx.campagna.data_ora
-      ? new Date(ctx.campagna.data_ora).toLocaleDateString('it-IT')
-      : ''
-    const cantiereNome = ctx.cantiere.nome
+    if (misure.length <= L) {
+      fillRumoreSheet(ws, ctx, misure)
+      return
+    }
 
-    const committente = ctx.cantiere.committente ?? ''
-    blocchi.forEach((b) => {
-      // B{headerRow} = committente (subito dopo la label "Impresa:" in A{headerRow})
-      const cellaCommittente = ws.getCell(`B${b.headerRow}`)
-      cellaCommittente.value = committente || null
-      cellaCommittente.alignment = { horizontal: 'center', vertical: 'middle' }
+    const fette: Misura[][] = []
+    for (let i = 0; i < misure.length; i += L) fette.push(misure.slice(i, i + L))
 
-      // C{headerRow} = pulizia (in passato scrivevamo qui la data per errore)
-      ws.getCell(`C${b.headerRow}`).value = null
+    const sheets: import('exceljs').Worksheet[] = [ws]
+    for (let i = 1; i < fette.length; i++) {
+      const start = i * L + 1
+      const end = i * L + fette[i].length
+      sheets.push(cloneSheet(workbook, ws, `Misure ${start}-${end}`))
+    }
+    ws.name = `Misure 1-${fette[0].length}`
 
-      // D{headerRow} = "Data: gg/mm/aaaa" — etichetta + valore inline
-      // (il template aveva solo "Data:" come label senza una cella valore disponibile)
-      const cellaData = ws.getCell(`D${b.headerRow}`)
-      cellaData.value = dataFormatted ? `Data: ${dataFormatted}` : 'Data:'
-      cellaData.alignment = { horizontal: 'center', vertical: 'middle' }
-
-      // F{headerRow} = cantiere
-      const cellaCantiere = ws.getCell(`F${b.headerRow}`)
-      cellaCantiere.value = cantiereNome
-      cellaCantiere.alignment = { horizontal: 'center', vertical: 'middle' }
-    })
-
-    // Larghezze colonne ottimali per header (Impresa + committente)
-    ws.getColumn('A').width = 12
-    ws.getColumn('B').width = 28
-
-    ctx.misure.forEach((m, idx) => {
-      const blockIdx = Math.floor(idx / 8)
-      if (blockIdx >= blocchi.length) {
-        console.warn(`Misura ${idx + 1}: superato il numero massimo di 32 misure per file. Ignorata.`)
-        return
-      }
-      const localRow = idx % 8
-      const r = blocchi[blockIdx].dataStartRow + localRow
-
-      const dati = m.dati as Record<string, unknown>
-      const macchine = (dati.macchine_nomi as string[] | undefined) ?? []
-
-      const durataMin = parseDurataMinuti(dati.durata)
-      // Excel rappresenta gli orari come frazione di giorno (1 = 24h, 1/1440 = 1 min).
-      // Applichiamo runtime il format hh:mm:ss alla cella per garantire la visualizzazione corretta
-      // anche se il template non lo specifica.
-      const cellaDurata = ws.getCell(`B${r}`)
-      cellaDurata.value = durataMin !== null ? durataMin / 1440 : null
-      cellaDurata.numFmt = 'hh:mm:ss'
-      cellaDurata.alignment = { horizontal: 'center', vertical: 'middle' }
-      const cfLeqDba = ws.getCell(`F${r}`)
-      cfLeqDba.value = toNumber(dati.leq_dba)
-      cfLeqDba.numFmt = 'General'
-      const cfLeqDbc = ws.getCell(`G${r}`)
-      cfLeqDbc.value = toNumber(dati.leq_dbc)
-      cfLeqDbc.numFmt = 'General'
-      const cfLpeak = ws.getCell(`H${r}`)
-      cfLpeak.value = toNumber(dati.lpeak_dbc)
-      cfLpeak.numFmt = 'General'
-      ws.getCell(`C${r}`).value = (dati.postazione_nome as string | undefined) ?? null
-      ws.getCell(`D${r}`).value = (dati.fase_nome as string | undefined) ?? null
-      ws.getCell(`E${r}`).value = macchine.length > 0 ? macchine.join(', ') : null
-      const cellaNote = ws.getCell(`I${r}`)
-      cellaNote.value = m.note ?? null
-      cellaNote.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
-    })
-
-    // Nel template:
-    //   A{row}:B{row} è merged → scriviamo "Tecnico" sul master A{row}
-    //   C{row}:D{row} è merged → scriviamo i nomi sul master C{row}
-    const nomiTecnici = ctx.tecnici.length > 0 ? ctx.tecnici.map((t) => t.nome).join(', ') : ''
-    const tecnicoRows = [13, 28, 43, 58]
-    tecnicoRows.forEach((row) => {
-      ws.getCell(`A${row}`).value = 'Tecnico'
-      if (nomiTecnici) {
-        ws.getCell(`C${row}`).value = nomiTecnici
-      }
-    })
+    fette.forEach((fetta, i) => fillRumoreSheet(sheets[i], ctx, fetta))
   },
 }
 
@@ -237,7 +261,6 @@ export const exportSchemaWbv: ExportSchema = {
     cellaCommittente.value = committente || null
     cellaCommittente.alignment = { horizontal: 'center', vertical: 'middle' }
 
-    ws.getCell('C1').value = null
     const cellaData = ws.getCell('D1')
     cellaData.value = dataFormatted ? `Data: ${dataFormatted}` : 'Data:'
     cellaData.alignment = { horizontal: 'center', vertical: 'middle' }
@@ -336,7 +359,6 @@ export const exportSchemaHav: ExportSchema = {
     cellaCommittente.value = committente || null
     cellaCommittente.alignment = { horizontal: 'center', vertical: 'middle' }
 
-    ws.getCell('C1').value = null
     const cellaData = ws.getCell('D1')
     cellaData.value = dataFormatted ? `Data: ${dataFormatted}` : 'Data:'
     cellaData.alignment = { horizontal: 'center', vertical: 'middle' }
@@ -416,6 +438,61 @@ export const exportSchemaHav: ExportSchema = {
  *   I = dati.classe (1-4)
  *   J = m.note
  */
+// 1 blocco/foglio: header riga 1, dati righe 5-12 (max 8), footer riga 14.
+// NB: chiavi dati camelCase = retrocompat OWAS voluta, NON normalizzare a snake_case.
+function fillOwasSheet(ws: Worksheet, ctx: ExportContext, misureFetta: Misura[]): void {
+  const dataFormatted = ctx.campagna.data_ora
+    ? new Date(ctx.campagna.data_ora).toLocaleDateString('it-IT')
+    : ''
+  const committente = ctx.cantiere.committente ?? ''
+  const cantiereNome = ctx.cantiere.nome
+
+  // === Header riga 1 ===
+  ws.getCell('B1').value = committente || null
+  ws.getCell('C1').value = dataFormatted ? `Data: ${dataFormatted}` : 'Data:'
+  ws.getCell('E1').value = cantiereNome
+
+  // === Dati misure righe 5-12 (max 8) ===
+  const DATA_START_ROW = 5
+
+  misureFetta.forEach((m, i) => {
+    const r = DATA_START_ROW + i
+    const dati = (m.dati ?? {}) as Record<string, unknown>
+
+    const ce = ws.getCell(`E${r}`)
+    ce.value = toNumber(dati.schiena)
+    ce.numFmt = '0'
+    const cf = ws.getCell(`F${r}`)
+    cf.value = toNumber(dati.braccia)
+    cf.numFmt = '0'
+    const cg = ws.getCell(`G${r}`)
+    cg.value = toNumber(dati.gambe)
+    cg.numFmt = '0'
+    const ch = ws.getCell(`H${r}`)
+    ch.value = toNumber(dati.carico)
+    ch.numFmt = '0'
+    const ci = ws.getCell(`I${r}`)
+    ci.value = toNumber(dati.classe)
+    ci.numFmt = '0'
+
+    ws.getCell(`B${r}`).value = (dati.mansione as string | undefined) ?? null
+    ws.getCell(`C${r}`).value = (dati.attivita as string | undefined) ?? null
+    ws.getCell(`J${r}`).value = m.note ?? null
+
+    // Scritto per ultimo: sovrascrive l'eventuale xfId ereditato da E-I
+    const durataMin = parseDurataMinuti(dati.durata)
+    const cellaDurata = ws.getCell(`D${r}`)
+    cellaDurata.value = durataMin !== null ? durataMin / 1440 : null
+    cellaDurata.numFmt = 'hh:mm:ss'
+  })
+
+  // === Footer riga 14 ===
+  const nomiTecnici = ctx.tecnici.length > 0 ? ctx.tecnici.map((t) => t.nome).join(', ') : ''
+  if (nomiTecnici) {
+    ws.getCell('C14').value = nomiTecnici
+  }
+}
+
 export const exportSchemaOwas: ExportSchema = {
   templateUrl: '/templates/owas.xlsx',
 
@@ -429,63 +506,26 @@ export const exportSchemaOwas: ExportSchema = {
     const ws = workbook.getWorksheet('Foglio1')
     if (!ws) throw new Error("Foglio 'Foglio1' non trovato nel template OWAS")
 
-    const dataFormatted = ctx.campagna.data_ora
-      ? new Date(ctx.campagna.data_ora).toLocaleDateString('it-IT')
-      : ''
-    const committente = ctx.cantiere.committente ?? ''
-    const cantiereNome = ctx.cantiere.nome
-
-    // === Header riga 1 ===
-    ws.getCell('B1').value = committente || null
-    ws.getCell('C1').value = dataFormatted ? `Data: ${dataFormatted}` : 'Data:'
-    ws.getCell('E1').value = cantiereNome
-
-    // === Dati misure righe 5-12 (max 8) ===
-    const DATA_START_ROW = 5
-    const MAX_MISURE = 8
-
+    const L = 8
     const misureOrdinate = [...ctx.misure].sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0))
 
-    if (misureOrdinate.length > MAX_MISURE) {
-      console.warn('OWAS export: max 8 misure, troncate', misureOrdinate.length - MAX_MISURE, 'misure escluse')
+    if (misureOrdinate.length <= L) {
+      fillOwasSheet(ws, ctx, misureOrdinate)
+      return
     }
 
-    misureOrdinate.slice(0, MAX_MISURE).forEach((m, i) => {
-      const r = DATA_START_ROW + i
-      const dati = (m.dati ?? {}) as Record<string, unknown>
+    const fette: Misura[][] = []
+    for (let i = 0; i < misureOrdinate.length; i += L) fette.push(misureOrdinate.slice(i, i + L))
 
-      const ce = ws.getCell(`E${r}`)
-      ce.value = toNumber(dati.schiena)
-      ce.numFmt = '0'
-      const cf = ws.getCell(`F${r}`)
-      cf.value = toNumber(dati.braccia)
-      cf.numFmt = '0'
-      const cg = ws.getCell(`G${r}`)
-      cg.value = toNumber(dati.gambe)
-      cg.numFmt = '0'
-      const ch = ws.getCell(`H${r}`)
-      ch.value = toNumber(dati.carico)
-      ch.numFmt = '0'
-      const ci = ws.getCell(`I${r}`)
-      ci.value = toNumber(dati.classe)
-      ci.numFmt = '0'
-
-      ws.getCell(`B${r}`).value = (dati.mansione as string | undefined) ?? null
-      ws.getCell(`C${r}`).value = (dati.attivita as string | undefined) ?? null
-      ws.getCell(`J${r}`).value = m.note ?? null
-
-      // Scritto per ultimo: sovrascrive l'eventuale xfId ereditato da E-I
-      const durataMin = parseDurataMinuti(dati.durata)
-      const cellaDurata = ws.getCell(`D${r}`)
-      cellaDurata.value = durataMin !== null ? durataMin / 1440 : null
-      cellaDurata.numFmt = 'hh:mm:ss'
-    })
-
-    // === Footer riga 14 ===
-    const nomiTecnici = ctx.tecnici.length > 0 ? ctx.tecnici.map((t) => t.nome).join(', ') : ''
-    if (nomiTecnici) {
-      ws.getCell('C14').value = nomiTecnici
+    const sheets: import('exceljs').Worksheet[] = [ws]
+    for (let i = 1; i < fette.length; i++) {
+      const start = i * L + 1
+      const end = i * L + fette[i].length
+      sheets.push(cloneSheet(workbook, ws, `Misure ${start}-${end}`))
     }
+    ws.name = `Misure 1-${fette[0].length}`
+
+    fette.forEach((fetta, i) => fillOwasSheet(sheets[i], ctx, fetta))
   },
 }
 
@@ -493,6 +533,58 @@ export const exportSchemaOwas: ExportSchema = {
 // Template: public/templates/microclima.xlsx — 4 pagine × 8 misure = 32 max
 // Colonne A-M: n°, postazione, fase, ambiente, Ta, Tg, Tnw, UR, Va, WBGT,
 //   attività metabolica, vestiario, note
+function fillMicroclimaSheet(ws: Worksheet, ctx: ExportContext, misureFetta: Misura[]): void {
+  const blocchi = [
+    { headerRow: 1,  dataStartRow: 4,  footerRow: 12 },
+    { headerRow: 14, dataStartRow: 17, footerRow: 25 },
+    { headerRow: 27, dataStartRow: 30, footerRow: 38 },
+    { headerRow: 40, dataStartRow: 43, footerRow: 51 },
+  ]
+  const dataFormatted = ctx.campagna.data_ora ? new Date(ctx.campagna.data_ora).toLocaleDateString('it-IT') : ''
+  const committente = ctx.cantiere.committente ?? ''
+  const cantiereNome = ctx.cantiere.nome
+  const nomiTecnici = ctx.tecnici.map((t) => `${t.nome} ${t.cognome}`.trim()).join(', ')
+  const strumentoStr = ctx.strumento
+    ? `Strumentazione: ${ctx.strumento.nome} ${ctx.strumento.modello} (${ctx.strumento.matricola})`
+    : 'Strumentazione:'
+
+  blocchi.forEach((b) => {
+    const c = ws.getCell(`B${b.headerRow}`)
+    c.value = committente || null
+    c.alignment = { horizontal: 'center', vertical: 'middle' }
+    const d = ws.getCell(`D${b.headerRow}`)
+    d.value = dataFormatted ? `Data: ${dataFormatted}` : 'Data:'
+    d.alignment = { horizontal: 'center', vertical: 'middle' }
+    const k = ws.getCell(`F${b.headerRow}`)
+    k.value = cantiereNome
+    k.alignment = { horizontal: 'center', vertical: 'middle' }
+    if (nomiTecnici) ws.getCell(`C${b.footerRow}`).value = nomiTecnici
+    ws.getCell(`F${b.footerRow}`).value = strumentoStr
+  })
+
+  misureFetta.forEach((m, idx) => {
+    const bi = Math.floor(idx / 8)
+    if (bi >= blocchi.length) return
+    const r = blocchi[bi].dataStartRow + (idx % 8)
+    const dati = (m.dati ?? {}) as Record<string, unknown>
+
+    ws.getCell(`B${r}`).value = (dati.postazione_nome as string | undefined) ?? null
+    ws.getCell(`C${r}`).value = (dati.fase_nome as string | undefined) ?? null
+    ws.getCell(`D${r}`).value = (dati.ambiente as string | undefined) ?? null
+    ws.getCell(`E${r}`).value = toNumber(dati.ta)
+    ws.getCell(`F${r}`).value = toNumber(dati.tg)
+    ws.getCell(`G${r}`).value = toNumber(dati.tnw)
+    ws.getCell(`H${r}`).value = toNumber(dati.ur)
+    ws.getCell(`I${r}`).value = toNumber(dati.va)
+    ws.getCell(`J${r}`).value = toNumber(dati.wbgt)
+    ws.getCell(`K${r}`).value = (dati.attivita_metabolica as string | undefined) ?? null
+    ws.getCell(`L${r}`).value = (dati.vestiario as string | undefined) ?? null
+    const n = ws.getCell(`M${r}`)
+    n.value = m.note ?? null
+    n.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
+  })
+}
+
 const exportSchemaMicroclima: ExportSchema = {
   templateUrl: '/templates/microclima.xlsx',
 
@@ -506,56 +598,26 @@ const exportSchemaMicroclima: ExportSchema = {
     const ws = workbook.getWorksheet('Foglio1')
     if (!ws) throw new Error("Foglio 'Foglio1' non trovato nel template Microclima")
 
-    const blocchi = [
-      { headerRow: 1,  dataStartRow: 4,  footerRow: 12 },
-      { headerRow: 14, dataStartRow: 17, footerRow: 25 },
-      { headerRow: 27, dataStartRow: 30, footerRow: 38 },
-      { headerRow: 40, dataStartRow: 43, footerRow: 51 },
-    ]
-    const dataFormatted = ctx.campagna.data_ora ? new Date(ctx.campagna.data_ora).toLocaleDateString('it-IT') : ''
-    const committente = ctx.cantiere.committente ?? ''
-    const cantiereNome = ctx.cantiere.nome
-    const nomiTecnici = ctx.tecnici.map((t) => `${t.nome} ${t.cognome}`.trim()).join(', ')
-    const strumentoStr = ctx.strumento
-      ? `Strumentazione: ${ctx.strumento.nome} ${ctx.strumento.modello} (${ctx.strumento.matricola})`
-      : 'Strumentazione:'
-
-    blocchi.forEach((b) => {
-      const c = ws.getCell(`B${b.headerRow}`)
-      c.value = committente || null
-      c.alignment = { horizontal: 'center', vertical: 'middle' }
-      const d = ws.getCell(`D${b.headerRow}`)
-      d.value = dataFormatted ? `Data: ${dataFormatted}` : 'Data:'
-      d.alignment = { horizontal: 'center', vertical: 'middle' }
-      const k = ws.getCell(`F${b.headerRow}`)
-      k.value = cantiereNome
-      k.alignment = { horizontal: 'center', vertical: 'middle' }
-      if (nomiTecnici) ws.getCell(`C${b.footerRow}`).value = nomiTecnici
-      ws.getCell(`F${b.footerRow}`).value = strumentoStr
-    })
-
+    const L = 32
     const misure = [...ctx.misure].sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0))
-    misure.forEach((m, idx) => {
-      const bi = Math.floor(idx / 8)
-      if (bi >= blocchi.length) { console.warn(`Microclima: misura ${idx + 1} oltre 32 — ignorata`); return }
-      const r = blocchi[bi].dataStartRow + (idx % 8)
-      const dati = (m.dati ?? {}) as Record<string, unknown>
 
-      ws.getCell(`B${r}`).value = (dati.postazione_nome as string | undefined) ?? null
-      ws.getCell(`C${r}`).value = (dati.fase_nome as string | undefined) ?? null
-      ws.getCell(`D${r}`).value = (dati.ambiente as string | undefined) ?? null
-      ws.getCell(`E${r}`).value = toNumber(dati.ta)
-      ws.getCell(`F${r}`).value = toNumber(dati.tg)
-      ws.getCell(`G${r}`).value = toNumber(dati.tnw)
-      ws.getCell(`H${r}`).value = toNumber(dati.ur)
-      ws.getCell(`I${r}`).value = toNumber(dati.va)
-      ws.getCell(`J${r}`).value = toNumber(dati.wbgt)
-      ws.getCell(`K${r}`).value = (dati.attivita_metabolica as string | undefined) ?? null
-      ws.getCell(`L${r}`).value = (dati.vestiario as string | undefined) ?? null
-      const n = ws.getCell(`M${r}`)
-      n.value = m.note ?? null
-      n.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
-    })
+    if (misure.length <= L) {
+      fillMicroclimaSheet(ws, ctx, misure)
+      return
+    }
+
+    const fette: Misura[][] = []
+    for (let i = 0; i < misure.length; i += L) fette.push(misure.slice(i, i + L))
+
+    const sheets: import('exceljs').Worksheet[] = [ws]
+    for (let i = 1; i < fette.length; i++) {
+      const start = i * L + 1
+      const end = i * L + fette[i].length
+      sheets.push(cloneSheet(workbook, ws, `Misure ${start}-${end}`))
+    }
+    ws.name = `Misure 1-${fette[0].length}`
+
+    fette.forEach((fetta, i) => fillMicroclimaSheet(sheets[i], ctx, fetta))
   },
 }
 
@@ -563,6 +625,61 @@ const exportSchemaMicroclima: ExportSchema = {
 // Template: public/templates/cem.xlsx — 4 pagine × 8 misure = 32 max
 // Colonne A-L: n°, postazione, fase, sorgente CEM, frequenza (val+unità),
 //   distanza(m), E(V/m), H(A/m), B(µT), limite rif., indice esp.(%), note
+function fillCemSheet(ws: Worksheet, ctx: ExportContext, misureFetta: Misura[]): void {
+  const blocchi = [
+    { headerRow: 1,  dataStartRow: 4,  footerRow: 12 },
+    { headerRow: 14, dataStartRow: 17, footerRow: 25 },
+    { headerRow: 27, dataStartRow: 30, footerRow: 38 },
+    { headerRow: 40, dataStartRow: 43, footerRow: 51 },
+  ]
+  const dataFormatted = ctx.campagna.data_ora ? new Date(ctx.campagna.data_ora).toLocaleDateString('it-IT') : ''
+  const committente = ctx.cantiere.committente ?? ''
+  const cantiereNome = ctx.cantiere.nome
+  const nomiTecnici = ctx.tecnici.map((t) => `${t.nome} ${t.cognome}`.trim()).join(', ')
+  const strumentoStr = ctx.strumento
+    ? `Strumentazione: ${ctx.strumento.nome} ${ctx.strumento.modello} (${ctx.strumento.matricola})`
+    : 'Strumentazione:'
+
+  blocchi.forEach((b) => {
+    const c = ws.getCell(`B${b.headerRow}`)
+    c.value = committente || null
+    c.alignment = { horizontal: 'center', vertical: 'middle' }
+    const d = ws.getCell(`D${b.headerRow}`)
+    d.value = dataFormatted ? `Data: ${dataFormatted}` : 'Data:'
+    d.alignment = { horizontal: 'center', vertical: 'middle' }
+    const k = ws.getCell(`F${b.headerRow}`)
+    k.value = cantiereNome
+    k.alignment = { horizontal: 'center', vertical: 'middle' }
+    if (nomiTecnici) ws.getCell(`C${b.footerRow}`).value = nomiTecnici
+    ws.getCell(`F${b.footerRow}`).value = strumentoStr
+  })
+
+  misureFetta.forEach((m, idx) => {
+    const bi = Math.floor(idx / 8)
+    if (bi >= blocchi.length) return
+    const r = blocchi[bi].dataStartRow + (idx % 8)
+    const dati = (m.dati ?? {}) as Record<string, unknown>
+
+    const freqVal = toNumber(dati.frequenza)
+    const freqUnita = typeof dati.unita_frequenza === 'string' ? dati.unita_frequenza : ''
+    const freqStr = freqVal !== null ? `${freqVal} ${freqUnita}`.trim() : (freqUnita || null)
+
+    ws.getCell(`B${r}`).value = (dati.postazione_nome as string | undefined) ?? null
+    ws.getCell(`C${r}`).value = (dati.fase_nome as string | undefined) ?? null
+    ws.getCell(`D${r}`).value = (dati.sorgente as string | undefined) ?? null
+    ws.getCell(`E${r}`).value = freqStr
+    ws.getCell(`F${r}`).value = toNumber(dati.distanza)
+    ws.getCell(`G${r}`).value = toNumber(dati.campo_e)
+    ws.getCell(`H${r}`).value = toNumber(dati.campo_h)
+    ws.getCell(`I${r}`).value = toNumber(dati.induzione_b)
+    ws.getCell(`J${r}`).value = (dati.limite_riferimento as string | undefined) ?? null
+    ws.getCell(`K${r}`).value = toNumber(dati.indice_esposizione)
+    const n = ws.getCell(`L${r}`)
+    n.value = m.note ?? null
+    n.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
+  })
+}
+
 const exportSchemaCem: ExportSchema = {
   templateUrl: '/templates/cem.xlsx',
 
@@ -576,59 +693,26 @@ const exportSchemaCem: ExportSchema = {
     const ws = workbook.getWorksheet('Foglio1')
     if (!ws) throw new Error("Foglio 'Foglio1' non trovato nel template CEM")
 
-    const blocchi = [
-      { headerRow: 1,  dataStartRow: 4,  footerRow: 12 },
-      { headerRow: 14, dataStartRow: 17, footerRow: 25 },
-      { headerRow: 27, dataStartRow: 30, footerRow: 38 },
-      { headerRow: 40, dataStartRow: 43, footerRow: 51 },
-    ]
-    const dataFormatted = ctx.campagna.data_ora ? new Date(ctx.campagna.data_ora).toLocaleDateString('it-IT') : ''
-    const committente = ctx.cantiere.committente ?? ''
-    const cantiereNome = ctx.cantiere.nome
-    const nomiTecnici = ctx.tecnici.map((t) => `${t.nome} ${t.cognome}`.trim()).join(', ')
-    const strumentoStr = ctx.strumento
-      ? `Strumentazione: ${ctx.strumento.nome} ${ctx.strumento.modello} (${ctx.strumento.matricola})`
-      : 'Strumentazione:'
-
-    blocchi.forEach((b) => {
-      const c = ws.getCell(`B${b.headerRow}`)
-      c.value = committente || null
-      c.alignment = { horizontal: 'center', vertical: 'middle' }
-      const d = ws.getCell(`D${b.headerRow}`)
-      d.value = dataFormatted ? `Data: ${dataFormatted}` : 'Data:'
-      d.alignment = { horizontal: 'center', vertical: 'middle' }
-      const k = ws.getCell(`F${b.headerRow}`)
-      k.value = cantiereNome
-      k.alignment = { horizontal: 'center', vertical: 'middle' }
-      if (nomiTecnici) ws.getCell(`C${b.footerRow}`).value = nomiTecnici
-      ws.getCell(`F${b.footerRow}`).value = strumentoStr
-    })
-
+    const L = 32
     const misure = [...ctx.misure].sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0))
-    misure.forEach((m, idx) => {
-      const bi = Math.floor(idx / 8)
-      if (bi >= blocchi.length) { console.warn(`CEM: misura ${idx + 1} oltre 32 — ignorata`); return }
-      const r = blocchi[bi].dataStartRow + (idx % 8)
-      const dati = (m.dati ?? {}) as Record<string, unknown>
 
-      const freqVal = toNumber(dati.frequenza)
-      const freqUnita = typeof dati.unita_frequenza === 'string' ? dati.unita_frequenza : ''
-      const freqStr = freqVal !== null ? `${freqVal} ${freqUnita}`.trim() : (freqUnita || null)
+    if (misure.length <= L) {
+      fillCemSheet(ws, ctx, misure)
+      return
+    }
 
-      ws.getCell(`B${r}`).value = (dati.postazione_nome as string | undefined) ?? null
-      ws.getCell(`C${r}`).value = (dati.fase_nome as string | undefined) ?? null
-      ws.getCell(`D${r}`).value = (dati.sorgente as string | undefined) ?? null
-      ws.getCell(`E${r}`).value = freqStr
-      ws.getCell(`F${r}`).value = toNumber(dati.distanza)
-      ws.getCell(`G${r}`).value = toNumber(dati.campo_e)
-      ws.getCell(`H${r}`).value = toNumber(dati.campo_h)
-      ws.getCell(`I${r}`).value = toNumber(dati.induzione_b)
-      ws.getCell(`J${r}`).value = (dati.limite_riferimento as string | undefined) ?? null
-      ws.getCell(`K${r}`).value = toNumber(dati.indice_esposizione)
-      const n = ws.getCell(`L${r}`)
-      n.value = m.note ?? null
-      n.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
-    })
+    const fette: Misura[][] = []
+    for (let i = 0; i < misure.length; i += L) fette.push(misure.slice(i, i + L))
+
+    const sheets: import('exceljs').Worksheet[] = [ws]
+    for (let i = 1; i < fette.length; i++) {
+      const start = i * L + 1
+      const end = i * L + fette[i].length
+      sheets.push(cloneSheet(workbook, ws, `Misure ${start}-${end}`))
+    }
+    ws.name = `Misure 1-${fette[0].length}`
+
+    fette.forEach((fetta, i) => fillCemSheet(sheets[i], ctx, fetta))
   },
 }
 
@@ -637,6 +721,59 @@ const exportSchemaCem: ExportSchema = {
 // Colonne A-N: n°, postazione, fase, sorgente ROA, banda spettrale, λ(nm),
 //   dist(m), E(W/m²), L(W/m²·sr), t.esp(s), H(J/m²), limite rif.,
 //   indice esp.(%), note
+function fillRoaSheet(ws: Worksheet, ctx: ExportContext, misureFetta: Misura[]): void {
+  const blocchi = [
+    { headerRow: 1,  dataStartRow: 4,  footerRow: 12 },
+    { headerRow: 14, dataStartRow: 17, footerRow: 25 },
+    { headerRow: 27, dataStartRow: 30, footerRow: 38 },
+    { headerRow: 40, dataStartRow: 43, footerRow: 51 },
+  ]
+  const dataFormatted = ctx.campagna.data_ora ? new Date(ctx.campagna.data_ora).toLocaleDateString('it-IT') : ''
+  const committente = ctx.cantiere.committente ?? ''
+  const cantiereNome = ctx.cantiere.nome
+  const nomiTecnici = ctx.tecnici.map((t) => `${t.nome} ${t.cognome}`.trim()).join(', ')
+  const strumentoStr = ctx.strumento
+    ? `Strumentazione: ${ctx.strumento.nome} ${ctx.strumento.modello} (${ctx.strumento.matricola})`
+    : 'Strumentazione:'
+
+  blocchi.forEach((b) => {
+    const c = ws.getCell(`B${b.headerRow}`)
+    c.value = committente || null
+    c.alignment = { horizontal: 'center', vertical: 'middle' }
+    const d = ws.getCell(`D${b.headerRow}`)
+    d.value = dataFormatted ? `Data: ${dataFormatted}` : 'Data:'
+    d.alignment = { horizontal: 'center', vertical: 'middle' }
+    const k = ws.getCell(`F${b.headerRow}`)
+    k.value = cantiereNome
+    k.alignment = { horizontal: 'center', vertical: 'middle' }
+    if (nomiTecnici) ws.getCell(`C${b.footerRow}`).value = nomiTecnici
+    ws.getCell(`F${b.footerRow}`).value = strumentoStr
+  })
+
+  misureFetta.forEach((m, idx) => {
+    const bi = Math.floor(idx / 8)
+    if (bi >= blocchi.length) return
+    const r = blocchi[bi].dataStartRow + (idx % 8)
+    const dati = (m.dati ?? {}) as Record<string, unknown>
+
+    ws.getCell(`B${r}`).value = (dati.postazione_nome as string | undefined) ?? null
+    ws.getCell(`C${r}`).value = (dati.fase_nome as string | undefined) ?? null
+    ws.getCell(`D${r}`).value = (dati.sorgente as string | undefined) ?? null
+    ws.getCell(`E${r}`).value = (dati.banda as string | undefined) ?? null
+    ws.getCell(`F${r}`).value = toNumber(dati.lunghezza_onda)
+    ws.getCell(`G${r}`).value = toNumber(dati.distanza)
+    ws.getCell(`H${r}`).value = toNumber(dati.irradianza_e)
+    ws.getCell(`I${r}`).value = toNumber(dati.radianza_l)
+    ws.getCell(`J${r}`).value = toNumber(dati.tempo_esposizione)
+    ws.getCell(`K${r}`).value = toNumber(dati.h_radiant)
+    ws.getCell(`L${r}`).value = (dati.limite_riferimento as string | undefined) ?? null
+    ws.getCell(`M${r}`).value = toNumber(dati.indice_esposizione)
+    const n = ws.getCell(`N${r}`)
+    n.value = m.note ?? null
+    n.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
+  })
+}
+
 const exportSchemaRoa: ExportSchema = {
   templateUrl: '/templates/roa.xlsx',
 
@@ -650,57 +787,26 @@ const exportSchemaRoa: ExportSchema = {
     const ws = workbook.getWorksheet('Foglio1')
     if (!ws) throw new Error("Foglio 'Foglio1' non trovato nel template ROA")
 
-    const blocchi = [
-      { headerRow: 1,  dataStartRow: 4,  footerRow: 12 },
-      { headerRow: 14, dataStartRow: 17, footerRow: 25 },
-      { headerRow: 27, dataStartRow: 30, footerRow: 38 },
-      { headerRow: 40, dataStartRow: 43, footerRow: 51 },
-    ]
-    const dataFormatted = ctx.campagna.data_ora ? new Date(ctx.campagna.data_ora).toLocaleDateString('it-IT') : ''
-    const committente = ctx.cantiere.committente ?? ''
-    const cantiereNome = ctx.cantiere.nome
-    const nomiTecnici = ctx.tecnici.map((t) => `${t.nome} ${t.cognome}`.trim()).join(', ')
-    const strumentoStr = ctx.strumento
-      ? `Strumentazione: ${ctx.strumento.nome} ${ctx.strumento.modello} (${ctx.strumento.matricola})`
-      : 'Strumentazione:'
-
-    blocchi.forEach((b) => {
-      const c = ws.getCell(`B${b.headerRow}`)
-      c.value = committente || null
-      c.alignment = { horizontal: 'center', vertical: 'middle' }
-      const d = ws.getCell(`D${b.headerRow}`)
-      d.value = dataFormatted ? `Data: ${dataFormatted}` : 'Data:'
-      d.alignment = { horizontal: 'center', vertical: 'middle' }
-      const k = ws.getCell(`F${b.headerRow}`)
-      k.value = cantiereNome
-      k.alignment = { horizontal: 'center', vertical: 'middle' }
-      if (nomiTecnici) ws.getCell(`C${b.footerRow}`).value = nomiTecnici
-      ws.getCell(`F${b.footerRow}`).value = strumentoStr
-    })
-
+    const L = 32
     const misure = [...ctx.misure].sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0))
-    misure.forEach((m, idx) => {
-      const bi = Math.floor(idx / 8)
-      if (bi >= blocchi.length) { console.warn(`ROA: misura ${idx + 1} oltre 32 — ignorata`); return }
-      const r = blocchi[bi].dataStartRow + (idx % 8)
-      const dati = (m.dati ?? {}) as Record<string, unknown>
 
-      ws.getCell(`B${r}`).value = (dati.postazione_nome as string | undefined) ?? null
-      ws.getCell(`C${r}`).value = (dati.fase_nome as string | undefined) ?? null
-      ws.getCell(`D${r}`).value = (dati.sorgente as string | undefined) ?? null
-      ws.getCell(`E${r}`).value = (dati.banda as string | undefined) ?? null
-      ws.getCell(`F${r}`).value = toNumber(dati.lunghezza_onda)
-      ws.getCell(`G${r}`).value = toNumber(dati.distanza)
-      ws.getCell(`H${r}`).value = toNumber(dati.irradianza_e)
-      ws.getCell(`I${r}`).value = toNumber(dati.radianza_l)
-      ws.getCell(`J${r}`).value = toNumber(dati.tempo_esposizione)
-      ws.getCell(`K${r}`).value = toNumber(dati.h_radiant)
-      ws.getCell(`L${r}`).value = (dati.limite_riferimento as string | undefined) ?? null
-      ws.getCell(`M${r}`).value = toNumber(dati.indice_esposizione)
-      const n = ws.getCell(`N${r}`)
-      n.value = m.note ?? null
-      n.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
-    })
+    if (misure.length <= L) {
+      fillRoaSheet(ws, ctx, misure)
+      return
+    }
+
+    const fette: Misura[][] = []
+    for (let i = 0; i < misure.length; i += L) fette.push(misure.slice(i, i + L))
+
+    const sheets: import('exceljs').Worksheet[] = [ws]
+    for (let i = 1; i < fette.length; i++) {
+      const start = i * L + 1
+      const end = i * L + fette[i].length
+      sheets.push(cloneSheet(workbook, ws, `Misure ${start}-${end}`))
+    }
+    ws.name = `Misure 1-${fette[0].length}`
+
+    fette.forEach((fetta, i) => fillRoaSheet(sheets[i], ctx, fetta))
   },
 }
 
@@ -710,6 +816,64 @@ const exportSchemaRoa: ExportSchema = {
 //   t.prelievo, volume(L), conta22°C(UFC/m³), conta36°C(UFC/m³),
 //   muffe+lieviti(UFC/m³), note
 // I campi UFC esportano la stringa raw (es. "<10") se presente.
+function fillBiologicoSheet(ws: Worksheet, ctx: ExportContext, misureFetta: Misura[]): void {
+  const blocchi = [
+    { headerRow: 1,  dataStartRow: 4,  footerRow: 12 },
+    { headerRow: 14, dataStartRow: 17, footerRow: 25 },
+    { headerRow: 27, dataStartRow: 30, footerRow: 38 },
+    { headerRow: 40, dataStartRow: 43, footerRow: 51 },
+  ]
+  const dataFormatted = ctx.campagna.data_ora ? new Date(ctx.campagna.data_ora).toLocaleDateString('it-IT') : ''
+  const committente = ctx.cantiere.committente ?? ''
+  const cantiereNome = ctx.cantiere.nome
+  const nomiTecnici = ctx.tecnici.map((t) => `${t.nome} ${t.cognome}`.trim()).join(', ')
+  const strumentoStr = ctx.strumento
+    ? `Strumentazione: ${ctx.strumento.nome} ${ctx.strumento.modello} (${ctx.strumento.matricola})`
+    : 'Strumentazione:'
+
+  blocchi.forEach((b) => {
+    const c = ws.getCell(`B${b.headerRow}`)
+    c.value = committente || null
+    c.alignment = { horizontal: 'center', vertical: 'middle' }
+    const d = ws.getCell(`D${b.headerRow}`)
+    d.value = dataFormatted ? `Data: ${dataFormatted}` : 'Data:'
+    d.alignment = { horizontal: 'center', vertical: 'middle' }
+    const k = ws.getCell(`F${b.headerRow}`)
+    k.value = cantiereNome
+    k.alignment = { horizontal: 'center', vertical: 'middle' }
+    if (nomiTecnici) ws.getCell(`C${b.footerRow}`).value = nomiTecnici
+    ws.getCell(`F${b.footerRow}`).value = strumentoStr
+  })
+
+  const ufcVal = (raw: unknown, valore: unknown, sottoSoglia: unknown): string | number | null => {
+    if (typeof raw === 'string' && raw.trim()) return raw.trim()
+    const n = toNumber(valore)
+    if (n === null) return null
+    return sottoSoglia === true ? `<${n}` : n
+  }
+
+  misureFetta.forEach((m, idx) => {
+    const bi = Math.floor(idx / 8)
+    if (bi >= blocchi.length) return
+    const r = blocchi[bi].dataStartRow + (idx % 8)
+    const dati = (m.dati ?? {}) as Record<string, unknown>
+    const macchine = (dati.macchine_nomi as string[] | undefined) ?? []
+
+    ws.getCell(`B${r}`).value = (dati.codice_filtro as string | undefined) ?? null
+    ws.getCell(`C${r}`).value = (dati.postazione_nome as string | undefined) ?? null
+    ws.getCell(`D${r}`).value = (dati.fase_nome as string | undefined) ?? null
+    ws.getCell(`E${r}`).value = macchine.length > 0 ? macchine.join(', ') : null
+    ws.getCell(`F${r}`).value = (dati.tempo_prelievo as string | undefined) ?? null
+    ws.getCell(`G${r}`).value = toNumber(dati.volume_aspirato)
+    ws.getCell(`H${r}`).value = ufcVal(dati.conta_22_raw, dati.conta_22, dati.conta_22_sotto_soglia)
+    ws.getCell(`I${r}`).value = ufcVal(dati.conta_36_raw, dati.conta_36, dati.conta_36_sotto_soglia)
+    ws.getCell(`J${r}`).value = ufcVal(dati.muffe_lieviti_raw, dati.muffe_lieviti, dati.muffe_lieviti_sotto_soglia)
+    const n = ws.getCell(`K${r}`)
+    n.value = m.note ?? null
+    n.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
+  })
+}
+
 const exportSchemaBiologico: ExportSchema = {
   templateUrl: '/templates/biologico-sas.xlsx',
 
@@ -723,62 +887,26 @@ const exportSchemaBiologico: ExportSchema = {
     const ws = workbook.getWorksheet('Foglio1')
     if (!ws) throw new Error("Foglio 'Foglio1' non trovato nel template Biologico SAS")
 
-    const blocchi = [
-      { headerRow: 1,  dataStartRow: 4,  footerRow: 12 },
-      { headerRow: 14, dataStartRow: 17, footerRow: 25 },
-      { headerRow: 27, dataStartRow: 30, footerRow: 38 },
-      { headerRow: 40, dataStartRow: 43, footerRow: 51 },
-    ]
-    const dataFormatted = ctx.campagna.data_ora ? new Date(ctx.campagna.data_ora).toLocaleDateString('it-IT') : ''
-    const committente = ctx.cantiere.committente ?? ''
-    const cantiereNome = ctx.cantiere.nome
-    const nomiTecnici = ctx.tecnici.map((t) => `${t.nome} ${t.cognome}`.trim()).join(', ')
-    const strumentoStr = ctx.strumento
-      ? `Strumentazione: ${ctx.strumento.nome} ${ctx.strumento.modello} (${ctx.strumento.matricola})`
-      : 'Strumentazione:'
+    const L = 32
+    const misure = [...ctx.misure].sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0))
 
-    blocchi.forEach((b) => {
-      const c = ws.getCell(`B${b.headerRow}`)
-      c.value = committente || null
-      c.alignment = { horizontal: 'center', vertical: 'middle' }
-      const d = ws.getCell(`D${b.headerRow}`)
-      d.value = dataFormatted ? `Data: ${dataFormatted}` : 'Data:'
-      d.alignment = { horizontal: 'center', vertical: 'middle' }
-      const k = ws.getCell(`F${b.headerRow}`)
-      k.value = cantiereNome
-      k.alignment = { horizontal: 'center', vertical: 'middle' }
-      if (nomiTecnici) ws.getCell(`C${b.footerRow}`).value = nomiTecnici
-      ws.getCell(`F${b.footerRow}`).value = strumentoStr
-    })
-
-    const ufcVal = (raw: unknown, valore: unknown, sottoSoglia: unknown): string | number | null => {
-      if (typeof raw === 'string' && raw.trim()) return raw.trim()
-      const n = toNumber(valore)
-      if (n === null) return null
-      return sottoSoglia === true ? `<${n}` : n
+    if (misure.length <= L) {
+      fillBiologicoSheet(ws, ctx, misure)
+      return
     }
 
-    const misure = [...ctx.misure].sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0))
-    misure.forEach((m, idx) => {
-      const bi = Math.floor(idx / 8)
-      if (bi >= blocchi.length) { console.warn(`Biologico: misura ${idx + 1} oltre 32 — ignorata`); return }
-      const r = blocchi[bi].dataStartRow + (idx % 8)
-      const dati = (m.dati ?? {}) as Record<string, unknown>
-      const macchine = (dati.macchine_nomi as string[] | undefined) ?? []
+    const fette: Misura[][] = []
+    for (let i = 0; i < misure.length; i += L) fette.push(misure.slice(i, i + L))
 
-      ws.getCell(`B${r}`).value = (dati.codice_filtro as string | undefined) ?? null
-      ws.getCell(`C${r}`).value = (dati.postazione_nome as string | undefined) ?? null
-      ws.getCell(`D${r}`).value = (dati.fase_nome as string | undefined) ?? null
-      ws.getCell(`E${r}`).value = macchine.length > 0 ? macchine.join(', ') : null
-      ws.getCell(`F${r}`).value = (dati.tempo_prelievo as string | undefined) ?? null
-      ws.getCell(`G${r}`).value = toNumber(dati.volume_aspirato)
-      ws.getCell(`H${r}`).value = ufcVal(dati.conta_22_raw, dati.conta_22, dati.conta_22_sotto_soglia)
-      ws.getCell(`I${r}`).value = ufcVal(dati.conta_36_raw, dati.conta_36, dati.conta_36_sotto_soglia)
-      ws.getCell(`J${r}`).value = ufcVal(dati.muffe_lieviti_raw, dati.muffe_lieviti, dati.muffe_lieviti_sotto_soglia)
-      const n = ws.getCell(`K${r}`)
-      n.value = m.note ?? null
-      n.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
-    })
+    const sheets: import('exceljs').Worksheet[] = [ws]
+    for (let i = 1; i < fette.length; i++) {
+      const start = i * L + 1
+      const end = i * L + fette[i].length
+      sheets.push(cloneSheet(workbook, ws, `Misure ${start}-${end}`))
+    }
+    ws.name = `Misure 1-${fette[0].length}`
+
+    fette.forEach((fetta, i) => fillBiologicoSheet(sheets[i], ctx, fetta))
   },
 }
 
@@ -788,6 +916,63 @@ const exportSchemaBiologico: ExportSchema = {
 //   disloc.(°), freq.gesti, giudizio presa, n.pers, f.manten.(kg), spinta(kg),
 //   traino(kg), dist.trasp(m), note
 // Un unico foglio per tutti i metodi (NIOSH/Snook): la modal non distingue metodo.
+function fillMmcSheet(ws: Worksheet, ctx: ExportContext, misureFetta: Misura[]): void {
+  const blocchi = [
+    { headerRow: 1,  dataStartRow: 5,  footerRow: 13 },
+    { headerRow: 15, dataStartRow: 19, footerRow: 27 },
+    { headerRow: 29, dataStartRow: 33, footerRow: 41 },
+    { headerRow: 43, dataStartRow: 47, footerRow: 55 },
+  ]
+  const dataFormatted = ctx.campagna.data_ora ? new Date(ctx.campagna.data_ora).toLocaleDateString('it-IT') : ''
+  const committente = ctx.cantiere.committente ?? ''
+  const cantiereNome = ctx.cantiere.nome
+  const nomiTecnici = ctx.tecnici.map((t) => `${t.nome} ${t.cognome}`.trim()).join(', ')
+  const strumentoStr = ctx.strumento
+    ? `Strumentazione: ${ctx.strumento.nome} ${ctx.strumento.modello} (${ctx.strumento.matricola})`
+    : 'Strumentazione:'
+
+  blocchi.forEach((b) => {
+    const c = ws.getCell(`B${b.headerRow}`)
+    c.value = committente || null
+    c.alignment = { horizontal: 'center', vertical: 'middle' }
+    const d = ws.getCell(`D${b.headerRow}`)
+    d.value = dataFormatted ? `Data: ${dataFormatted}` : 'Data:'
+    d.alignment = { horizontal: 'center', vertical: 'middle' }
+    const k = ws.getCell(`F${b.headerRow}`)
+    k.value = cantiereNome
+    k.alignment = { horizontal: 'center', vertical: 'middle' }
+    if (nomiTecnici) ws.getCell(`C${b.footerRow}`).value = nomiTecnici
+    ws.getCell(`F${b.footerRow}`).value = strumentoStr
+  })
+
+  misureFetta.forEach((m, idx) => {
+    const bi = Math.floor(idx / 8)
+    if (bi >= blocchi.length) return
+    const r = blocchi[bi].dataStartRow + (idx % 8)
+    const dati = (m.dati ?? {}) as Record<string, unknown>
+
+    const freqGesti = toNumber(dati.frequenza_gesti)
+    const freqUnita = typeof dati.frequenza_unita === 'string' ? dati.frequenza_unita : 'atti/min'
+    const freqStr = freqGesti !== null ? `${freqGesti} ${freqUnita}` : null
+
+    ws.getCell(`B${r}`).value = toNumber(dati.carico)
+    ws.getCell(`C${r}`).value = toNumber(dati.altezza_mani)
+    ws.getCell(`D${r}`).value = toNumber(dati.distanza_verticale)
+    ws.getCell(`E${r}`).value = toNumber(dati.distanza_peso_corpo)
+    ws.getCell(`F${r}`).value = toNumber(dati.dislocazione_angolare)
+    ws.getCell(`G${r}`).value = freqStr
+    ws.getCell(`H${r}`).value = (dati.giudizio_presa as string | undefined) ?? null
+    ws.getCell(`I${r}`).value = toNumber(dati.n_persone)
+    ws.getCell(`J${r}`).value = toNumber(dati.forza_mantenimento)
+    ws.getCell(`K${r}`).value = toNumber(dati.spinta)
+    ws.getCell(`L${r}`).value = toNumber(dati.traino)
+    ws.getCell(`M${r}`).value = toNumber(dati.distanza_trasporto)
+    const n = ws.getCell(`N${r}`)
+    n.value = m.note ?? null
+    n.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
+  })
+}
+
 const exportSchemaMmc: ExportSchema = {
   templateUrl: '/templates/mmc.xlsx',
 
@@ -801,61 +986,26 @@ const exportSchemaMmc: ExportSchema = {
     const ws = workbook.getWorksheet('Foglio1')
     if (!ws) throw new Error("Foglio 'Foglio1' non trovato nel template MMC")
 
-    const blocchi = [
-      { headerRow: 1,  dataStartRow: 5,  footerRow: 13 },
-      { headerRow: 15, dataStartRow: 19, footerRow: 27 },
-      { headerRow: 29, dataStartRow: 33, footerRow: 41 },
-      { headerRow: 43, dataStartRow: 47, footerRow: 55 },
-    ]
-    const dataFormatted = ctx.campagna.data_ora ? new Date(ctx.campagna.data_ora).toLocaleDateString('it-IT') : ''
-    const committente = ctx.cantiere.committente ?? ''
-    const cantiereNome = ctx.cantiere.nome
-    const nomiTecnici = ctx.tecnici.map((t) => `${t.nome} ${t.cognome}`.trim()).join(', ')
-    const strumentoStr = ctx.strumento
-      ? `Strumentazione: ${ctx.strumento.nome} ${ctx.strumento.modello} (${ctx.strumento.matricola})`
-      : 'Strumentazione:'
-
-    blocchi.forEach((b) => {
-      const c = ws.getCell(`B${b.headerRow}`)
-      c.value = committente || null
-      c.alignment = { horizontal: 'center', vertical: 'middle' }
-      const d = ws.getCell(`D${b.headerRow}`)
-      d.value = dataFormatted ? `Data: ${dataFormatted}` : 'Data:'
-      d.alignment = { horizontal: 'center', vertical: 'middle' }
-      const k = ws.getCell(`F${b.headerRow}`)
-      k.value = cantiereNome
-      k.alignment = { horizontal: 'center', vertical: 'middle' }
-      if (nomiTecnici) ws.getCell(`C${b.footerRow}`).value = nomiTecnici
-      ws.getCell(`F${b.footerRow}`).value = strumentoStr
-    })
-
+    const L = 32
     const misure = [...ctx.misure].sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0))
-    misure.forEach((m, idx) => {
-      const bi = Math.floor(idx / 8)
-      if (bi >= blocchi.length) { console.warn(`MMC: misura ${idx + 1} oltre 32 — ignorata`); return }
-      const r = blocchi[bi].dataStartRow + (idx % 8)
-      const dati = (m.dati ?? {}) as Record<string, unknown>
 
-      const freqGesti = toNumber(dati.frequenza_gesti)
-      const freqUnita = typeof dati.frequenza_unita === 'string' ? dati.frequenza_unita : 'atti/min'
-      const freqStr = freqGesti !== null ? `${freqGesti} ${freqUnita}` : null
+    if (misure.length <= L) {
+      fillMmcSheet(ws, ctx, misure)
+      return
+    }
 
-      ws.getCell(`B${r}`).value = toNumber(dati.carico)
-      ws.getCell(`C${r}`).value = toNumber(dati.altezza_mani)
-      ws.getCell(`D${r}`).value = toNumber(dati.distanza_verticale)
-      ws.getCell(`E${r}`).value = toNumber(dati.distanza_peso_corpo)
-      ws.getCell(`F${r}`).value = toNumber(dati.dislocazione_angolare)
-      ws.getCell(`G${r}`).value = freqStr
-      ws.getCell(`H${r}`).value = (dati.giudizio_presa as string | undefined) ?? null
-      ws.getCell(`I${r}`).value = toNumber(dati.n_persone)
-      ws.getCell(`J${r}`).value = toNumber(dati.forza_mantenimento)
-      ws.getCell(`K${r}`).value = toNumber(dati.spinta)
-      ws.getCell(`L${r}`).value = toNumber(dati.traino)
-      ws.getCell(`M${r}`).value = toNumber(dati.distanza_trasporto)
-      const n = ws.getCell(`N${r}`)
-      n.value = m.note ?? null
-      n.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
-    })
+    const fette: Misura[][] = []
+    for (let i = 0; i < misure.length; i += L) fette.push(misure.slice(i, i + L))
+
+    const sheets: import('exceljs').Worksheet[] = [ws]
+    for (let i = 1; i < fette.length; i++) {
+      const start = i * L + 1
+      const end = i * L + fette[i].length
+      sheets.push(cloneSheet(workbook, ws, `Misure ${start}-${end}`))
+    }
+    ws.name = `Misure 1-${fette[0].length}`
+
+    fette.forEach((fetta, i) => fillMmcSheet(sheets[i], ctx, fetta))
   },
 }
 
@@ -866,6 +1016,58 @@ const exportSchemaMmc: ExportSchema = {
 //   fascia rischio, note
 // Le risposte dettagliate checklist (risposte_ocra) non sono riportate:
 // troppo voluminose per il foglio cartaceo. Si riportano solo i punteggi.
+function fillOcraSheet(ws: Worksheet, ctx: ExportContext, misureFetta: Misura[]): void {
+  const blocchi = [
+    { headerRow: 1,  dataStartRow: 4,  footerRow: 12 },
+    { headerRow: 14, dataStartRow: 17, footerRow: 25 },
+    { headerRow: 27, dataStartRow: 30, footerRow: 38 },
+    { headerRow: 40, dataStartRow: 43, footerRow: 51 },
+  ]
+  const dataFormatted = ctx.campagna.data_ora ? new Date(ctx.campagna.data_ora).toLocaleDateString('it-IT') : ''
+  const committente = ctx.cantiere.committente ?? ''
+  const cantiereNome = ctx.cantiere.nome
+  const nomiTecnici = ctx.tecnici.map((t) => `${t.nome} ${t.cognome}`.trim()).join(', ')
+  const strumentoStr = ctx.strumento
+    ? `Strumentazione: ${ctx.strumento.nome} ${ctx.strumento.modello} (${ctx.strumento.matricola})`
+    : 'Strumentazione:'
+
+  blocchi.forEach((b) => {
+    const c = ws.getCell(`B${b.headerRow}`)
+    c.value = committente || null
+    c.alignment = { horizontal: 'center', vertical: 'middle' }
+    const d = ws.getCell(`D${b.headerRow}`)
+    d.value = dataFormatted ? `Data: ${dataFormatted}` : 'Data:'
+    d.alignment = { horizontal: 'center', vertical: 'middle' }
+    const k = ws.getCell(`F${b.headerRow}`)
+    k.value = cantiereNome
+    k.alignment = { horizontal: 'center', vertical: 'middle' }
+    if (nomiTecnici) ws.getCell(`C${b.footerRow}`).value = nomiTecnici
+    ws.getCell(`F${b.footerRow}`).value = strumentoStr
+  })
+
+  misureFetta.forEach((m, idx) => {
+    const bi = Math.floor(idx / 8)
+    if (bi >= blocchi.length) return
+    const r = blocchi[bi].dataStartRow + (idx % 8)
+    const dati = (m.dati ?? {}) as Record<string, unknown>
+
+    const fasciaLabel = typeof dati.fascia_label === 'string' ? dati.fascia_label : null
+    const fasciaRischio = typeof dati.fascia_rischio === 'string' ? dati.fascia_rischio : null
+    const fasciaStr = fasciaLabel ?? fasciaRischio
+
+    ws.getCell(`B${r}`).value = (dati.denominazione as string | undefined) ?? null
+    ws.getCell(`C${r}`).value = (dati.arto_valutato as string | undefined) ?? null
+    ws.getCell(`D${r}`).value = toNumber(dati.minuti_compito)
+    ws.getCell(`E${r}`).value = toNumber(dati.punteggio_intrinseco)
+    ws.getCell(`F${r}`).value = toNumber(dati.moltiplicatore_durata)
+    ws.getCell(`G${r}`).value = toNumber(dati.punteggio_reale)
+    ws.getCell(`H${r}`).value = fasciaStr
+    const n = ws.getCell(`I${r}`)
+    n.value = m.note ?? null
+    n.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
+  })
+}
+
 const exportSchemaOcra: ExportSchema = {
   templateUrl: '/templates/ocra.xlsx',
 
@@ -879,56 +1081,26 @@ const exportSchemaOcra: ExportSchema = {
     const ws = workbook.getWorksheet('Foglio1')
     if (!ws) throw new Error("Foglio 'Foglio1' non trovato nel template OCRA")
 
-    const blocchi = [
-      { headerRow: 1,  dataStartRow: 4,  footerRow: 12 },
-      { headerRow: 14, dataStartRow: 17, footerRow: 25 },
-      { headerRow: 27, dataStartRow: 30, footerRow: 38 },
-      { headerRow: 40, dataStartRow: 43, footerRow: 51 },
-    ]
-    const dataFormatted = ctx.campagna.data_ora ? new Date(ctx.campagna.data_ora).toLocaleDateString('it-IT') : ''
-    const committente = ctx.cantiere.committente ?? ''
-    const cantiereNome = ctx.cantiere.nome
-    const nomiTecnici = ctx.tecnici.map((t) => `${t.nome} ${t.cognome}`.trim()).join(', ')
-    const strumentoStr = ctx.strumento
-      ? `Strumentazione: ${ctx.strumento.nome} ${ctx.strumento.modello} (${ctx.strumento.matricola})`
-      : 'Strumentazione:'
-
-    blocchi.forEach((b) => {
-      const c = ws.getCell(`B${b.headerRow}`)
-      c.value = committente || null
-      c.alignment = { horizontal: 'center', vertical: 'middle' }
-      const d = ws.getCell(`D${b.headerRow}`)
-      d.value = dataFormatted ? `Data: ${dataFormatted}` : 'Data:'
-      d.alignment = { horizontal: 'center', vertical: 'middle' }
-      const k = ws.getCell(`F${b.headerRow}`)
-      k.value = cantiereNome
-      k.alignment = { horizontal: 'center', vertical: 'middle' }
-      if (nomiTecnici) ws.getCell(`C${b.footerRow}`).value = nomiTecnici
-      ws.getCell(`F${b.footerRow}`).value = strumentoStr
-    })
-
+    const L = 32
     const misure = [...ctx.misure].sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0))
-    misure.forEach((m, idx) => {
-      const bi = Math.floor(idx / 8)
-      if (bi >= blocchi.length) { console.warn(`OCRA: misura ${idx + 1} oltre 32 — ignorata`); return }
-      const r = blocchi[bi].dataStartRow + (idx % 8)
-      const dati = (m.dati ?? {}) as Record<string, unknown>
 
-      const fasciaLabel = typeof dati.fascia_label === 'string' ? dati.fascia_label : null
-      const fasciaRischio = typeof dati.fascia_rischio === 'string' ? dati.fascia_rischio : null
-      const fasciaStr = fasciaLabel ?? fasciaRischio
+    if (misure.length <= L) {
+      fillOcraSheet(ws, ctx, misure)
+      return
+    }
 
-      ws.getCell(`B${r}`).value = (dati.denominazione as string | undefined) ?? null
-      ws.getCell(`C${r}`).value = (dati.arto_valutato as string | undefined) ?? null
-      ws.getCell(`D${r}`).value = toNumber(dati.minuti_compito)
-      ws.getCell(`E${r}`).value = toNumber(dati.punteggio_intrinseco)
-      ws.getCell(`F${r}`).value = toNumber(dati.moltiplicatore_durata)
-      ws.getCell(`G${r}`).value = toNumber(dati.punteggio_reale)
-      ws.getCell(`H${r}`).value = fasciaStr
-      const n = ws.getCell(`I${r}`)
-      n.value = m.note ?? null
-      n.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
-    })
+    const fette: Misura[][] = []
+    for (let i = 0; i < misure.length; i += L) fette.push(misure.slice(i, i + L))
+
+    const sheets: import('exceljs').Worksheet[] = [ws]
+    for (let i = 1; i < fette.length; i++) {
+      const start = i * L + 1
+      const end = i * L + fette[i].length
+      sheets.push(cloneSheet(workbook, ws, `Misure ${start}-${end}`))
+    }
+    ws.name = `Misure 1-${fette[0].length}`
+
+    fette.forEach((fetta, i) => fillOcraSheet(sheets[i], ctx, fetta))
   },
 }
 
@@ -938,6 +1110,72 @@ const exportSchemaOcra: ExportSchema = {
 //   header:  BASE_ROW
 //   dati:    BASE_ROW+4 … BASE_ROW+11
 //   footer:  BASE_ROW+12
+function fillGasSheet(ws: Worksheet, ctx: ExportContext, misureFetta: Misura[]): void {
+  const blocchi = [
+    { headerRow: 1,  dataStartRow: 5,  footerRow: 13 },
+    { headerRow: 16, dataStartRow: 20, footerRow: 28 },
+    { headerRow: 31, dataStartRow: 35, footerRow: 43 },
+    { headerRow: 46, dataStartRow: 50, footerRow: 58 },
+  ]
+  const dataFormatted = ctx.campagna.data_ora ? new Date(ctx.campagna.data_ora).toLocaleDateString('it-IT') : ''
+  const committente = ctx.cantiere.committente ?? ''
+  const cantiereNome = ctx.cantiere.nome
+  const nomiTecnici = ctx.tecnici.map((t) => `${t.nome} ${t.cognome}`.trim()).join(', ')
+  const strumentoStr = ctx.strumento
+    ? `Strumentazione: ${ctx.strumento.nome} ${ctx.strumento.modello} (${ctx.strumento.matricola})`
+    : 'Strumentazione:'
+
+  blocchi.forEach((b) => {
+    const c = ws.getCell(`B${b.headerRow}`)
+    c.value = committente || null
+    c.alignment = { horizontal: 'center', vertical: 'middle' }
+    const d = ws.getCell(`D${b.headerRow}`)
+    d.value = dataFormatted ? `Data: ${dataFormatted}` : 'Data:'
+    d.alignment = { horizontal: 'center', vertical: 'middle' }
+    const k = ws.getCell(`F${b.headerRow}`)
+    k.value = cantiereNome
+    k.alignment = { horizontal: 'center', vertical: 'middle' }
+    if (nomiTecnici) ws.getCell(`C${b.footerRow}`).value = nomiTecnici
+    ws.getCell(`I${b.footerRow}`).value = strumentoStr
+  })
+
+  const tipoLabel = (v: unknown): string | null => {
+    if (typeof v !== 'string' || !v) return null
+    const map: Record<string, string> = { personale: 'Personale', ambientale: 'Ambientale', puntuale: 'Puntuale' }
+    return map[v] ?? v
+  }
+
+  misureFetta.forEach((m, idx) => {
+    const bi = Math.floor(idx / 8)
+    if (bi >= blocchi.length) return
+    const r = blocchi[bi].dataStartRow + (idx % 8)
+    const dati = (m.dati ?? {}) as Record<string, unknown>
+    const macchine = (dati.macchine_nomi as string[] | undefined) ?? []
+
+    ws.getCell(`B${r}`).value = (dati.fase_nome as string | undefined) ?? null
+    ws.getCell(`C${r}`).value = (dati.postazione_nome as string | undefined) ?? null
+    ws.getCell(`D${r}`).value = (dati.tempo_prelievo as string | undefined) ?? null
+    ws.getCell(`E${r}`).value = tipoLabel(dati.tipo_prelievo)
+    ws.getCell(`F${r}`).value = macchine.length > 0 ? macchine.join(', ') : null
+    ws.getCell(`G${r}`).value = toNumber(dati.no2)
+    ws.getCell(`H${r}`).value = toNumber(dati.no)
+    ws.getCell(`I${r}`).value = toNumber(dati.co)
+    ws.getCell(`J${r}`).value = toNumber(dati.co2)
+    ws.getCell(`K${r}`).value = toNumber(dati.h2s)
+
+    const altroNome = typeof dati.altro_gas_nome === 'string' ? dati.altro_gas_nome.trim() : ''
+    const altroVal = toNumber(dati.altro_gas_valore)
+    if (altroNome && altroVal !== null) ws.getCell(`L${r}`).value = `${altroNome}: ${altroVal}`
+    else if (altroNome) ws.getCell(`L${r}`).value = altroNome
+    else if (altroVal !== null) ws.getCell(`L${r}`).value = altroVal
+
+    ws.getCell(`M${r}`).value = toNumber(dati.o2)
+    const n = ws.getCell(`N${r}`)
+    n.value = m.note ?? null
+    n.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
+  })
+}
+
 export const exportSchemaGas: ExportSchema = {
   templateUrl: '/templates/gas.xlsx',
 
@@ -951,70 +1189,26 @@ export const exportSchemaGas: ExportSchema = {
     const ws = workbook.getWorksheet('Foglio1')
     if (!ws) throw new Error("Foglio 'Foglio1' non trovato nel template Gas")
 
-    const blocchi = [
-      { headerRow: 1,  dataStartRow: 5,  footerRow: 13 },
-      { headerRow: 16, dataStartRow: 20, footerRow: 28 },
-      { headerRow: 31, dataStartRow: 35, footerRow: 43 },
-      { headerRow: 46, dataStartRow: 50, footerRow: 58 },
-    ]
-    const dataFormatted = ctx.campagna.data_ora ? new Date(ctx.campagna.data_ora).toLocaleDateString('it-IT') : ''
-    const committente = ctx.cantiere.committente ?? ''
-    const cantiereNome = ctx.cantiere.nome
-    const nomiTecnici = ctx.tecnici.map((t) => `${t.nome} ${t.cognome}`.trim()).join(', ')
-    const strumentoStr = ctx.strumento
-      ? `Strumentazione: ${ctx.strumento.nome} ${ctx.strumento.modello} (${ctx.strumento.matricola})`
-      : 'Strumentazione:'
+    const L = 32
+    const misure = [...ctx.misure].sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0))
 
-    blocchi.forEach((b) => {
-      const c = ws.getCell(`B${b.headerRow}`)
-      c.value = committente || null
-      c.alignment = { horizontal: 'center', vertical: 'middle' }
-      const d = ws.getCell(`D${b.headerRow}`)
-      d.value = dataFormatted ? `Data: ${dataFormatted}` : 'Data:'
-      d.alignment = { horizontal: 'center', vertical: 'middle' }
-      const k = ws.getCell(`F${b.headerRow}`)
-      k.value = cantiereNome
-      k.alignment = { horizontal: 'center', vertical: 'middle' }
-      if (nomiTecnici) ws.getCell(`C${b.footerRow}`).value = nomiTecnici
-      ws.getCell(`I${b.footerRow}`).value = strumentoStr
-    })
-
-    const tipoLabel = (v: unknown): string | null => {
-      if (typeof v !== 'string' || !v) return null
-      const map: Record<string, string> = { personale: 'Personale', ambientale: 'Ambientale', puntuale: 'Puntuale' }
-      return map[v] ?? v
+    if (misure.length <= L) {
+      fillGasSheet(ws, ctx, misure)
+      return
     }
 
-    const misure = [...ctx.misure].sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0))
-    misure.forEach((m, idx) => {
-      const bi = Math.floor(idx / 8)
-      if (bi >= blocchi.length) { console.warn(`Gas: misura ${idx + 1} oltre 32 — ignorata`); return }
-      const r = blocchi[bi].dataStartRow + (idx % 8)
-      const dati = (m.dati ?? {}) as Record<string, unknown>
-      const macchine = (dati.macchine_nomi as string[] | undefined) ?? []
+    const fette: Misura[][] = []
+    for (let i = 0; i < misure.length; i += L) fette.push(misure.slice(i, i + L))
 
-      ws.getCell(`B${r}`).value = (dati.fase_nome as string | undefined) ?? null
-      ws.getCell(`C${r}`).value = (dati.postazione_nome as string | undefined) ?? null
-      ws.getCell(`D${r}`).value = (dati.tempo_prelievo as string | undefined) ?? null
-      ws.getCell(`E${r}`).value = tipoLabel(dati.tipo_prelievo)
-      ws.getCell(`F${r}`).value = macchine.length > 0 ? macchine.join(', ') : null
-      ws.getCell(`G${r}`).value = toNumber(dati.no2)
-      ws.getCell(`H${r}`).value = toNumber(dati.no)
-      ws.getCell(`I${r}`).value = toNumber(dati.co)
-      ws.getCell(`J${r}`).value = toNumber(dati.co2)
-      ws.getCell(`K${r}`).value = toNumber(dati.h2s)
+    const sheets: import('exceljs').Worksheet[] = [ws]
+    for (let i = 1; i < fette.length; i++) {
+      const start = i * L + 1
+      const end = i * L + fette[i].length
+      sheets.push(cloneSheet(workbook, ws, `Misure ${start}-${end}`))
+    }
+    ws.name = `Misure 1-${fette[0].length}`
 
-      const altroNome = typeof dati.altro_gas_nome === 'string' ? dati.altro_gas_nome.trim() : ''
-      const altroVal = toNumber(dati.altro_gas_valore)
-      if (altroNome && altroVal !== null) ws.getCell(`L${r}`).value = `${altroNome}: ${altroVal}`
-      else if (altroNome) ws.getCell(`L${r}`).value = altroNome
-      else if (altroVal !== null) ws.getCell(`L${r}`).value = altroVal
-
-      ws.getCell(`M${r}`).value = toNumber(dati.o2)
-      const n = ws.getCell(`N${r}`)
-      n.value = m.note ?? null
-      n.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
-    })
+    fette.forEach((fetta, i) => fillGasSheet(sheets[i], ctx, fetta))
   },
 }
 
@@ -1025,6 +1219,70 @@ export const exportSchemaGas: ExportSchema = {
 //   conc polveri(mg/m³), silice filtro(mg), conc silice(mg/m³)
 // Nota: temperatura e velocita_aria NON in colonne (non standard per il
 //   foglio cartaceo).
+function fillPolveriSheet(ws: Worksheet, ctx: ExportContext, misureFetta: Misura[]): void {
+  const blocchi = [
+    { headerRow: 1,  dataStartRow: 4,  footerRow: 12 },
+    { headerRow: 14, dataStartRow: 17, footerRow: 25 },
+    { headerRow: 27, dataStartRow: 30, footerRow: 38 },
+    { headerRow: 40, dataStartRow: 43, footerRow: 51 },
+  ]
+  const dataFormatted = ctx.campagna.data_ora ? new Date(ctx.campagna.data_ora).toLocaleDateString('it-IT') : ''
+  const committente = ctx.cantiere.committente ?? ''
+  const cantiereNome = ctx.cantiere.nome
+  const nomiTecnici = ctx.tecnici.map((t) => `${t.nome} ${t.cognome}`.trim()).join(', ')
+  const strumentoStr = ctx.strumento
+    ? `Strumentazione: ${ctx.strumento.nome} ${ctx.strumento.modello} (${ctx.strumento.matricola})`
+    : 'Strumentazione:'
+
+  blocchi.forEach((b) => {
+    const c = ws.getCell(`B${b.headerRow}`)
+    c.value = committente || null
+    c.alignment = { horizontal: 'center', vertical: 'middle' }
+    const d = ws.getCell(`D${b.headerRow}`)
+    d.value = dataFormatted ? `Data: ${dataFormatted}` : 'Data:'
+    d.alignment = { horizontal: 'center', vertical: 'middle' }
+    const k = ws.getCell(`F${b.headerRow}`)
+    k.value = cantiereNome
+    k.alignment = { horizontal: 'center', vertical: 'middle' }
+    if (nomiTecnici) ws.getCell(`C${b.footerRow}`).value = nomiTecnici
+    ws.getCell(`I${b.footerRow}`).value = strumentoStr
+  })
+
+  const tipoLabel = (v: unknown): string | null => {
+    if (typeof v !== 'string' || !v) return null
+    const map: Record<string, string> = { personale: 'Personale', ambientale: 'Ambientale', statico: 'Ambientale statico' }
+    return map[v] ?? v
+  }
+
+  const concSottoSoglia = (val: unknown, flag: unknown): number | string | null => {
+    const n = toNumber(val)
+    if (n === null) return null
+    return flag === true ? `<${n}` : n
+  }
+
+  misureFetta.forEach((m, idx) => {
+    const bi = Math.floor(idx / 8)
+    if (bi >= blocchi.length) return
+    const r = blocchi[bi].dataStartRow + (idx % 8)
+    const dati = (m.dati ?? {}) as Record<string, unknown>
+    const macchine = (dati.macchine_nomi as string[] | undefined) ?? []
+
+    ws.getCell(`B${r}`).value = (dati.fase_nome as string | undefined) ?? null
+    ws.getCell(`C${r}`).value = (dati.postazione_nome as string | undefined) ?? null
+    ws.getCell(`D${r}`).value = tipoLabel(dati.tipo_misura)
+    ws.getCell(`E${r}`).value = macchine.length > 0 ? macchine.join(', ') : null
+    ws.getCell(`F${r}`).value = (dati.codice_filtro as string | undefined) ?? null
+    ws.getCell(`G${r}`).value = (dati.pompa as string | undefined) ?? null
+    ws.getCell(`H${r}`).value = toNumber(dati.portata_q)
+    ws.getCell(`I${r}`).value = toNumber(dati.durata_prelievo)
+    ws.getCell(`J${r}`).value = toNumber(dati.volume_campionato)
+    ws.getCell(`K${r}`).value = toNumber(dati.polveri_filtro)
+    ws.getCell(`L${r}`).value = toNumber(dati.conc_polveri)
+    ws.getCell(`M${r}`).value = typeof dati.silice_filtro_raw === 'string' && dati.silice_filtro_raw ? dati.silice_filtro_raw : toNumber(dati.silice_filtro_valore)
+    ws.getCell(`N${r}`).value = concSottoSoglia(dati.conc_silice, dati.conc_silice_sotto_soglia)
+  })
+}
+
 const exportSchemaPolveri: ExportSchema = {
   templateUrl: '/templates/polveri.xlsx',
 
@@ -1038,68 +1296,26 @@ const exportSchemaPolveri: ExportSchema = {
     const ws = workbook.getWorksheet('Foglio1')
     if (!ws) throw new Error("Foglio 'Foglio1' non trovato nel template Polveri")
 
-    const blocchi = [
-      { headerRow: 1,  dataStartRow: 4,  footerRow: 12 },
-      { headerRow: 14, dataStartRow: 17, footerRow: 25 },
-      { headerRow: 27, dataStartRow: 30, footerRow: 38 },
-      { headerRow: 40, dataStartRow: 43, footerRow: 51 },
-    ]
-    const dataFormatted = ctx.campagna.data_ora ? new Date(ctx.campagna.data_ora).toLocaleDateString('it-IT') : ''
-    const committente = ctx.cantiere.committente ?? ''
-    const cantiereNome = ctx.cantiere.nome
-    const nomiTecnici = ctx.tecnici.map((t) => `${t.nome} ${t.cognome}`.trim()).join(', ')
-    const strumentoStr = ctx.strumento
-      ? `Strumentazione: ${ctx.strumento.nome} ${ctx.strumento.modello} (${ctx.strumento.matricola})`
-      : 'Strumentazione:'
-
-    blocchi.forEach((b) => {
-      const c = ws.getCell(`B${b.headerRow}`)
-      c.value = committente || null
-      c.alignment = { horizontal: 'center', vertical: 'middle' }
-      const d = ws.getCell(`D${b.headerRow}`)
-      d.value = dataFormatted ? `Data: ${dataFormatted}` : 'Data:'
-      d.alignment = { horizontal: 'center', vertical: 'middle' }
-      const k = ws.getCell(`F${b.headerRow}`)
-      k.value = cantiereNome
-      k.alignment = { horizontal: 'center', vertical: 'middle' }
-      if (nomiTecnici) ws.getCell(`C${b.footerRow}`).value = nomiTecnici
-      ws.getCell(`I${b.footerRow}`).value = strumentoStr
-    })
-
-    const tipoLabel = (v: unknown): string | null => {
-      if (typeof v !== 'string' || !v) return null
-      const map: Record<string, string> = { personale: 'Personale', ambientale: 'Ambientale', statico: 'Ambientale statico' }
-      return map[v] ?? v
-    }
-
-    const concSottoSoglia = (val: unknown, flag: unknown): number | string | null => {
-      const n = toNumber(val)
-      if (n === null) return null
-      return flag === true ? `<${n}` : n
-    }
-
+    const L = 32
     const misure = [...ctx.misure].sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0))
-    misure.forEach((m, idx) => {
-      const bi = Math.floor(idx / 8)
-      if (bi >= blocchi.length) { console.warn(`Polveri: misura ${idx + 1} oltre 32 — ignorata`); return }
-      const r = blocchi[bi].dataStartRow + (idx % 8)
-      const dati = (m.dati ?? {}) as Record<string, unknown>
-      const macchine = (dati.macchine_nomi as string[] | undefined) ?? []
 
-      ws.getCell(`B${r}`).value = (dati.fase_nome as string | undefined) ?? null
-      ws.getCell(`C${r}`).value = (dati.postazione_nome as string | undefined) ?? null
-      ws.getCell(`D${r}`).value = tipoLabel(dati.tipo_misura)
-      ws.getCell(`E${r}`).value = macchine.length > 0 ? macchine.join(', ') : null
-      ws.getCell(`F${r}`).value = (dati.codice_filtro as string | undefined) ?? null
-      ws.getCell(`G${r}`).value = (dati.pompa as string | undefined) ?? null
-      ws.getCell(`H${r}`).value = toNumber(dati.portata_q)
-      ws.getCell(`I${r}`).value = toNumber(dati.durata_prelievo)
-      ws.getCell(`J${r}`).value = toNumber(dati.volume_campionato)
-      ws.getCell(`K${r}`).value = toNumber(dati.polveri_filtro)
-      ws.getCell(`L${r}`).value = toNumber(dati.conc_polveri)
-      ws.getCell(`M${r}`).value = typeof dati.silice_filtro_raw === 'string' && dati.silice_filtro_raw ? dati.silice_filtro_raw : toNumber(dati.silice_filtro_valore)
-      ws.getCell(`N${r}`).value = concSottoSoglia(dati.conc_silice, dati.conc_silice_sotto_soglia)
-    })
+    if (misure.length <= L) {
+      fillPolveriSheet(ws, ctx, misure)
+      return
+    }
+
+    const fette: Misura[][] = []
+    for (let i = 0; i < misure.length; i += L) fette.push(misure.slice(i, i + L))
+
+    const sheets: import('exceljs').Worksheet[] = [ws]
+    for (let i = 1; i < fette.length; i++) {
+      const start = i * L + 1
+      const end = i * L + fette[i].length
+      sheets.push(cloneSheet(workbook, ws, `Misure ${start}-${end}`))
+    }
+    ws.name = `Misure 1-${fette[0].length}`
+
+    fette.forEach((fetta, i) => fillPolveriSheet(sheets[i], ctx, fetta))
   },
 }
 
@@ -1108,6 +1324,65 @@ const exportSchemaPolveri: ExportSchema = {
 // Colonne A-L: n°, fase, postazione, tipo misura, macchine, codice filtro,
 //   pompa, Q(L/min), durata(min), volume(L), EC filtro(µg), conc EC(mg/m³)
 // Nota: temperatura e velocita_aria NON in colonne.
+function fillCarbonioSheet(ws: Worksheet, ctx: ExportContext, misureFetta: Misura[]): void {
+  const blocchi = [
+    { headerRow: 1,  dataStartRow: 4,  footerRow: 12 },
+    { headerRow: 14, dataStartRow: 17, footerRow: 25 },
+    { headerRow: 27, dataStartRow: 30, footerRow: 38 },
+    { headerRow: 40, dataStartRow: 43, footerRow: 51 },
+  ]
+  const dataFormatted = ctx.campagna.data_ora ? new Date(ctx.campagna.data_ora).toLocaleDateString('it-IT') : ''
+  const committente = ctx.cantiere.committente ?? ''
+  const cantiereNome = ctx.cantiere.nome
+  const nomiTecnici = ctx.tecnici.map((t) => `${t.nome} ${t.cognome}`.trim()).join(', ')
+  const strumentoStr = ctx.strumento
+    ? `Strumentazione: ${ctx.strumento.nome} ${ctx.strumento.modello} (${ctx.strumento.matricola})`
+    : 'Strumentazione:'
+
+  blocchi.forEach((b) => {
+    const c = ws.getCell(`B${b.headerRow}`)
+    c.value = committente || null
+    c.alignment = { horizontal: 'center', vertical: 'middle' }
+    const d = ws.getCell(`D${b.headerRow}`)
+    d.value = dataFormatted ? `Data: ${dataFormatted}` : 'Data:'
+    d.alignment = { horizontal: 'center', vertical: 'middle' }
+    const k = ws.getCell(`F${b.headerRow}`)
+    k.value = cantiereNome
+    k.alignment = { horizontal: 'center', vertical: 'middle' }
+    if (nomiTecnici) ws.getCell(`C${b.footerRow}`).value = nomiTecnici
+    ws.getCell(`H${b.footerRow}`).value = strumentoStr
+  })
+
+  const tipoLabel = (v: unknown): string | null => {
+    if (typeof v !== 'string' || !v) return null
+    const map: Record<string, string> = { personale: 'Personale', ambientale: 'Ambientale', statico: 'Ambientale statico' }
+    return map[v] ?? v
+  }
+
+  misureFetta.forEach((m, idx) => {
+    const bi = Math.floor(idx / 8)
+    if (bi >= blocchi.length) return
+    const r = blocchi[bi].dataStartRow + (idx % 8)
+    const dati = (m.dati ?? {}) as Record<string, unknown>
+    const macchine = (dati.macchine_nomi as string[] | undefined) ?? []
+
+    ws.getCell(`B${r}`).value = (dati.fase_nome as string | undefined) ?? null
+    ws.getCell(`C${r}`).value = (dati.postazione_nome as string | undefined) ?? null
+    ws.getCell(`D${r}`).value = tipoLabel(dati.tipo_misura)
+    ws.getCell(`E${r}`).value = macchine.length > 0 ? macchine.join(', ') : null
+    ws.getCell(`F${r}`).value = (dati.codice_filtro as string | undefined) ?? null
+    ws.getCell(`G${r}`).value = (dati.pompa as string | undefined) ?? null
+    ws.getCell(`H${r}`).value = toNumber(dati.portata_q)
+    ws.getCell(`I${r}`).value = toNumber(dati.durata_prelievo)
+    ws.getCell(`J${r}`).value = toNumber(dati.volume_campionato)
+    // EC filtro: usa raw string se presente (può contenere "<")
+    ws.getCell(`K${r}`).value = typeof dati.ec_filtro_raw === 'string' && dati.ec_filtro_raw ? dati.ec_filtro_raw : toNumber(dati.ec_filtro_valore)
+    // conc EC: prefissa "<" se sotto soglia
+    const concEc = toNumber(dati.conc_ec)
+    ws.getCell(`L${r}`).value = concEc !== null && dati.ec_sotto_soglia === true ? `<${concEc}` : concEc
+  })
+}
+
 const exportSchemaCarbonio: ExportSchema = {
   templateUrl: '/templates/carbonio-elementare.xlsx',
 
@@ -1121,63 +1396,26 @@ const exportSchemaCarbonio: ExportSchema = {
     const ws = workbook.getWorksheet('Foglio1')
     if (!ws) throw new Error("Foglio 'Foglio1' non trovato nel template Carbonio elementare")
 
-    const blocchi = [
-      { headerRow: 1,  dataStartRow: 4,  footerRow: 12 },
-      { headerRow: 14, dataStartRow: 17, footerRow: 25 },
-      { headerRow: 27, dataStartRow: 30, footerRow: 38 },
-      { headerRow: 40, dataStartRow: 43, footerRow: 51 },
-    ]
-    const dataFormatted = ctx.campagna.data_ora ? new Date(ctx.campagna.data_ora).toLocaleDateString('it-IT') : ''
-    const committente = ctx.cantiere.committente ?? ''
-    const cantiereNome = ctx.cantiere.nome
-    const nomiTecnici = ctx.tecnici.map((t) => `${t.nome} ${t.cognome}`.trim()).join(', ')
-    const strumentoStr = ctx.strumento
-      ? `Strumentazione: ${ctx.strumento.nome} ${ctx.strumento.modello} (${ctx.strumento.matricola})`
-      : 'Strumentazione:'
+    const L = 32
+    const misure = [...ctx.misure].sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0))
 
-    blocchi.forEach((b) => {
-      const c = ws.getCell(`B${b.headerRow}`)
-      c.value = committente || null
-      c.alignment = { horizontal: 'center', vertical: 'middle' }
-      const d = ws.getCell(`D${b.headerRow}`)
-      d.value = dataFormatted ? `Data: ${dataFormatted}` : 'Data:'
-      d.alignment = { horizontal: 'center', vertical: 'middle' }
-      const k = ws.getCell(`F${b.headerRow}`)
-      k.value = cantiereNome
-      k.alignment = { horizontal: 'center', vertical: 'middle' }
-      if (nomiTecnici) ws.getCell(`C${b.footerRow}`).value = nomiTecnici
-      ws.getCell(`H${b.footerRow}`).value = strumentoStr
-    })
-
-    const tipoLabel = (v: unknown): string | null => {
-      if (typeof v !== 'string' || !v) return null
-      const map: Record<string, string> = { personale: 'Personale', ambientale: 'Ambientale', statico: 'Ambientale statico' }
-      return map[v] ?? v
+    if (misure.length <= L) {
+      fillCarbonioSheet(ws, ctx, misure)
+      return
     }
 
-    const misure = [...ctx.misure].sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0))
-    misure.forEach((m, idx) => {
-      const bi = Math.floor(idx / 8)
-      if (bi >= blocchi.length) { console.warn(`Carbonio: misura ${idx + 1} oltre 32 — ignorata`); return }
-      const r = blocchi[bi].dataStartRow + (idx % 8)
-      const dati = (m.dati ?? {}) as Record<string, unknown>
-      const macchine = (dati.macchine_nomi as string[] | undefined) ?? []
+    const fette: Misura[][] = []
+    for (let i = 0; i < misure.length; i += L) fette.push(misure.slice(i, i + L))
 
-      ws.getCell(`B${r}`).value = (dati.fase_nome as string | undefined) ?? null
-      ws.getCell(`C${r}`).value = (dati.postazione_nome as string | undefined) ?? null
-      ws.getCell(`D${r}`).value = tipoLabel(dati.tipo_misura)
-      ws.getCell(`E${r}`).value = macchine.length > 0 ? macchine.join(', ') : null
-      ws.getCell(`F${r}`).value = (dati.codice_filtro as string | undefined) ?? null
-      ws.getCell(`G${r}`).value = (dati.pompa as string | undefined) ?? null
-      ws.getCell(`H${r}`).value = toNumber(dati.portata_q)
-      ws.getCell(`I${r}`).value = toNumber(dati.durata_prelievo)
-      ws.getCell(`J${r}`).value = toNumber(dati.volume_campionato)
-      // EC filtro: usa raw string se presente (può contenere "<")
-      ws.getCell(`K${r}`).value = typeof dati.ec_filtro_raw === 'string' && dati.ec_filtro_raw ? dati.ec_filtro_raw : toNumber(dati.ec_filtro_valore)
-      // conc EC: prefissa "<" se sotto soglia
-      const concEc = toNumber(dati.conc_ec)
-      ws.getCell(`L${r}`).value = concEc !== null && dati.ec_sotto_soglia === true ? `<${concEc}` : concEc
-    })
+    const sheets: import('exceljs').Worksheet[] = [ws]
+    for (let i = 1; i < fette.length; i++) {
+      const start = i * L + 1
+      const end = i * L + fette[i].length
+      sheets.push(cloneSheet(workbook, ws, `Misure ${start}-${end}`))
+    }
+    ws.name = `Misure 1-${fette[0].length}`
+
+    fette.forEach((fetta, i) => fillCarbonioSheet(sheets[i], ctx, fetta))
   },
 }
 
@@ -1188,6 +1426,62 @@ const exportSchemaCarbonio: ExportSchema = {
 // Nota: N° MEMBRANA rimossa dal foglio campagna (campo ancora in dati, non esportato).
 // Nota: nessuna colonna risultato — i valori analitici IPA vengono dal lab.
 // Nota: temperatura e velocita_aria NON in colonne.
+function fillIpaSheet(ws: Worksheet, ctx: ExportContext, misureFetta: Misura[]): void {
+  const blocchi = [
+    { headerRow: 1,  dataStartRow: 4,  footerRow: 12 },
+    { headerRow: 14, dataStartRow: 17, footerRow: 25 },
+    { headerRow: 27, dataStartRow: 30, footerRow: 38 },
+    { headerRow: 40, dataStartRow: 43, footerRow: 51 },
+  ]
+  const dataFormatted = ctx.campagna.data_ora ? new Date(ctx.campagna.data_ora).toLocaleDateString('it-IT') : ''
+  const committente = ctx.cantiere.committente ?? ''
+  const cantiereNome = ctx.cantiere.nome
+  const nomiTecnici = ctx.tecnici.map((t) => `${t.nome} ${t.cognome}`.trim()).join(', ')
+  const strumentoStr = ctx.strumento
+    ? `Strumentazione: ${ctx.strumento.nome} ${ctx.strumento.modello} (${ctx.strumento.matricola})`
+    : 'Strumentazione:'
+
+  blocchi.forEach((b) => {
+    const c = ws.getCell(`B${b.headerRow}`)
+    c.value = committente || null
+    c.alignment = { horizontal: 'center', vertical: 'middle' }
+    const d = ws.getCell(`D${b.headerRow}`)
+    d.value = dataFormatted ? `Data: ${dataFormatted}` : 'Data:'
+    d.alignment = { horizontal: 'center', vertical: 'middle' }
+    const k = ws.getCell(`F${b.headerRow}`)
+    k.value = cantiereNome
+    k.alignment = { horizontal: 'center', vertical: 'middle' }
+    if (nomiTecnici) ws.getCell(`C${b.footerRow}`).value = nomiTecnici
+    ws.getCell(`G${b.footerRow}`).value = strumentoStr
+  })
+
+  const tipoLabel = (v: unknown): string | null => {
+    if (typeof v !== 'string' || !v) return null
+    const map: Record<string, string> = { personale: 'Personale', ambientale: 'Ambientale', statico: 'Ambientale statico' }
+    return map[v] ?? v
+  }
+
+  misureFetta.forEach((m, idx) => {
+    const bi = Math.floor(idx / 8)
+    if (bi >= blocchi.length) return
+    const r = blocchi[bi].dataStartRow + (idx % 8)
+    const dati = (m.dati ?? {}) as Record<string, unknown>
+    const macchine = (dati.macchine_nomi as string[] | undefined) ?? []
+
+    ws.getCell(`B${r}`).value = (dati.fase_nome as string | undefined) ?? null
+    ws.getCell(`C${r}`).value = (dati.postazione_nome as string | undefined) ?? null
+    ws.getCell(`D${r}`).value = tipoLabel(dati.tipo_misura)
+    ws.getCell(`E${r}`).value = macchine.length > 0 ? macchine.join(', ') : null
+    ws.getCell(`F${r}`).value = (dati.codice_campione as string | undefined) ?? null
+    ws.getCell(`G${r}`).value = (dati.numero_fiala as string | undefined) ?? null
+    // H: numero_membrana rimossa — numero_membrana rimane in dati ma non viene esportata
+    ws.getCell(`H${r}`).value = (dati.pompa as string | undefined) ?? null
+    ws.getCell(`I${r}`).value = toNumber(dati.portata_q)
+    ws.getCell(`J${r}`).value = toNumber(dati.durata_prelievo)
+    ws.getCell(`K${r}`).value = toNumber(dati.volume_campionato)
+  })
+}
+
 const exportSchemaIpa: ExportSchema = {
   templateUrl: '/templates/ipa.xlsx',
 
@@ -1201,60 +1495,26 @@ const exportSchemaIpa: ExportSchema = {
     const ws = workbook.getWorksheet('Foglio1')
     if (!ws) throw new Error("Foglio 'Foglio1' non trovato nel template IPA")
 
-    const blocchi = [
-      { headerRow: 1,  dataStartRow: 4,  footerRow: 12 },
-      { headerRow: 14, dataStartRow: 17, footerRow: 25 },
-      { headerRow: 27, dataStartRow: 30, footerRow: 38 },
-      { headerRow: 40, dataStartRow: 43, footerRow: 51 },
-    ]
-    const dataFormatted = ctx.campagna.data_ora ? new Date(ctx.campagna.data_ora).toLocaleDateString('it-IT') : ''
-    const committente = ctx.cantiere.committente ?? ''
-    const cantiereNome = ctx.cantiere.nome
-    const nomiTecnici = ctx.tecnici.map((t) => `${t.nome} ${t.cognome}`.trim()).join(', ')
-    const strumentoStr = ctx.strumento
-      ? `Strumentazione: ${ctx.strumento.nome} ${ctx.strumento.modello} (${ctx.strumento.matricola})`
-      : 'Strumentazione:'
+    const L = 32
+    const misure = [...ctx.misure].sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0))
 
-    blocchi.forEach((b) => {
-      const c = ws.getCell(`B${b.headerRow}`)
-      c.value = committente || null
-      c.alignment = { horizontal: 'center', vertical: 'middle' }
-      const d = ws.getCell(`D${b.headerRow}`)
-      d.value = dataFormatted ? `Data: ${dataFormatted}` : 'Data:'
-      d.alignment = { horizontal: 'center', vertical: 'middle' }
-      const k = ws.getCell(`F${b.headerRow}`)
-      k.value = cantiereNome
-      k.alignment = { horizontal: 'center', vertical: 'middle' }
-      if (nomiTecnici) ws.getCell(`C${b.footerRow}`).value = nomiTecnici
-      ws.getCell(`G${b.footerRow}`).value = strumentoStr
-    })
-
-    const tipoLabel = (v: unknown): string | null => {
-      if (typeof v !== 'string' || !v) return null
-      const map: Record<string, string> = { personale: 'Personale', ambientale: 'Ambientale', statico: 'Ambientale statico' }
-      return map[v] ?? v
+    if (misure.length <= L) {
+      fillIpaSheet(ws, ctx, misure)
+      return
     }
 
-    const misure = [...ctx.misure].sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0))
-    misure.forEach((m, idx) => {
-      const bi = Math.floor(idx / 8)
-      if (bi >= blocchi.length) { console.warn(`IPA: misura ${idx + 1} oltre 32 — ignorata`); return }
-      const r = blocchi[bi].dataStartRow + (idx % 8)
-      const dati = (m.dati ?? {}) as Record<string, unknown>
-      const macchine = (dati.macchine_nomi as string[] | undefined) ?? []
+    const fette: Misura[][] = []
+    for (let i = 0; i < misure.length; i += L) fette.push(misure.slice(i, i + L))
 
-      ws.getCell(`B${r}`).value = (dati.fase_nome as string | undefined) ?? null
-      ws.getCell(`C${r}`).value = (dati.postazione_nome as string | undefined) ?? null
-      ws.getCell(`D${r}`).value = tipoLabel(dati.tipo_misura)
-      ws.getCell(`E${r}`).value = macchine.length > 0 ? macchine.join(', ') : null
-      ws.getCell(`F${r}`).value = (dati.codice_campione as string | undefined) ?? null
-      ws.getCell(`G${r}`).value = (dati.numero_fiala as string | undefined) ?? null
-      // H: numero_membrana rimossa — numero_membrana rimane in dati ma non viene esportata
-      ws.getCell(`H${r}`).value = (dati.pompa as string | undefined) ?? null
-      ws.getCell(`I${r}`).value = toNumber(dati.portata_q)
-      ws.getCell(`J${r}`).value = toNumber(dati.durata_prelievo)
-      ws.getCell(`K${r}`).value = toNumber(dati.volume_campionato)
-    })
+    const sheets: import('exceljs').Worksheet[] = [ws]
+    for (let i = 1; i < fette.length; i++) {
+      const start = i * L + 1
+      const end = i * L + fette[i].length
+      sheets.push(cloneSheet(workbook, ws, `Misure ${start}-${end}`))
+    }
+    ws.name = `Misure 1-${fette[0].length}`
+
+    fette.forEach((fetta, i) => fillIpaSheet(sheets[i], ctx, fetta))
   },
 }
 
@@ -1264,6 +1524,65 @@ const exportSchemaIpa: ExportSchema = {
 //   pompa, Q(L/min), durata(min), volume(L), fibre filtro(ff/mm²),
 //   conc fibre tot.(ff/L), conc amianto(ff/L)
 // Nota: temperatura e velocita_aria NON in colonne.
+function fillAmiantoSheet(ws: Worksheet, ctx: ExportContext, misureFetta: Misura[]): void {
+  const blocchi = [
+    { headerRow: 1,  dataStartRow: 4,  footerRow: 12 },
+    { headerRow: 14, dataStartRow: 17, footerRow: 25 },
+    { headerRow: 27, dataStartRow: 30, footerRow: 38 },
+    { headerRow: 40, dataStartRow: 43, footerRow: 51 },
+  ]
+  const dataFormatted = ctx.campagna.data_ora ? new Date(ctx.campagna.data_ora).toLocaleDateString('it-IT') : ''
+  const committente = ctx.cantiere.committente ?? ''
+  const cantiereNome = ctx.cantiere.nome
+  const nomiTecnici = ctx.tecnici.map((t) => `${t.nome} ${t.cognome}`.trim()).join(', ')
+  const strumentoStr = ctx.strumento
+    ? `Strumentazione: ${ctx.strumento.nome} ${ctx.strumento.modello} (${ctx.strumento.matricola})`
+    : 'Strumentazione:'
+
+  blocchi.forEach((b) => {
+    const c = ws.getCell(`B${b.headerRow}`)
+    c.value = committente || null
+    c.alignment = { horizontal: 'center', vertical: 'middle' }
+    const d = ws.getCell(`D${b.headerRow}`)
+    d.value = dataFormatted ? `Data: ${dataFormatted}` : 'Data:'
+    d.alignment = { horizontal: 'center', vertical: 'middle' }
+    const k = ws.getCell(`F${b.headerRow}`)
+    k.value = cantiereNome
+    k.alignment = { horizontal: 'center', vertical: 'middle' }
+    if (nomiTecnici) ws.getCell(`C${b.footerRow}`).value = nomiTecnici
+    ws.getCell(`H${b.footerRow}`).value = strumentoStr
+  })
+
+  const tipoLabel = (v: unknown): string | null => {
+    if (typeof v !== 'string' || !v) return null
+    const map: Record<string, string> = { personale: 'Personale', ambientale: 'Ambientale', statico: 'Ambientale statico' }
+    return map[v] ?? v
+  }
+
+  misureFetta.forEach((m, idx) => {
+    const bi = Math.floor(idx / 8)
+    if (bi >= blocchi.length) return
+    const r = blocchi[bi].dataStartRow + (idx % 8)
+    const dati = (m.dati ?? {}) as Record<string, unknown>
+    const macchine = (dati.macchine_nomi as string[] | undefined) ?? []
+
+    ws.getCell(`B${r}`).value = (dati.fase_nome as string | undefined) ?? null
+    ws.getCell(`C${r}`).value = (dati.postazione_nome as string | undefined) ?? null
+    ws.getCell(`D${r}`).value = tipoLabel(dati.tipo_misura)
+    ws.getCell(`E${r}`).value = macchine.length > 0 ? macchine.join(', ') : null
+    ws.getCell(`F${r}`).value = (dati.codice_filtro as string | undefined) ?? null
+    ws.getCell(`G${r}`).value = (dati.pompa as string | undefined) ?? null
+    ws.getCell(`H${r}`).value = toNumber(dati.portata_q)
+    ws.getCell(`I${r}`).value = toNumber(dati.durata_prelievo)
+    ws.getCell(`J${r}`).value = toNumber(dati.volume_campionato)
+    ws.getCell(`K${r}`).value = toNumber(dati.fibre_filtro)
+    ws.getCell(`L${r}`).value = toNumber(dati.conc_fibre_totali)
+    // conc amianto: prefissa "<" se sotto soglia
+    const concAmianto = toNumber(dati.conc_amianto)
+    ws.getCell(`M${r}`).value = concAmianto !== null && dati.amianto_sotto_soglia === true ? `<${concAmianto}` : concAmianto
+  })
+}
+
 const exportSchemaAmianto: ExportSchema = {
   templateUrl: '/templates/amianto.xlsx',
 
@@ -1277,63 +1596,26 @@ const exportSchemaAmianto: ExportSchema = {
     const ws = workbook.getWorksheet('Foglio1')
     if (!ws) throw new Error("Foglio 'Foglio1' non trovato nel template Amianto")
 
-    const blocchi = [
-      { headerRow: 1,  dataStartRow: 4,  footerRow: 12 },
-      { headerRow: 14, dataStartRow: 17, footerRow: 25 },
-      { headerRow: 27, dataStartRow: 30, footerRow: 38 },
-      { headerRow: 40, dataStartRow: 43, footerRow: 51 },
-    ]
-    const dataFormatted = ctx.campagna.data_ora ? new Date(ctx.campagna.data_ora).toLocaleDateString('it-IT') : ''
-    const committente = ctx.cantiere.committente ?? ''
-    const cantiereNome = ctx.cantiere.nome
-    const nomiTecnici = ctx.tecnici.map((t) => `${t.nome} ${t.cognome}`.trim()).join(', ')
-    const strumentoStr = ctx.strumento
-      ? `Strumentazione: ${ctx.strumento.nome} ${ctx.strumento.modello} (${ctx.strumento.matricola})`
-      : 'Strumentazione:'
+    const L = 32
+    const misure = [...ctx.misure].sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0))
 
-    blocchi.forEach((b) => {
-      const c = ws.getCell(`B${b.headerRow}`)
-      c.value = committente || null
-      c.alignment = { horizontal: 'center', vertical: 'middle' }
-      const d = ws.getCell(`D${b.headerRow}`)
-      d.value = dataFormatted ? `Data: ${dataFormatted}` : 'Data:'
-      d.alignment = { horizontal: 'center', vertical: 'middle' }
-      const k = ws.getCell(`F${b.headerRow}`)
-      k.value = cantiereNome
-      k.alignment = { horizontal: 'center', vertical: 'middle' }
-      if (nomiTecnici) ws.getCell(`C${b.footerRow}`).value = nomiTecnici
-      ws.getCell(`H${b.footerRow}`).value = strumentoStr
-    })
-
-    const tipoLabel = (v: unknown): string | null => {
-      if (typeof v !== 'string' || !v) return null
-      const map: Record<string, string> = { personale: 'Personale', ambientale: 'Ambientale', statico: 'Ambientale statico' }
-      return map[v] ?? v
+    if (misure.length <= L) {
+      fillAmiantoSheet(ws, ctx, misure)
+      return
     }
 
-    const misure = [...ctx.misure].sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0))
-    misure.forEach((m, idx) => {
-      const bi = Math.floor(idx / 8)
-      if (bi >= blocchi.length) { console.warn(`Amianto: misura ${idx + 1} oltre 32 — ignorata`); return }
-      const r = blocchi[bi].dataStartRow + (idx % 8)
-      const dati = (m.dati ?? {}) as Record<string, unknown>
-      const macchine = (dati.macchine_nomi as string[] | undefined) ?? []
+    const fette: Misura[][] = []
+    for (let i = 0; i < misure.length; i += L) fette.push(misure.slice(i, i + L))
 
-      ws.getCell(`B${r}`).value = (dati.fase_nome as string | undefined) ?? null
-      ws.getCell(`C${r}`).value = (dati.postazione_nome as string | undefined) ?? null
-      ws.getCell(`D${r}`).value = tipoLabel(dati.tipo_misura)
-      ws.getCell(`E${r}`).value = macchine.length > 0 ? macchine.join(', ') : null
-      ws.getCell(`F${r}`).value = (dati.codice_filtro as string | undefined) ?? null
-      ws.getCell(`G${r}`).value = (dati.pompa as string | undefined) ?? null
-      ws.getCell(`H${r}`).value = toNumber(dati.portata_q)
-      ws.getCell(`I${r}`).value = toNumber(dati.durata_prelievo)
-      ws.getCell(`J${r}`).value = toNumber(dati.volume_campionato)
-      ws.getCell(`K${r}`).value = toNumber(dati.fibre_filtro)
-      ws.getCell(`L${r}`).value = toNumber(dati.conc_fibre_totali)
-      // conc amianto: prefissa "<" se sotto soglia
-      const concAmianto = toNumber(dati.conc_amianto)
-      ws.getCell(`M${r}`).value = concAmianto !== null && dati.amianto_sotto_soglia === true ? `<${concAmianto}` : concAmianto
-    })
+    const sheets: import('exceljs').Worksheet[] = [ws]
+    for (let i = 1; i < fette.length; i++) {
+      const start = i * L + 1
+      const end = i * L + fette[i].length
+      sheets.push(cloneSheet(workbook, ws, `Misure ${start}-${end}`))
+    }
+    ws.name = `Misure 1-${fette[0].length}`
+
+    fette.forEach((fetta, i) => fillAmiantoSheet(sheets[i], ctx, fetta))
   },
 }
 
@@ -1343,6 +1625,61 @@ const exportSchemaAmianto: ExportSchema = {
 // sono sufficienti per coprire tutti i casi pratici di monitoraggio.
 // Colonne A-I: n°, punto monitoraggio, pH, conducibilità(µS/cm),
 //   T acqua(°C), T ambiente(°C), O2(%), O2(mg/L), note
+// Limite acqua: 16 misure per foglio (2 pagine × 8 misure nel template).
+const ACQUA_LIMITE = 16
+
+// Blocchi del template acqua: ogni foglio ha 2 pagine, ognuna con header
+// (committente/data/cantiere) + 8 righe misura + footer (tecnici/strumento).
+const ACQUA_BLOCCHI = [
+  { headerRow: 1,  dataStartRow: 4,  footerRow: 12 },
+  { headerRow: 14, dataStartRow: 17, footerRow: 25 },
+]
+
+/**
+ * Riempie UN foglio acqua (template o clonato) con header, footer e fino a
+ * 16 misure. `misureFetta` contiene al massimo 16 misure già ordinate.
+ */
+function fillAcquaSheet(ws: Worksheet, ctx: ExportContext, misureFetta: Misura[]): void {
+  const dataFormatted = ctx.campagna.data_ora ? new Date(ctx.campagna.data_ora).toLocaleDateString('it-IT') : ''
+  const committente = ctx.cantiere.committente ?? ''
+  const cantiereNome = ctx.cantiere.nome
+  const nomiTecnici = ctx.tecnici.map((t) => `${t.nome} ${t.cognome}`.trim()).join(', ')
+  const strumentoStr = ctx.strumento
+    ? `Strumentazione: ${ctx.strumento.nome} ${ctx.strumento.modello} (${ctx.strumento.matricola})`
+    : 'Strumentazione:'
+
+  ACQUA_BLOCCHI.forEach((b) => {
+    const c = ws.getCell(`B${b.headerRow}`)
+    c.value = committente || null
+    c.alignment = { horizontal: 'center', vertical: 'middle' }
+    const d = ws.getCell(`D${b.headerRow}`)
+    d.value = dataFormatted ? `Data: ${dataFormatted}` : 'Data:'
+    d.alignment = { horizontal: 'center', vertical: 'middle' }
+    const k = ws.getCell(`F${b.headerRow}`)
+    k.value = cantiereNome
+    k.alignment = { horizontal: 'center', vertical: 'middle' }
+    if (nomiTecnici) ws.getCell(`C${b.footerRow}`).value = nomiTecnici
+    ws.getCell(`F${b.footerRow}`).value = strumentoStr
+  })
+
+  misureFetta.forEach((m, idx) => {
+    const bi = Math.floor(idx / 8)
+    const r = ACQUA_BLOCCHI[bi].dataStartRow + (idx % 8)
+    const dati = (m.dati ?? {}) as Record<string, unknown>
+
+    ws.getCell(`B${r}`).value = (dati.punto_monitoraggio as string | undefined) ?? null
+    ws.getCell(`C${r}`).value = toNumber(dati.ph)
+    ws.getCell(`D${r}`).value = toNumber(dati.conducibilita)
+    ws.getCell(`E${r}`).value = toNumber(dati.t_acqua)
+    ws.getCell(`F${r}`).value = toNumber(dati.t_ambiente)
+    ws.getCell(`G${r}`).value = toNumber(dati.o2_perc)
+    ws.getCell(`H${r}`).value = toNumber(dati.o2_mg_l)
+    const n = ws.getCell(`I${r}`)
+    n.value = m.note ?? null
+    n.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
+  })
+}
+
 const exportSchemaAcqua: ExportSchema = {
   templateUrl: '/templates/acqua.xlsx',
 
@@ -1356,51 +1693,32 @@ const exportSchemaAcqua: ExportSchema = {
     const ws = workbook.getWorksheet('Foglio1')
     if (!ws) throw new Error("Foglio 'Foglio1' non trovato nel template Acqua")
 
-    // 2 pagine × 8 misure = 16 max; PAGE_ROWS=13
-    const blocchi = [
-      { headerRow: 1,  dataStartRow: 4,  footerRow: 12 },
-      { headerRow: 14, dataStartRow: 17, footerRow: 25 },
-    ]
-    const dataFormatted = ctx.campagna.data_ora ? new Date(ctx.campagna.data_ora).toLocaleDateString('it-IT') : ''
-    const committente = ctx.cantiere.committente ?? ''
-    const cantiereNome = ctx.cantiere.nome
-    const nomiTecnici = ctx.tecnici.map((t) => `${t.nome} ${t.cognome}`.trim()).join(', ')
-    const strumentoStr = ctx.strumento
-      ? `Strumentazione: ${ctx.strumento.nome} ${ctx.strumento.modello} (${ctx.strumento.matricola})`
-      : 'Strumentazione:'
-
-    blocchi.forEach((b) => {
-      const c = ws.getCell(`B${b.headerRow}`)
-      c.value = committente || null
-      c.alignment = { horizontal: 'center', vertical: 'middle' }
-      const d = ws.getCell(`D${b.headerRow}`)
-      d.value = dataFormatted ? `Data: ${dataFormatted}` : 'Data:'
-      d.alignment = { horizontal: 'center', vertical: 'middle' }
-      const k = ws.getCell(`F${b.headerRow}`)
-      k.value = cantiereNome
-      k.alignment = { horizontal: 'center', vertical: 'middle' }
-      if (nomiTecnici) ws.getCell(`C${b.footerRow}`).value = nomiTecnici
-      ws.getCell(`F${b.footerRow}`).value = strumentoStr
-    })
-
+    const L = ACQUA_LIMITE // 16 misure/foglio (2 pagine × 8)
     const misure = [...ctx.misure].sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0))
-    misure.forEach((m, idx) => {
-      const bi = Math.floor(idx / 8)
-      if (bi >= blocchi.length) { console.warn(`Acqua: misura ${idx + 1} oltre 16 — ignorata`); return }
-      const r = blocchi[bi].dataStartRow + (idx % 8)
-      const dati = (m.dati ?? {}) as Record<string, unknown>
 
-      ws.getCell(`B${r}`).value = (dati.punto_monitoraggio as string | undefined) ?? null
-      ws.getCell(`C${r}`).value = toNumber(dati.ph)
-      ws.getCell(`D${r}`).value = toNumber(dati.conducibilita)
-      ws.getCell(`E${r}`).value = toNumber(dati.t_acqua)
-      ws.getCell(`F${r}`).value = toNumber(dati.t_ambiente)
-      ws.getCell(`G${r}`).value = toNumber(dati.o2_perc)
-      ws.getCell(`H${r}`).value = toNumber(dati.o2_mg_l)
-      const n = ws.getCell(`I${r}`)
-      n.value = m.note ?? null
-      n.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
-    })
+    // Nessun overflow: comportamento identico a oggi — riempi il foglio
+    // template esistente con tutte le misure, NON rinominarlo.
+    if (misure.length <= L) {
+      fillAcquaSheet(ws, ctx, misure)
+      return
+    }
+
+    // Overflow: distribuisci le misure su più fogli clonando il template.
+    // I cloni vanno creati PRIMA di scrivere sul foglio template, altrimenti
+    // copierebbero i dati della prima fetta.
+    const fette: Misura[][] = []
+    for (let i = 0; i < misure.length; i += L) fette.push(misure.slice(i, i + L))
+
+    const sheets: import('exceljs').Worksheet[] = [ws]
+    for (let i = 1; i < fette.length; i++) {
+      const start = i * L + 1
+      const end = i * L + fette[i].length
+      sheets.push(cloneSheet(workbook, ws, `Misure ${start}-${end}`))
+    }
+    // Rinomina il foglio template solo ora (dopo le clonazioni pristine).
+    ws.name = `Misure 1-${fette[0].length}`
+
+    fette.forEach((fetta, i) => fillAcquaSheet(sheets[i], ctx, fetta))
   },
 }
 
