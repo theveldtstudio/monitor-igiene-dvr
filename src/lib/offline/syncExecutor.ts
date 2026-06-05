@@ -2,6 +2,7 @@ import type { Table } from 'dexie'
 import { db } from './db'
 import { supabase } from '../supabase'
 import { syncPendingFoto } from './fotoSyncExecutor'
+import { toast } from '../toast'
 
 const MAX_RETRIES = 3
 
@@ -85,6 +86,7 @@ export async function syncPendingOperations(): Promise<SyncOperationsResult> {
   let uploaded = 0
   let failed = 0
   let skipped = 0
+  let discardedMissing = 0
 
   try {
     for (const table of TABLE_ORDER) {
@@ -112,11 +114,23 @@ export async function syncPendingOperations(): Promise<SyncOperationsResult> {
               const { error } = await supabase.from(table).insert(sanitized)
               if (error) throw new Error(error.message)
             } else {
-              const { error } = await supabase
+              const { data, error } = await supabase
                 .from(table)
                 .update(sanitized)
                 .eq('id', op.record_id)
+                .select()
               if (error) throw new Error(error.message)
+              // 0 righe modificate senza errore => il record non esiste più sul
+              // cloud (cancellato da un altro device). Le RLS di tutte le tabelle
+              // mutabili sono `ALL using(true)`, quindi .select() post-update è
+              // affidabile: array vuoto == record assente, non blocco RLS.
+              // Il delete altrui prevale: scarta l'edit, niente resurrezione.
+              if (!data || data.length === 0) {
+                await getTable(table).delete(op.record_id)
+                await db._sync_queue.delete(op.id)
+                discardedMissing++
+                continue
+              }
             }
           }
 
@@ -151,6 +165,16 @@ export async function syncPendingOperations(): Promise<SyncOperationsResult> {
 
     if (uploaded > 0) {
       window.dispatchEvent(new CustomEvent('sync-completed'))
+    }
+
+    // A2 — avviso conflitti: 1 solo toast aggregato per ciclo, niente spam.
+    // toast è un singleton imperativo (modulo non-React): chiamabile diretto.
+    if (discardedMissing > 0) {
+      toast.warning(
+        discardedMissing === 1
+          ? 'Una modifica non è stata salvata: l’elemento è stato eliminato da un altro dispositivo.'
+          : `${discardedMissing} modifiche non sono state salvate: gli elementi sono stati eliminati da un altro dispositivo.`,
+      )
     }
   } finally {
     running = false
