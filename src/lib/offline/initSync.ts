@@ -42,6 +42,12 @@ export function initOfflineSync(): void {
     void runFullSync()
   })
 
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && navigator.onLine) {
+      void runFullSync()
+    }
+  })
+
   window.addEventListener('pull-completed', () => {
     void queryClient.invalidateQueries()
   })
