@@ -1,0 +1,8 @@
+# Normalizza tutti i file testo a LF nel repo (working tree resta nativo)
+* text=auto eol=lf
+
+# File binari — MAI toccare EOL
+*.xlsx binary
+*.xlsm binary
+*.png  binary
+*.ico  binary
