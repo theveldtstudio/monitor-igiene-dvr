@@ -135,7 +135,19 @@ export async function syncPendingOperations(): Promise<SyncOperationsResult> {
       }
     }
 
-    await syncPendingFoto()
+    // Le foto referenziano misura_id (FK foto_misura -> misure). Invia le foto
+    // SOLO se la coda misure è completamente drenata: se restano op misure in
+    // coda (fallite con retry < MAX, o esaurite i retry) il loro id non esiste
+    // ancora su Supabase e l'insert foto fallirebbe con 23503. In tal caso
+    // rimanda l'invio foto al ciclo di sync successivo, lasciando le op in coda.
+    const misureRimaste = await db._sync_queue.where('table').equals('misure').count()
+    if (misureRimaste === 0) {
+      await syncPendingFoto()
+    } else {
+      console.warn(
+        `[sync] ${misureRimaste} misure ancora in coda: invio foto rimandato al prossimo ciclo`,
+      )
+    }
 
     if (uploaded > 0) {
       window.dispatchEvent(new CustomEvent('sync-completed'))
