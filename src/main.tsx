@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import { QueryClientProvider } from '@tanstack/react-query'
 import App from './App'
 import { ToastProvider } from './lib/toast'
+import { PwaUpdatePrompt } from './components/PwaUpdatePrompt'
 import { OfflineBanner } from './lib/offline'
 import { queryClient } from './lib/queryClient'
 import { initOfflineSync } from './lib/offline/initSync'
@@ -21,6 +22,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <App />
       </BrowserRouter>
       <ToastProvider />
+      <PwaUpdatePrompt />
     </QueryClientProvider>
   </React.StrictMode>,
 )
