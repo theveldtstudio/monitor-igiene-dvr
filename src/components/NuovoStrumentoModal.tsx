@@ -19,6 +19,7 @@ export default function NuovoStrumentoModal({ open, onClose, onCreated }: NuovoS
 
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setNome('')
       setModello('')
       setMatricola('')

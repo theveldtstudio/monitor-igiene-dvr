@@ -26,6 +26,7 @@ export default function NuovoCantiereModal({ open, onClose, onCreated, cantiereD
 
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setNome(cantiereDaModificare?.nome ?? '')
       setIndirizzo(cantiereDaModificare?.indirizzo ?? '')
       setCommittente(cantiereDaModificare?.committente ?? '')

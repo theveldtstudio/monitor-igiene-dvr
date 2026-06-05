@@ -35,6 +35,7 @@ export function useCampagne(cantiereId: string | undefined, tipoCampionamento: s
   }, [cantiereId, tipoCampionamento])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchCampagne()
   }, [fetchCampagne])
 

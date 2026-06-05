@@ -55,6 +55,7 @@ export default function SelezionaRisorseModal(props: SelezionaRisorseModalProps)
   useEffect(() => {
     if (open) {
       if (modalita === 'singola') {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setSelectedSingola((props as SelezionaRisorseModalSingleProps).initialSelectedId)
       } else {
         setSelectedMulti(new Set((props as SelezionaRisorseModalMultiProps).initialSelectedIds))

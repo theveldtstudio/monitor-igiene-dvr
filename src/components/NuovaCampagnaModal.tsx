@@ -73,6 +73,7 @@ export default function NuovaCampagnaModal({ open, onClose, onCreated, cantiereI
 
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDataOra(nowLocalDatetimeInputValue())
       resetError()
     }

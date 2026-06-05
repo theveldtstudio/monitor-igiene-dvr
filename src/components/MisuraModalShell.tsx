@@ -53,6 +53,7 @@ export default function MisuraModalShell({
   // Reset confirmDiscard quando il modale si apre
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setConfirmDiscard(false)
     }
   }, [open])

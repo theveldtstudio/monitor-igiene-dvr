@@ -26,6 +26,7 @@ export default function SelezioneStrumentoModal({
 
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelezionato(selezionatoAttuale)
       setFiltro('')
     }

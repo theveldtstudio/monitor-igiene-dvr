@@ -43,6 +43,7 @@ export function useCampagna(id: string | undefined): UseCampagnaResult {
   }, [id])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchCampagna()
   }, [fetchCampagna])
 

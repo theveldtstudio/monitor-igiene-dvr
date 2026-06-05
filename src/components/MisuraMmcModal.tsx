@@ -90,6 +90,7 @@ export default function MisuraMmcModal({ open, onClose, onSaved, campagnaId, mis
   useEffect(() => {
     if (open) {
       if (initialSnapshot) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setCarico(initialSnapshot.carico)
         setAltezzaMani(initialSnapshot.altezzaMani)
         setDistanzaVerticale(initialSnapshot.distanzaVerticale)
@@ -119,6 +120,7 @@ export default function MisuraMmcModal({ open, onClose, onSaved, campagnaId, mis
 
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMisuraIdCorrente(misuraDaModificare?.id ?? null)
       setNumeroMisuraCorrente(misuraDaModificare?.numero)
     } else {

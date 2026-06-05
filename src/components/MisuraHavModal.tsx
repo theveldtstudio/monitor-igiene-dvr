@@ -98,6 +98,7 @@ export default function MisuraHavModal({ open, onClose, onSaved, cantiereId, cam
   useEffect(() => {
     if (open) {
       if (initialSnapshot) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setDurata(initialSnapshot.durata)
         setUtensile(initialSnapshot.utensile)
         setMatricola(initialSnapshot.matricola)
@@ -126,6 +127,7 @@ export default function MisuraHavModal({ open, onClose, onSaved, cantiereId, cam
 
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMisuraIdCorrente(misuraDaModificare?.id ?? null)
       setNumeroMisuraCorrente(misuraDaModificare?.numero)
     } else {

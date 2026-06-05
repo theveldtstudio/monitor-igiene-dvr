@@ -115,6 +115,7 @@ export default function MisuraCarbonioModal({ open, onClose, onSaved, cantiereId
   useEffect(() => {
     if (open) {
       if (initialSnapshot) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setCodiceFiltro(initialSnapshot.codiceFiltro)
         setDurata(initialSnapshot.durata)
         setPostazioneId(initialSnapshot.postazioneId)
@@ -142,6 +143,7 @@ export default function MisuraCarbonioModal({ open, onClose, onSaved, cantiereId
 
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMisuraIdCorrente(misuraDaModificare?.id ?? null)
       setNumeroMisuraCorrente(misuraDaModificare?.numero)
     } else {

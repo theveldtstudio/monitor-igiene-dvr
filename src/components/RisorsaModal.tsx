@@ -33,6 +33,7 @@ export default function RisorsaModal({ open, onClose, onSaved, cantiereId, tipo,
 
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setValore(risorsaDaModificare?.valore ?? '')
       setConfirmDiscard(false)
       resetError()

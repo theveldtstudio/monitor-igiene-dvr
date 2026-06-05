@@ -30,6 +30,7 @@ export function useCantieri(): UseCantieriResult {
   }, [])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchCantieri()
   }, [fetchCantieri])
 

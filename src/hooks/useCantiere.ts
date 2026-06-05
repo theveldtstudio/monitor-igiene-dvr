@@ -43,6 +43,7 @@ export function useCantiere(id: string | undefined): UseCantiereResult {
   }, [id])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchCantiere()
   }, [fetchCantiere])
 

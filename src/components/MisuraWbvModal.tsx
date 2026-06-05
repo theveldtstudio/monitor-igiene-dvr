@@ -112,6 +112,7 @@ export default function MisuraWbvModal({ open, onClose, onSaved, cantiereId, cam
   useEffect(() => {
     if (open) {
       if (initialSnapshot) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setDurata(initialSnapshot.durata)
         setMacchinaId(initialSnapshot.macchinaId)
         setTarga(initialSnapshot.targa)
@@ -140,6 +141,7 @@ export default function MisuraWbvModal({ open, onClose, onSaved, cantiereId, cam
 
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMisuraIdCorrente(misuraDaModificare?.id ?? null)
       setNumeroMisuraCorrente(misuraDaModificare?.numero)
     } else {

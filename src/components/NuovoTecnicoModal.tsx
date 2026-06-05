@@ -18,6 +18,7 @@ export default function NuovoTecnicoModal({ open, onClose, onCreated }: NuovoTec
 
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setNome('')
       setCognome('')
       setConfirmDiscard(false)

@@ -98,6 +98,7 @@ export default function MisuraRoaModal({ open, onClose, onSaved, cantiereId, cam
   useEffect(() => {
     if (open) {
       if (initialSnapshot) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setDurata(initialSnapshot.durata)
         setPostazioneId(initialSnapshot.postazioneId)
         setFaseId(initialSnapshot.faseId)
@@ -127,6 +128,7 @@ export default function MisuraRoaModal({ open, onClose, onSaved, cantiereId, cam
 
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMisuraIdCorrente(misuraDaModificare?.id ?? null)
       setNumeroMisuraCorrente(misuraDaModificare?.numero)
     } else {

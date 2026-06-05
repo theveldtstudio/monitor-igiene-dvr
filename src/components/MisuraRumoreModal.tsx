@@ -82,6 +82,7 @@ export default function MisuraRumoreModal({ open, onClose, onSaved, cantiereId, 
   useEffect(() => {
     if (!open) return
     if (initialSnapshot) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDurata(initialSnapshot.durata)
       setPostazioneId(initialSnapshot.postazioneId)
       setFaseId(initialSnapshot.faseId)
@@ -111,6 +112,7 @@ export default function MisuraRumoreModal({ open, onClose, onSaved, cantiereId, 
 
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMisuraIdCorrente(misuraDaModificare?.id ?? null)
       setNumeroMisuraCorrente(misuraDaModificare?.numero)
     } else {

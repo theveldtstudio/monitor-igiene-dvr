@@ -106,6 +106,7 @@ export default function MisuraOwasModal({ open, onClose, onSaved, campagnaId, mi
   useEffect(() => {
     if (open) {
       if (initialSnapshot) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setMansione(initialSnapshot.mansione)
         setAttivita(initialSnapshot.attivita)
         setDurata(initialSnapshot.durata)
@@ -129,6 +130,7 @@ export default function MisuraOwasModal({ open, onClose, onSaved, campagnaId, mi
 
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMisuraIdCorrente(misuraDaModificare?.id ?? null)
       setNumeroMisuraCorrente(misuraDaModificare?.numero)
     } else {

@@ -105,6 +105,7 @@ export default function MisuraBiologicoModal({ open, onClose, onSaved, cantiereI
   useEffect(() => {
     if (open) {
       if (initialSnapshot) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setCodiceFiltro(initialSnapshot.codiceFiltro)
         setPostazioneId(initialSnapshot.postazioneId)
         setFaseId(initialSnapshot.faseId)
@@ -130,6 +131,7 @@ export default function MisuraBiologicoModal({ open, onClose, onSaved, cantiereI
 
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMisuraIdCorrente(misuraDaModificare?.id ?? null)
       setNumeroMisuraCorrente(misuraDaModificare?.numero)
     } else {

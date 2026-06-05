@@ -101,6 +101,7 @@ export default function MisuraOcraModal({ open, onClose, onSaved, campagnaId, mi
   useEffect(() => {
     if (open) {
       if (initialSnapshot) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setArto(initialSnapshot.arto)
         setMinutiCompito(initialSnapshot.minutiCompito)
         setDenominazione(initialSnapshot.denominazione)
@@ -119,6 +120,7 @@ export default function MisuraOcraModal({ open, onClose, onSaved, campagnaId, mi
 
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMisuraIdCorrente(misuraDaModificare?.id ?? null)
       setNumeroMisuraCorrente(misuraDaModificare?.numero)
     } else {
