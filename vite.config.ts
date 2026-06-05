@@ -8,8 +8,16 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'prompt',
-      injectRegister: false,
+      injectRegister: 'auto',
       pwaAssets: { config: true },
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+        navigateFallback: 'index.html',
+        navigateFallbackDenylist: [/^\/api/, /supabase\.co/],
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        skipWaiting: false,
+      },
       manifest: {
         name: 'Monitor Igiene',
         short_name: 'Monitor',
