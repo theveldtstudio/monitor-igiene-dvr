@@ -31,6 +31,22 @@ function numToString(n: unknown): string {
   return String(n).replace('.', ',')
 }
 
+/**
+ * Legge la durata dai dati in minuti (stringa per l'input).
+ * Nuovo formato: `durata_minuti` (number). Retrocompat: vecchio `durata` ("00:34:00").
+ */
+function durataToMinutiString(d: Record<string, unknown>): string {
+  const min = d.durata_minuti
+  if (typeof min === 'number' && isFinite(min)) return String(min)
+  const old = d.durata
+  if (typeof old === 'string' && old.trim()) {
+    const [h, m] = old.split(':').map(Number)
+    if (isFinite(h) && isFinite(m)) return String(h * 60 + m)
+  }
+  if (typeof old === 'number' && isFinite(old)) return String(old)
+  return ''
+}
+
 export default function MisuraRumoreModal({ open, onClose, onSaved, cantiereId, campagnaId, misuraDaModificare }: MisuraRumoreModalProps) {
   const [durata, setDurata] = useState('')
   const [postazioneId, setPostazioneId] = useState<string | null>(null)
@@ -68,7 +84,7 @@ export default function MisuraRumoreModal({ open, onClose, onSaved, cantiereId, 
     if (!misuraDaModificare) return null
     const d = misuraDaModificare.dati as Record<string, unknown>
     return {
-      durata: (d.durata as string) ?? '',
+      durata: durataToMinutiString(d),
       postazioneId: (d.postazione_id as string) ?? null,
       faseId: (d.fase_id as string) ?? null,
       macchineIds: (d.macchine_ids as string[]) ?? [],
@@ -146,7 +162,10 @@ export default function MisuraRumoreModal({ open, onClose, onSaved, cantiereId, 
 
   const buildDati = (): Record<string, unknown> => {
     const dati: Record<string, unknown> = {}
-    if (durata.trim()) dati.durata = durata.trim()
+    if (durata.trim()) {
+      const durataMin = Number(durata.trim())
+      if (isFinite(durataMin)) dati.durata_minuti = durataMin
+    }
     if (postazioneId) {
       dati.postazione_id = postazioneId
       dati.postazione_nome = postazioneNome ?? ''
@@ -208,10 +227,9 @@ export default function MisuraRumoreModal({ open, onClose, onSaved, cantiereId, 
         onSubmit={handleSubmit}
       >
         <div style={styles.field}>
-          <label htmlFor="ms-durata" style={styles.label}>Durata</label>
-          <input id="ms-durata" type="text" value={durata} onChange={(e) => setDurata(e.target.value)} placeholder="es. 00:30:00" disabled={saving} inputMode="numeric" maxLength={20}
+          <label htmlFor="ms-durata" style={styles.label}>Durata [min]</label>
+          <input id="ms-durata" type="number" value={durata} onChange={(e) => setDurata(e.target.value)} placeholder="es. 34" disabled={saving} inputMode="numeric" min={0} max={1440} step={1}
             style={{ ...styles.input, ...(durata ? styles.inputFilled : {}), ...(saving ? styles.inputDisabled : {}) }} />
-          <div style={styles.helperText}>Formato hh:mm:ss</div>
         </div>
 
         <div style={styles.field}>

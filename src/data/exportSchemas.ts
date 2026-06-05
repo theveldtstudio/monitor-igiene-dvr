@@ -134,7 +134,8 @@ function fillRumoreSheet(ws: Worksheet, ctx: ExportContext, misureFetta: Misura[
     const dati = m.dati as Record<string, unknown>
     const macchine = (dati.macchine_nomi as string[] | undefined) ?? []
 
-    const durataMin = parseDurataMinuti(dati.durata)
+    // Nuovo formato: dati.durata_minuti (number). Retrocompat: vecchio dati.durata (stringa "hh:mm:ss").
+    const durataMin = parseDurataMinuti(dati.durata_minuti ?? dati.durata)
     // Excel rappresenta gli orari come frazione di giorno (1 = 24h, 1/1440 = 1 min).
     // Applichiamo runtime il format hh:mm:ss alla cella per garantire la visualizzazione corretta
     // anche se il template non lo specifica.
