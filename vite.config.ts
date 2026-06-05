@@ -1,7 +1,28 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    VitePWA({
+      registerType: 'prompt',
+      injectRegister: false,
+      pwaAssets: { config: true },
+      manifest: {
+        name: 'Monitor Igiene',
+        short_name: 'Monitor',
+        description: 'Raccolta misure di monitoraggio igiene del lavoro D.Lgs. 81/08',
+        theme_color: '#1E407C',
+        background_color: '#1E407C',
+        display: 'standalone',
+        orientation: 'portrait',
+        start_url: '/',
+        scope: '/',
+        lang: 'it',
+      },
+      devOptions: { enabled: false },
+    }),
+  ],
 })
