@@ -15,14 +15,17 @@ import { useDeleteMisura } from '../hooks/useDeleteMisura'
 import { useDeleteCampagna } from '../hooks/useDeleteCampagna'
 import SelezioneTecniciModal from '../components/SelezioneTecniciModal'
 import SelezioneStrumentoModal from '../components/SelezioneStrumentoModal'
+import SelezionaCampagneModal from '../components/SelezionaCampagneModal'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { MODULI } from '../data/moduliCampionamento'
 import type { ModuloCampionamento } from '../data/moduliCampionamento'
 
 import CardMisuraGenerica from '../components/CardMisuraGenerica'
 import { getModuloEntry } from '../data/moduliRegistry'
-import { exportFromTemplate, type FotoSheetContext } from '../lib/exportExcel'
-import { getExportSchema } from '../data/exportSchemas'
+import { exportFromTemplate, exportMultiCampagne, type FotoSheetContext } from '../lib/exportExcel'
+import { getExportSchema, type ExportContext } from '../data/exportSchemas'
+import { campagneRepo, misureRepo } from '../lib/offline'
+import { toast } from '../lib/toast/toastApi'
 import Spinner from '../components/Spinner'
 import Skeleton from '../components/Skeleton'
 import ErrorState from '../components/ErrorState'
@@ -103,6 +106,54 @@ export default function FoglioCampagna() {
   const [confirmEliminaCampagnaOpen, setConfirmEliminaCampagnaOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
+  const [selezionaCampagneOpen, setSelezionaCampagneOpen] = useState(false)
+
+  const handleExportMultipleCampagne = async (campagneIds: string[]) => {
+    if (!cantiere || !moduloId) return
+    const schema = getExportSchema(moduloId)
+    if (!schema) {
+      toast.error('Export non disponibile per questo modulo')
+      return
+    }
+    setExporting(true)
+    setExportError(null)
+    try {
+      // Costruisce un ExportContext per campagna (offline-first via repo).
+      // tecnici/strumento risolti dalle liste globali; risorse condivise (livello cantiere).
+      const contexts: ExportContext[] = []
+      for (const cid of campagneIds) {
+        const ca = await campagneRepo.getById(cid)
+        if (!ca) continue
+        const ms = await misureRepo.list(cid)
+        if (ms.length === 0) continue // salta campagne senza misure
+        const tecnici = tuttiTecnici.filter((t) => ca.tecnici_ids.includes(t.id))
+        const strumento = ca.strumento_id
+          ? tuttiStrumenti.find((s) => s.id === ca.strumento_id) ?? null
+          : null
+        contexts.push({ cantiere, campagna: ca, misure: ms, tecnici, strumento, risorse })
+      }
+
+      if (contexts.length === 0) {
+        toast.warning('Nessuna misura trovata nelle campagne selezionate')
+        return
+      }
+
+      const safe = cantiere.nome.replace(/[^a-zA-Z0-9_-]/g, '_')
+      const today = new Date().toISOString().slice(0, 10)
+      const filename = `${safe}_${moduloId}_MultiCampagna_${today}.xlsx`
+
+      await exportMultiCampagne(schema, contexts, filename)
+
+      const nMisure = contexts.reduce((acc, c) => acc + c.misure.length, 0)
+      toast.success(`Esportate ${nMisure} misure da ${contexts.length} campagne`)
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Errore export'
+      setExportError(msg)
+      toast.error(`Errore durante l'export: ${msg}`)
+    } finally {
+      setExporting(false)
+    }
+  }
 
   const misureIdsKey = useMemo(
     () => misure.map((m) => m.id).sort().join(','),
@@ -477,6 +528,15 @@ export default function FoglioCampagna() {
 
           <button
             type="button"
+            onClick={() => setSelezionaCampagneOpen(true)}
+            style={styles.btnEsportaExcel}
+            aria-label="Esporta da più campagne"
+          >
+            Esporta da più campagne
+          </button>
+
+          <button
+            type="button"
             onClick={handleRichiediEliminaCampagna}
             disabled={deletingCampagna}
             style={styles.btnEliminaCampagna}
@@ -512,6 +572,17 @@ export default function FoglioCampagna() {
               }
             }}
           />
+
+          {cantiere && moduloId && (
+            <SelezionaCampagneModal
+              open={selezionaCampagneOpen}
+              onClose={() => setSelezionaCampagneOpen(false)}
+              cantiereId={cantiere.id}
+              moduloId={moduloId}
+              campagnaAttuale={campagna.id}
+              onExport={handleExportMultipleCampagne}
+            />
+          )}
 
           <ConfirmDialog
             open={confirmCompletaOpen}
