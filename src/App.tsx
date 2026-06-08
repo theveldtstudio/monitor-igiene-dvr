@@ -4,6 +4,7 @@ import { Routes, Route } from 'react-router-dom'
 import { AppLockProvider, useAppLock } from './contexts/AppLockContext'
 import PinScreen from './components/PinScreen'
 import Spinner from './components/Spinner'
+import AppErrorBoundary from './components/AppErrorBoundary'
 
 const Home = lazy(() => import('./pages/Home'))
 const Anagrafica = lazy(() => import('./pages/Anagrafica'))
@@ -61,16 +62,18 @@ function App() {
   return (
     <AppLockProvider>
       <AppGate>
-        <Suspense fallback={<RouteFallback />}>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/anagrafica" element={<Anagrafica />} />
-            <Route path="/cantieri/:id" element={<PaginaCantiere />} />
-            <Route path="/cantieri/:id/moduli/:moduloId" element={<ListaCampagne />} />
-            <Route path="/cantieri/:id/moduli/:moduloId/campagne/:campagnaId" element={<FoglioCampagna />} />
-            <Route path="/cantieri/nuovo" element={<NuovoCantiere />} />
-          </Routes>
-        </Suspense>
+        <AppErrorBoundary>
+          <Suspense fallback={<RouteFallback />}>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/anagrafica" element={<Anagrafica />} />
+              <Route path="/cantieri/:id" element={<PaginaCantiere />} />
+              <Route path="/cantieri/:id/moduli/:moduloId" element={<ListaCampagne />} />
+              <Route path="/cantieri/:id/moduli/:moduloId/campagne/:campagnaId" element={<FoglioCampagna />} />
+              <Route path="/cantieri/nuovo" element={<NuovoCantiere />} />
+            </Routes>
+          </Suspense>
+        </AppErrorBoundary>
       </AppGate>
     </AppLockProvider>
   )
