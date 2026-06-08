@@ -1,13 +1,32 @@
 import type { ReactNode } from 'react'
+import { lazy, Suspense } from 'react'
 import { Routes, Route } from 'react-router-dom'
-import Home from './pages/Home'
-import Anagrafica from './pages/Anagrafica'
-import NuovoCantiere from './pages/NuovoCantiere'
-import PaginaCantiere from './pages/PaginaCantiere'
-import ListaCampagne from './pages/ListaCampagne'
-import FoglioCampagna from './pages/FoglioCampagna'
 import { AppLockProvider, useAppLock } from './contexts/AppLockContext'
 import PinScreen from './components/PinScreen'
+import Spinner from './components/Spinner'
+
+const Home = lazy(() => import('./pages/Home'))
+const Anagrafica = lazy(() => import('./pages/Anagrafica'))
+const NuovoCantiere = lazy(() => import('./pages/NuovoCantiere'))
+const PaginaCantiere = lazy(() => import('./pages/PaginaCantiere'))
+const ListaCampagne = lazy(() => import('./pages/ListaCampagne'))
+const FoglioCampagna = lazy(() => import('./pages/FoglioCampagna'))
+
+function RouteFallback() {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '60vh',
+        color: 'var(--text-secondary)',
+      }}
+    >
+      <Spinner size={20} />
+    </div>
+  )
+}
 
 function AppGate({ children }: { children: ReactNode }) {
   const { state, unlock, resetPin } = useAppLock()
@@ -42,14 +61,16 @@ function App() {
   return (
     <AppLockProvider>
       <AppGate>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/anagrafica" element={<Anagrafica />} />
-          <Route path="/cantieri/:id" element={<PaginaCantiere />} />
-          <Route path="/cantieri/:id/moduli/:moduloId" element={<ListaCampagne />} />
-          <Route path="/cantieri/:id/moduli/:moduloId/campagne/:campagnaId" element={<FoglioCampagna />} />
-          <Route path="/cantieri/nuovo" element={<NuovoCantiere />} />
-        </Routes>
+        <Suspense fallback={<RouteFallback />}>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/anagrafica" element={<Anagrafica />} />
+            <Route path="/cantieri/:id" element={<PaginaCantiere />} />
+            <Route path="/cantieri/:id/moduli/:moduloId" element={<ListaCampagne />} />
+            <Route path="/cantieri/:id/moduli/:moduloId/campagne/:campagnaId" element={<FoglioCampagna />} />
+            <Route path="/cantieri/nuovo" element={<NuovoCantiere />} />
+          </Routes>
+        </Suspense>
       </AppGate>
     </AppLockProvider>
   )
