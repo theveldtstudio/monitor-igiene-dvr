@@ -49,6 +49,7 @@ export const risorseCantiereRepo: RisorseCantiereRepo = {
     const local: RisorsaCantiere = {
       ...input,
       id: crypto.randomUUID(),
+      sync_pending: true,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }
@@ -75,7 +76,7 @@ export const risorseCantiereRepo: RisorseCantiereRepo = {
     const existing = await db.risorse_cantiere.get(id)
     if (!existing) throw new Error(`Risorsa ${id} non trovata in storage locale`)
     const nowIso = new Date().toISOString()
-    const updated: RisorsaCantiere = { ...existing, ...patch, updated_at: nowIso }
+    const updated: RisorsaCantiere = { ...existing, ...patch, sync_pending: true, updated_at: nowIso }
     await db.risorse_cantiere.put(updated)
     await enqueueSyncOperation('risorse_cantiere', 'update', id, { ...patch, updated_at: nowIso })
     return updated

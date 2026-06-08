@@ -43,6 +43,7 @@ export const strumentiRepo: StrumentiRepo = {
     const local: Strumento = {
       ...input,
       id: crypto.randomUUID(),
+      sync_pending: true,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }

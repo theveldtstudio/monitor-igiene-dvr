@@ -63,6 +63,7 @@ export const cantieriRepo: CantieriRepo = {
     const localCantiere: Cantiere = {
       ...input,
       id: crypto.randomUUID(),
+      sync_pending: true,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }
@@ -89,7 +90,7 @@ export const cantieriRepo: CantieriRepo = {
     const existing = await db.cantieri.get(id)
     if (!existing) throw new Error(`Cantiere ${id} non trovato in storage locale`)
     const nowIso = new Date().toISOString()
-    const updated: Cantiere = { ...existing, ...patch, updated_at: nowIso }
+    const updated: Cantiere = { ...existing, ...patch, sync_pending: true, updated_at: nowIso }
     await db.cantieri.put(updated)
     await enqueueSyncOperation('cantieri', 'update', id, { ...patch, updated_at: nowIso })
     return updated

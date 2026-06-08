@@ -90,7 +90,7 @@ export const campagneRepo: CampagneRepo = {
       stato: input.stato,
       strumento_id: input.strumento_id ?? null,
       tecnici_ids: input.tecnici_ids ?? [],
-      sync_pending: input.sync_pending ?? false,
+      sync_pending: true,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }

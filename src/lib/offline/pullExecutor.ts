@@ -3,6 +3,7 @@ import { db } from './db'
 import { supabase } from '../supabase'
 import { CAMPAGNA_SELECT } from './repositories/campagneRepo'
 import { MISURA_SELECT } from './repositories/misureRepo'
+import { isRemoteNewer } from './lwwMerge'
 
 export interface PullResult {
   byEntity: Record<string, number>
@@ -37,7 +38,7 @@ export async function pullFromCloud(): Promise<PullResult> {
   let totalWritten = 0
 
   try {
-    // cantieri — no sync_pending
+    // cantieri — LWW + local-wins on sync_pending
     {
       const { data, error } = await supabase
         .from('cantieri')
@@ -46,14 +47,24 @@ export async function pullFromCloud(): Promise<PullResult> {
       if (error) {
         result.errors.push(`cantieri: ${error.message}`)
       } else {
-        const rows = (data ?? []) as Cantiere[]
-        await db.cantieri.bulkPut(rows)
-        result.byEntity['cantieri'] = rows.length
-        totalWritten += rows.length
+        const remote = (data ?? []) as Cantiere[]
+        const local = await db.cantieri.toArray()
+        const localById = new Map(local.map(r => [r.id, r]))
+        const pendingIds = new Set(local.filter(r => r.sync_pending === true).map(r => r.id))
+        const toWrite = remote.filter(r => {
+          if (pendingIds.has(r.id)) return false
+          const loc = localById.get(r.id)
+          if (!loc) return true
+          return isRemoteNewer(r.updated_at, loc.updated_at)
+        })
+        result.skippedPending['cantieri'] = remote.length - toWrite.length
+        await db.cantieri.bulkPut(toWrite)
+        result.byEntity['cantieri'] = toWrite.length
+        totalWritten += toWrite.length
       }
     }
 
-    // risorse_cantiere — no sync_pending
+    // risorse_cantiere — LWW + local-wins on sync_pending
     {
       const { data, error } = await supabase
         .from('risorse_cantiere')
@@ -61,14 +72,24 @@ export async function pullFromCloud(): Promise<PullResult> {
       if (error) {
         result.errors.push(`risorse_cantiere: ${error.message}`)
       } else {
-        const rows = (data ?? []) as RisorsaCantiere[]
-        await db.risorse_cantiere.bulkPut(rows)
-        result.byEntity['risorse_cantiere'] = rows.length
-        totalWritten += rows.length
+        const remote = (data ?? []) as RisorsaCantiere[]
+        const local = await db.risorse_cantiere.toArray()
+        const localById = new Map(local.map(r => [r.id, r]))
+        const pendingIds = new Set(local.filter(r => r.sync_pending === true).map(r => r.id))
+        const toWrite = remote.filter(r => {
+          if (pendingIds.has(r.id)) return false
+          const loc = localById.get(r.id)
+          if (!loc) return true
+          return isRemoteNewer(r.updated_at, loc.updated_at)
+        })
+        result.skippedPending['risorse_cantiere'] = remote.length - toWrite.length
+        await db.risorse_cantiere.bulkPut(toWrite)
+        result.byEntity['risorse_cantiere'] = toWrite.length
+        totalWritten += toWrite.length
       }
     }
 
-    // tecnici — no sync_pending
+    // tecnici — LWW + local-wins on sync_pending
     {
       const { data, error } = await supabase
         .from('tecnici')
@@ -76,14 +97,24 @@ export async function pullFromCloud(): Promise<PullResult> {
       if (error) {
         result.errors.push(`tecnici: ${error.message}`)
       } else {
-        const rows = (data ?? []) as Tecnico[]
-        await db.tecnici.bulkPut(rows)
-        result.byEntity['tecnici'] = rows.length
-        totalWritten += rows.length
+        const remote = (data ?? []) as Tecnico[]
+        const local = await db.tecnici.toArray()
+        const localById = new Map(local.map(r => [r.id, r]))
+        const pendingIds = new Set(local.filter(r => r.sync_pending === true).map(r => r.id))
+        const toWrite = remote.filter(r => {
+          if (pendingIds.has(r.id)) return false
+          const loc = localById.get(r.id)
+          if (!loc) return true
+          return isRemoteNewer(r.updated_at, loc.updated_at)
+        })
+        result.skippedPending['tecnici'] = remote.length - toWrite.length
+        await db.tecnici.bulkPut(toWrite)
+        result.byEntity['tecnici'] = toWrite.length
+        totalWritten += toWrite.length
       }
     }
 
-    // strumenti — no sync_pending
+    // strumenti — LWW + local-wins on sync_pending
     {
       const { data, error } = await supabase
         .from('strumenti')
@@ -91,10 +122,20 @@ export async function pullFromCloud(): Promise<PullResult> {
       if (error) {
         result.errors.push(`strumenti: ${error.message}`)
       } else {
-        const rows = (data ?? []) as Strumento[]
-        await db.strumenti.bulkPut(rows)
-        result.byEntity['strumenti'] = rows.length
-        totalWritten += rows.length
+        const remote = (data ?? []) as Strumento[]
+        const local = await db.strumenti.toArray()
+        const localById = new Map(local.map(r => [r.id, r]))
+        const pendingIds = new Set(local.filter(r => r.sync_pending === true).map(r => r.id))
+        const toWrite = remote.filter(r => {
+          if (pendingIds.has(r.id)) return false
+          const loc = localById.get(r.id)
+          if (!loc) return true
+          return isRemoteNewer(r.updated_at, loc.updated_at)
+        })
+        result.skippedPending['strumenti'] = remote.length - toWrite.length
+        await db.strumenti.bulkPut(toWrite)
+        result.byEntity['strumenti'] = toWrite.length
+        totalWritten += toWrite.length
       }
     }
 
@@ -109,8 +150,14 @@ export async function pullFromCloud(): Promise<PullResult> {
       } else {
         const remote = (data ?? []) as Campagna[]
         const local = await db.campagne.toArray()
-        const pendingIds = new Set(local.filter(c => c.sync_pending).map(c => c.id))
-        const toWrite = remote.filter(r => !pendingIds.has(r.id))
+        const localById = new Map(local.map(c => [c.id, c]))
+        const pendingIds = new Set(local.filter(c => c.sync_pending === true).map(c => c.id))
+        const toWrite = remote.filter(r => {
+          if (pendingIds.has(r.id)) return false
+          const loc = localById.get(r.id)
+          if (!loc) return true
+          return isRemoteNewer(r.updated_at, loc.updated_at)
+        })
         result.skippedPending['campagne'] = remote.length - toWrite.length
         await db.campagne.bulkPut(toWrite)
         result.byEntity['campagne'] = toWrite.length
@@ -129,10 +176,16 @@ export async function pullFromCloud(): Promise<PullResult> {
       } else {
         const remote = (data ?? []) as Misura[]
         const local = await db.misure.toArray()
+        const localById = new Map(local.map(m => [m.id, m]))
         const pendingIds = new Set(
           local.filter(m => m.sync_pending === true).map(m => m.id)
         )
-        const toWrite = remote.filter(r => !pendingIds.has(r.id))
+        const toWrite = remote.filter(r => {
+          if (pendingIds.has(r.id)) return false
+          const loc = localById.get(r.id)
+          if (!loc) return true
+          return isRemoteNewer(r.updated_at, loc.updated_at)
+        })
         result.skippedPending['misure'] = remote.length - toWrite.length
         await db.misure.bulkPut(toWrite)
         result.byEntity['misure'] = toWrite.length
