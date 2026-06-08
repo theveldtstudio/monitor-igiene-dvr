@@ -1,5 +1,7 @@
 import { useState, useCallback } from 'react'
 import { tecniciRepo } from '../lib/offline'
+import { humanizeError } from '../lib/humanizeError'
+import { toast } from '../lib/toast/toastApi'
 import type { Tecnico } from '../types'
 
 interface CreateTecnicoInput {
@@ -28,7 +30,8 @@ export function useCreateTecnico(): UseCreateTecnicoResult {
       }
       return await tecniciRepo.create(payload)
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Errore sconosciuto'
+      const message = humanizeError(e)
+      toast.error(message)
       setError(message)
       return null
     } finally {

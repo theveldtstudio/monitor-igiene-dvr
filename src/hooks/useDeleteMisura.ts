@@ -1,5 +1,7 @@
 import { useState, useCallback } from 'react'
 import { misureRepo } from '../lib/offline'
+import { humanizeError } from '../lib/humanizeError'
+import { toast } from '../lib/toast/toastApi'
 
 interface UseDeleteMisuraResult {
   deleting: boolean
@@ -19,7 +21,8 @@ export function useDeleteMisura(): UseDeleteMisuraResult {
       await misureRepo.remove(id)
       return true
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Errore sconosciuto'
+      const message = humanizeError(e)
+      toast.error(message)
       setError(message)
       return false
     } finally {

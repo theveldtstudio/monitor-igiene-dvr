@@ -1,5 +1,7 @@
 import { useState, useCallback } from 'react'
 import { misureRepo } from '../lib/offline'
+import { humanizeError } from '../lib/humanizeError'
+import { toast } from '../lib/toast/toastApi'
 import type { Misura } from '../types'
 
 interface UpdateMisuraInput {
@@ -33,7 +35,12 @@ export function useUpdateMisura(): UseUpdateMisuraResult {
 
       return await misureRepo.update(input.id, patch)
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Errore sconosciuto'
+      if (e instanceof Error && e.message === 'Nessun campo da aggiornare') {
+        setError(e.message)
+        return null
+      }
+      const message = humanizeError(e)
+      toast.error(message)
       setError(message)
       return null
     } finally {

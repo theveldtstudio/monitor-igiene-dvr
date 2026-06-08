@@ -9,6 +9,8 @@ import {
   enqueueSyncOperation,
 } from '../lib/offline';
 import type { FotoMisura } from '../types';
+import { humanizeError } from '../lib/humanizeError';
+import { toast } from '../lib/toast/toastApi';
 
 const QUERY_KEY = 'foto_misura';
 
@@ -161,6 +163,9 @@ export function useUploadFotoMisura() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY, variables.misuraId] });
       queryClient.invalidateQueries({ queryKey: ['foto-misure-campagna'] });
     },
+    onError: (e: unknown) => {
+      toast.error(humanizeError(e));
+    },
   });
 }
 
@@ -204,6 +209,9 @@ export function useDeleteFotoMisura() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY, variables.misuraId] });
       queryClient.invalidateQueries({ queryKey: ['foto-misure-campagna'] });
+    },
+    onError: (e: unknown) => {
+      toast.error(humanizeError(e));
     },
   });
 }

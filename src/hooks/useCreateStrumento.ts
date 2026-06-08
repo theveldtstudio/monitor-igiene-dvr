@@ -1,5 +1,7 @@
 import { useState, useCallback } from 'react'
 import { strumentiRepo } from '../lib/offline'
+import { humanizeError } from '../lib/humanizeError'
+import { toast } from '../lib/toast/toastApi'
 import type { Strumento } from '../types'
 
 interface CreateStrumentoInput {
@@ -30,7 +32,8 @@ export function useCreateStrumento(): UseCreateStrumentoResult {
       }
       return await strumentiRepo.create(payload)
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Errore sconosciuto'
+      const message = humanizeError(e)
+      toast.error(message)
       setError(message)
       return null
     } finally {

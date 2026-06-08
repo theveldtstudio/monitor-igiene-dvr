@@ -1,6 +1,10 @@
 import { useState, useCallback } from 'react'
 import { risorseCantiereRepo } from '../lib/offline'
+import { humanizeError } from '../lib/humanizeError'
+import { toast } from '../lib/toast/toastApi'
 import type { RisorsaCantiere, TipoRisorsa } from '../types'
+
+const VALIDATION = Symbol('validation')
 
 interface CreateRisorsaInput {
   cantiere_id: string
@@ -26,7 +30,7 @@ export function useCreateRisorsa(): UseCreateRisorsaResult {
     try {
       const valoreTrimmed = input.valore.trim()
       if (valoreTrimmed.length < 2) {
-        throw new Error('Il nome deve contenere almeno 2 caratteri')
+        throw Object.assign(new Error('Il nome deve contenere almeno 2 caratteri'), { [VALIDATION]: true })
       }
 
       // Controllo duplicato app-side (DB non ha UNIQUE)
@@ -35,7 +39,7 @@ export function useCreateRisorsa(): UseCreateRisorsaResult {
         const dup = input.esistenti.find((r) => r.valore.trim().toLowerCase() === valoreLower)
         if (dup) {
           const labelTipo = labelDelTipo(input.tipo)
-          throw new Error(`Esiste già ${labelTipo} con il nome "${dup.valore}"`)
+          throw Object.assign(new Error(`Esiste già ${labelTipo} con il nome "${dup.valore}"`), { [VALIDATION]: true })
         }
       }
 
@@ -46,7 +50,14 @@ export function useCreateRisorsa(): UseCreateRisorsaResult {
       }
       return await risorseCantiereRepo.create(payload)
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Errore sconosciuto'
+      // errore di validazione: solo inline, niente toast
+      if (e instanceof Error && (e as unknown as Record<symbol, unknown>)[VALIDATION] === true) {
+        setError(e.message)
+        return null
+      }
+      // errore CRUD reale: toast + inline humanizzati
+      const message = humanizeError(e)
+      toast.error(message)
       setError(message)
       return null
     } finally {

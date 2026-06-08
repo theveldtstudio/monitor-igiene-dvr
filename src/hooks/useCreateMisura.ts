@@ -1,5 +1,7 @@
 import { useState, useCallback } from 'react'
 import { misureRepo } from '../lib/offline'
+import { humanizeError } from '../lib/humanizeError'
+import { toast } from '../lib/toast/toastApi'
 import type { Misura } from '../types'
 
 interface CreateMisuraInput {
@@ -29,7 +31,8 @@ export function useCreateMisura(): UseCreateMisuraResult {
         note: input.note,
       })
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Errore sconosciuto'
+      const message = humanizeError(e)
+      toast.error(message)
       setError(message)
       return null
     } finally {

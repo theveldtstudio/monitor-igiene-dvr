@@ -1,5 +1,7 @@
 import { useState, useCallback } from 'react'
 import { campagneRepo } from '../lib/offline'
+import { humanizeError } from '../lib/humanizeError'
+import { toast } from '../lib/toast/toastApi'
 import type { Campagna } from '../types'
 
 interface CreateCampagnaInput {
@@ -33,7 +35,8 @@ export function useCreateCampagna(): UseCreateCampagnaResult {
       }
       return await campagneRepo.create(payload)
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Errore sconosciuto'
+      const message = humanizeError(e)
+      toast.error(message)
       setError(message)
       return null
     } finally {

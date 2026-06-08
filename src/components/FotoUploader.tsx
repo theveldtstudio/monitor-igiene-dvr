@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFotoMisure, useUploadFotoMisura, useDeleteFotoMisura } from '../hooks/useFotoMisure';
 import type { FotoMisuraConUrl } from '../hooks/useFotoMisure';
+import { humanizeError } from '../lib/humanizeError';
 
 interface FotoUploaderProps {
   misuraId: string | null;
@@ -80,8 +81,8 @@ export default function FotoUploader({ misuraId, maxFoto = 5, disabled = false }
     try {
       await uploadMutation.mutateAsync({ misuraId, file });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Errore upload';
-      setUploadError(msg);
+      // Toast emesso dall'onError dell'hook; qui solo il box inline humanizzato.
+      setUploadError(humanizeError(err));
     } finally {
       e.target.value = '';
     }
@@ -93,9 +94,8 @@ export default function FotoUploader({ misuraId, maxFoto = 5, disabled = false }
     if (!conferma) return;
     try {
       await deleteMutation.mutateAsync({ fotoId, misuraId, pathLocale });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Errore cancellazione';
-      alert(`Cancellazione fallita: ${msg}`);
+    } catch {
+      // Toast emesso dall'onError dell'hook (useDeleteFotoMisura); nessun alert.
     }
   };
 

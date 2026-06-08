@@ -1,5 +1,7 @@
 import { useState, useCallback } from 'react'
 import { cantieriRepo } from '../lib/offline'
+import { humanizeError } from '../lib/humanizeError'
+import { toast } from '../lib/toast/toastApi'
 import type { Cantiere } from '../types'
 
 interface UpdateCantiereInput {
@@ -39,7 +41,12 @@ export function useUpdateCantiere(): UseUpdateCantiereResult {
         const data = await cantieriRepo.update(input.id, payload as Partial<Cantiere>)
         return data
       } catch (e) {
-        const message = e instanceof Error ? e.message : 'Errore sconosciuto'
+        if (e instanceof Error && e.message === 'Nessun campo da aggiornare') {
+          setError(e.message)
+          return null
+        }
+        const message = humanizeError(e)
+        toast.error(message)
         setError(message)
         return null
       } finally {
