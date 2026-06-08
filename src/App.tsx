@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { lazy, Suspense } from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, useLocation } from 'react-router-dom'
 import { AppLockProvider, useAppLock } from './contexts/AppLockContext'
 import PinScreen from './components/PinScreen'
 import Spinner from './components/Spinner'
@@ -59,10 +59,11 @@ function AppGate({ children }: { children: ReactNode }) {
 }
 
 function App() {
+  const location = useLocation()
   return (
     <AppLockProvider>
       <AppGate>
-        <AppErrorBoundary>
+        <AppErrorBoundary key={location.pathname}>
           <Suspense fallback={<RouteFallback />}>
             <Routes>
               <Route path="/" element={<Home />} />

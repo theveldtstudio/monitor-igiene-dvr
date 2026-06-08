@@ -89,7 +89,7 @@ export default function FoglioCampagna() {
   const [modaleStrumentoOpen, setModaleStrumentoOpen] = useState(false)
   const [confirmCompletaOpen, setConfirmCompletaOpen] = useState(false)
   const [confirmRiapriOpen, setConfirmRiapriOpen] = useState(false)
-  const { misure, loading: loadingMisure, refetch: refetchMisure } = useMisure(campagnaId)
+  const { misure, loading: loadingMisure, error: errorMisure, refetch: refetchMisure } = useMisure(campagnaId)
   const { risorse: risorsePostazioni } = useRisorseCantiere(id, 'postazione')
   const { risorse: risorseFasi } = useRisorseCantiere(id, 'fase')
   const { risorse: risorseMacchine } = useRisorseCantiere(id, 'macchina')
@@ -412,6 +412,10 @@ export default function FoglioCampagna() {
 
           <div style={styles.sectionTitle}>MISURE ({numeroMisure})</div>
 
+          {!loadingMisure && errorMisure && (
+            <ErrorState message={errorMisure} onRetry={() => refetchMisure()} />
+          )}
+
           {loadingMisure && (
             <div style={styles.skeletonMisureList}>
               {[0, 1].map((i) => (
@@ -423,7 +427,7 @@ export default function FoglioCampagna() {
             </div>
           )}
 
-          {!loadingMisure && numeroMisure === 0 && (
+          {!loadingMisure && !errorMisure && numeroMisure === 0 && (
             <div style={styles.emptyMisure}>
               <div style={styles.emptyTitle}>Nessuna misura ancora</div>
               <div style={styles.emptyMessage}>
@@ -432,7 +436,7 @@ export default function FoglioCampagna() {
             </div>
           )}
 
-          {!loadingMisure && numeroMisure > 0 && moduloEntry && (
+          {!loadingMisure && !errorMisure && numeroMisure > 0 && moduloEntry && (
             <div style={styles.misureList}>
               {misure.map((m: Misura) => (
                 <CardMisuraGenerica
