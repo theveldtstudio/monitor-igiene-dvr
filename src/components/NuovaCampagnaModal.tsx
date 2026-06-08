@@ -68,6 +68,8 @@ function localDatetimeToISO(localValue: string): string {
 
 export default function NuovaCampagnaModal({ open, onClose, onCreated, cantiereId, cantiereNome, modulo }: NuovaCampagnaModalProps) {
   const [dataOra, setDataOra] = useState<string>('')
+  const [isDirty, setIsDirty] = useState(false)
+  const [confirmDiscard, setConfirmDiscard] = useState(false)
   const { saving, error, createCampagna, resetError } = useCreateCampagna()
   const cat = CATEGORIE[modulo.categoria]
   const dataInputRef = useRef<HTMLInputElement>(null)
@@ -76,6 +78,8 @@ export default function NuovaCampagnaModal({ open, onClose, onCreated, cantiereI
     if (open) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setDataOra(nowLocalDatetimeInputValue())
+      setIsDirty(false)
+      setConfirmDiscard(false)
       resetError()
       const t = setTimeout(() => dataInputRef.current?.focus(), 50)
       return () => clearTimeout(t)
@@ -86,9 +90,18 @@ export default function NuovaCampagnaModal({ open, onClose, onCreated, cantiereI
 
   const isValid = dataOra.length > 0
 
+  const handleAttemptClose = () => {
+    if (saving) return
+    if (isDirty && !confirmDiscard) {
+      setConfirmDiscard(true)
+      return
+    }
+    onClose()
+  }
+
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.target === e.currentTarget && !saving) {
-      onClose()
+    if (e.target === e.currentTarget) {
+      handleAttemptClose()
     }
   }
 
@@ -112,7 +125,7 @@ export default function NuovaCampagnaModal({ open, onClose, onCreated, cantiereI
           <h2 id="nc-title" style={styles.title}>Nuova campagna</h2>
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleAttemptClose}
             disabled={saving}
             style={styles.closeBtn}
             aria-label="Chiudi"
@@ -121,6 +134,30 @@ export default function NuovaCampagnaModal({ open, onClose, onCreated, cantiereI
           </button>
         </div>
 
+        {confirmDiscard ? (
+          <div style={styles.confirmBox}>
+            <div style={styles.confirmText}>
+              Hai scritto dei dati. Vuoi davvero scartarli?
+            </div>
+            <div style={styles.confirmActions}>
+              <button
+                type="button"
+                onClick={() => setConfirmDiscard(false)}
+                style={styles.confirmBtnSecondary}
+              >
+                Continua a scrivere
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                style={styles.confirmBtnDanger}
+              >
+                Scarta
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
         <div style={styles.context}>
           <div style={{ ...styles.contextIcon, background: cat.bgIcona }}>
             <ModuloIcona id={modulo.id} color={cat.colorAccento} />
@@ -140,7 +177,7 @@ export default function NuovaCampagnaModal({ open, onClose, onCreated, cantiereI
             ref={dataInputRef}
             type="datetime-local"
             value={dataOra}
-            onChange={(e) => setDataOra(e.target.value)}
+            onChange={(e) => { setDataOra(e.target.value); setIsDirty(true) }}
             disabled={saving}
             style={{
               ...styles.input,
@@ -165,7 +202,7 @@ export default function NuovaCampagnaModal({ open, onClose, onCreated, cantiereI
         <div style={styles.actions}>
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleAttemptClose}
             disabled={saving}
             style={{ ...styles.btnSecondary, ...(saving ? styles.btnDisabled : {}) }}
           >
@@ -190,6 +227,8 @@ export default function NuovaCampagnaModal({ open, onClose, onCreated, cantiereI
             )}
           </button>
         </div>
+          </>
+        )}
       </div>
     </div>
   )
@@ -390,5 +429,44 @@ const styles: Record<string, React.CSSProperties> = {
     borderTopColor: 'var(--text-on-accent)',
     borderRadius: '50%',
     animation: 'modal-spinner 0.8s linear infinite',
+  },
+  confirmBox: {
+    background: 'var(--bg-card)',
+    border: '0.5px solid var(--border)',
+    borderRadius: 12,
+    padding: 16,
+  },
+  confirmText: {
+    fontSize: 14,
+    color: 'var(--text-primary)',
+    marginBottom: 16,
+    lineHeight: 1.5,
+  },
+  confirmActions: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+  },
+  confirmBtnSecondary: {
+    background: 'var(--bg-card)',
+    border: '0.5px solid var(--border)',
+    color: 'var(--text-primary)',
+    padding: 10,
+    borderRadius: 22,
+    fontSize: 13,
+    fontWeight: 500,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+  },
+  confirmBtnDanger: {
+    background: '#A32D2D',
+    color: '#FFFFFF',
+    border: 'none',
+    padding: 10,
+    borderRadius: 22,
+    fontSize: 13,
+    fontWeight: 500,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
   },
 }
