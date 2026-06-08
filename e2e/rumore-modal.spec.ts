@@ -42,7 +42,7 @@ test.describe('Modale Rumore — flusso UI completo (senza salvataggio)', () => 
     await inputNome.fill(nomeCantiereTest);
 
     // Salva cantiere
-    await page.getByRole('button', { name: 'Crea' }).click();
+    await page.getByRole('button', { name: 'Crea', exact: true }).click();
 
     // Attendi che il modale si chiuda e la card del cantiere appaia
     await expect(
