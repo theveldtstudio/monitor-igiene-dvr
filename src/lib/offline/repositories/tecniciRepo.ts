@@ -13,7 +13,7 @@ export const tecniciRepo: TecniciRepo = {
     if (navigator.onLine) {
       const { data, error } = await supabase
         .from('tecnici')
-        .select('id, nome, cognome, created_at')
+        .select('id, nome, cognome, sync_pending, updated_at, created_at')
         .order('cognome', { ascending: true })
         .order('nome', { ascending: true })
       if (error) throw new Error(error.message)
@@ -35,7 +35,7 @@ export const tecniciRepo: TecniciRepo = {
       const { data, error } = await supabase
         .from('tecnici')
         .insert(input)
-        .select('id, nome, cognome, created_at')
+        .select('id, nome, cognome, sync_pending, updated_at, created_at')
         .single()
       if (error) throw new Error(error.message)
       if (!data) throw new Error('Create tecnico: nessun dato restituito da Supabase')
@@ -48,6 +48,7 @@ export const tecniciRepo: TecniciRepo = {
       ...input,
       id: crypto.randomUUID(),
       created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     }
     await db.tecnici.put(local)
     await enqueueSyncOperation('tecnici', 'create', local.id, local)

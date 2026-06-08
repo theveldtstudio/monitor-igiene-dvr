@@ -15,7 +15,7 @@ export const risorseCantiereRepo: RisorseCantiereRepo = {
     if (navigator.onLine) {
       const { data, error } = await supabase
         .from('risorse_cantiere')
-        .select('id, cantiere_id, tipo, valore, created_at')
+        .select('id, cantiere_id, tipo, valore, sync_pending, updated_at, created_at')
         .eq('cantiere_id', cantiereId)
         .eq('tipo', tipo)
         .order('valore', { ascending: true })
@@ -37,7 +37,7 @@ export const risorseCantiereRepo: RisorseCantiereRepo = {
       const { data, error } = await supabase
         .from('risorse_cantiere')
         .insert(input)
-        .select('id, cantiere_id, tipo, valore, created_at')
+        .select('id, cantiere_id, tipo, valore, sync_pending, updated_at, created_at')
         .single()
       if (error) throw new Error(error.message)
       if (!data) throw new Error('Create risorsa: nessun dato restituito da Supabase')
@@ -50,6 +50,7 @@ export const risorseCantiereRepo: RisorseCantiereRepo = {
       ...input,
       id: crypto.randomUUID(),
       created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     }
     await db.risorse_cantiere.put(local)
     await enqueueSyncOperation('risorse_cantiere', 'create', local.id, local)
@@ -62,7 +63,7 @@ export const risorseCantiereRepo: RisorseCantiereRepo = {
         .from('risorse_cantiere')
         .update(patch)
         .eq('id', id)
-        .select('id, cantiere_id, tipo, valore, created_at')
+        .select('id, cantiere_id, tipo, valore, sync_pending, updated_at, created_at')
         .single()
       if (error) throw new Error(error.message)
       if (!data) throw new Error('Update risorsa: nessun dato restituito da Supabase')
@@ -73,9 +74,10 @@ export const risorseCantiereRepo: RisorseCantiereRepo = {
     }
     const existing = await db.risorse_cantiere.get(id)
     if (!existing) throw new Error(`Risorsa ${id} non trovata in storage locale`)
-    const updated: RisorsaCantiere = { ...existing, ...patch }
+    const nowIso = new Date().toISOString()
+    const updated: RisorsaCantiere = { ...existing, ...patch, updated_at: nowIso }
     await db.risorse_cantiere.put(updated)
-    await enqueueSyncOperation('risorse_cantiere', 'update', id, patch)
+    await enqueueSyncOperation('risorse_cantiere', 'update', id, { ...patch, updated_at: nowIso })
     return updated
   },
 

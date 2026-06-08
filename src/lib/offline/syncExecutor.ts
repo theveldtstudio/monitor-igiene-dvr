@@ -20,9 +20,9 @@ type SyncTable = (typeof TABLE_ORDER)[number]
 const TABLES_WITH_SYNC_PENDING = new Set<string>(['campagne', 'misure'])
 
 const COLUMN_WHITELIST: Record<SyncTable, string[]> = {
-  cantieri: ['id', 'nome', 'indirizzo', 'stato', 'committente', 'created_at'],
-  strumenti: ['id', 'nome', 'modello', 'matricola', 'created_at'],
-  tecnici: ['id', 'nome', 'cognome', 'created_at'],
+  cantieri: ['id', 'nome', 'indirizzo', 'stato', 'committente', 'updated_at', 'created_at'],
+  strumenti: ['id', 'nome', 'modello', 'matricola', 'updated_at', 'created_at'],
+  tecnici: ['id', 'nome', 'cognome', 'updated_at', 'created_at'],
   campagne: [
     'id',
     'cantiere_id',
@@ -34,10 +34,11 @@ const COLUMN_WHITELIST: Record<SyncTable, string[]> = {
     'pin_osservatore',
     'stato',
     'sync_pending',
+    'updated_at',
     'created_at',
   ],
-  risorse_cantiere: ['id', 'cantiere_id', 'tipo', 'valore', 'created_at'],
-  misure: ['id', 'campagna_id', 'numero', 'dati', 'note', 'sync_pending', 'created_at'],
+  risorse_cantiere: ['id', 'cantiere_id', 'tipo', 'valore', 'updated_at', 'created_at'],
+  misure: ['id', 'campagna_id', 'numero', 'dati', 'note', 'sync_pending', 'updated_at', 'created_at'],
 }
 
 function sanitize(table: SyncTable, payload: unknown): Record<string, unknown> {

@@ -17,7 +17,7 @@ export interface MisureRepo {
   remove(id: string): Promise<void>
 }
 
-export const MISURA_SELECT = 'id, campagna_id, numero, dati, note, sync_pending, created_at'
+export const MISURA_SELECT = 'id, campagna_id, numero, dati, note, sync_pending, updated_at, created_at'
 
 async function nextNumeroLocale(campagnaId: string): Promise<number> {
   const esistenti = await db.misure.where('campagna_id').equals(campagnaId).toArray()
@@ -101,6 +101,7 @@ export const misureRepo: MisureRepo = {
       note: input.note ?? '',
       sync_pending: true,
       created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     }
     await db.misure.put(local)
     await enqueueSyncOperation('misure', 'create', local.id, local)
@@ -124,9 +125,10 @@ export const misureRepo: MisureRepo = {
     }
     const existing = await db.misure.get(id)
     if (!existing) throw new Error(`Misura ${id} non trovata in storage locale`)
-    const updated: Misura = { ...existing, ...patch, sync_pending: true }
+    const nowIso = new Date().toISOString()
+    const updated: Misura = { ...existing, ...patch, sync_pending: true, updated_at: nowIso }
     await db.misure.put(updated)
-    await enqueueSyncOperation('misure', 'update', id, patch)
+    await enqueueSyncOperation('misure', 'update', id, { ...patch, updated_at: nowIso })
     return updated
   },
 

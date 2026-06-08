@@ -10,11 +10,11 @@ export interface PullResult {
   errors: string[]
 }
 
-const CANTIERE_SELECT = 'id, nome, indirizzo, committente, stato, created_at'
-const RISORSA_SELECT = 'id, cantiere_id, tipo, valore, created_at'
-const TECNICO_SELECT = 'id, nome, cognome, created_at'
-const STRUMENTO_SELECT = 'id, nome, modello, matricola, created_at'
-const FOTO_MISURA_SELECT = 'id, misura_id, url_storage, path_locale, sync_pending, created_at'
+const CANTIERE_SELECT = 'id, nome, indirizzo, committente, stato, sync_pending, updated_at, created_at'
+const RISORSA_SELECT = 'id, cantiere_id, tipo, valore, sync_pending, updated_at, created_at'
+const TECNICO_SELECT = 'id, nome, cognome, sync_pending, updated_at, created_at'
+const STRUMENTO_SELECT = 'id, nome, modello, matricola, sync_pending, updated_at, created_at'
+const FOTO_MISURA_SELECT = 'id, misura_id, url_storage, path_locale, sync_pending, updated_at, created_at'
 
 interface RawFotoMisura {
   id: string
@@ -22,6 +22,7 @@ interface RawFotoMisura {
   url_storage: string | null
   path_locale: string | null
   sync_pending: boolean | null
+  updated_at: string | null
   created_at: string | null
 }
 

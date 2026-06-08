@@ -23,7 +23,7 @@ export interface CampagneRepo {
   remove(id: string): Promise<void>
 }
 
-export const CAMPAGNA_SELECT = 'id, cantiere_id, tipo_campionamento, data_ora, strumento_id, tecnici_ids, pin_tecnico, pin_osservatore, stato, sync_pending, created_at'
+export const CAMPAGNA_SELECT = 'id, cantiere_id, tipo_campionamento, data_ora, strumento_id, tecnici_ids, pin_tecnico, pin_osservatore, stato, sync_pending, updated_at, created_at'
 
 export const campagneRepo: CampagneRepo = {
   async list(cantiereId, tipoCampionamento) {
@@ -91,7 +91,8 @@ export const campagneRepo: CampagneRepo = {
       strumento_id: input.strumento_id ?? null,
       tecnici_ids: input.tecnici_ids ?? [],
       sync_pending: input.sync_pending ?? false,
-      created_at: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     }
     await db.campagne.put(local)
     await enqueueSyncOperation('campagne', 'create', local.id, local)
@@ -115,9 +116,10 @@ export const campagneRepo: CampagneRepo = {
     }
     const existing = await db.campagne.get(id)
     if (!existing) throw new Error(`Campagna ${id} non trovata in storage locale`)
-    const updated: Campagna = { ...existing, ...patch }
+    const nowIso = new Date().toISOString()
+    const updated: Campagna = { ...existing, ...patch, updated_at: nowIso }
     await db.campagne.put(updated)
-    await enqueueSyncOperation('campagne', 'update', id, patch)
+    await enqueueSyncOperation('campagne', 'update', id, { ...patch, updated_at: nowIso })
     return updated
   },
 

@@ -13,7 +13,7 @@ export const strumentiRepo: StrumentiRepo = {
     if (navigator.onLine) {
       const { data, error } = await supabase
         .from('strumenti')
-        .select('id, nome, modello, matricola, created_at')
+        .select('id, nome, modello, matricola, sync_pending, updated_at, created_at')
         .order('nome', { ascending: true })
       if (error) throw new Error(error.message)
       const rows = data ?? []
@@ -31,7 +31,7 @@ export const strumentiRepo: StrumentiRepo = {
       const { data, error } = await supabase
         .from('strumenti')
         .insert(input)
-        .select('id, nome, modello, matricola, created_at')
+        .select('id, nome, modello, matricola, sync_pending, updated_at, created_at')
         .single()
       if (error) throw new Error(error.message)
       if (!data) throw new Error('Create strumento: nessun dato restituito da Supabase')
@@ -44,6 +44,7 @@ export const strumentiRepo: StrumentiRepo = {
       ...input,
       id: crypto.randomUUID(),
       created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     }
     await db.strumenti.put(local)
     await enqueueSyncOperation('strumenti', 'create', local.id, local)

@@ -22,6 +22,8 @@ export interface Cantiere {
   indirizzo: string;
   committente: string | null;
   stato: 'aperto' | 'chiuso' | 'sospeso';
+  sync_pending?: boolean | null;
+  updated_at?: string | null;
   created_at: string;
 }
 
@@ -29,6 +31,8 @@ export interface Tecnico {
   id: string;
   nome: string;
   cognome: string;
+  sync_pending?: boolean | null;
+  updated_at?: string | null;
   created_at: string | null;
 }
 
@@ -37,6 +41,8 @@ export interface Strumento {
   nome: string;
   modello: string;
   matricola: string;
+  sync_pending?: boolean | null;
+  updated_at?: string | null;
   created_at: string | null;
 }
 
@@ -51,6 +57,7 @@ export interface Campagna {
   pin_osservatore: string;
   stato: 'bozza' | 'completa';
   sync_pending: boolean;
+  updated_at?: string | null;
   created_at: string | null;
 }
 
@@ -61,6 +68,7 @@ export interface Misura {
   dati: Record<string, unknown>;
   note: string | null;
   sync_pending: boolean | null;
+  updated_at?: string | null;
   created_at: string | null;
 }
 
@@ -70,6 +78,7 @@ export interface FotoMisura {
   url_storage: string | null;
   path_locale: string;
   sync_pending: boolean;
+  updated_at?: string | null;
   created_at: string | null;
 }
 
@@ -80,5 +89,7 @@ export interface RisorsaCantiere {
   cantiere_id: string
   tipo: TipoRisorsa
   valore: string
+  sync_pending?: boolean | null
+  updated_at?: string | null
   created_at: string | null
 }
