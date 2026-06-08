@@ -1,4 +1,4 @@
-import ExcelJS from 'exceljs'
+import type ExcelJS from 'exceljs'
 import { addFotoSheet, type FotoSheetContext } from './exportFotoSheet'
 import { cloneSheet } from './exportPaginazione'
 import type { ExportSchema, ExportContext } from '../data/exportSchemas'
@@ -6,6 +6,7 @@ import type { ExportSchema, ExportContext } from '../data/exportSchemas'
 export type { FotoSheetContext }
 
 async function loadTemplate(templateUrl: string): Promise<ExcelJS.Workbook> {
+  const ExcelJS = (await import('exceljs')).default
   const workbook = new ExcelJS.Workbook()
   if (templateUrl) {
     const response = await fetch(templateUrl)
@@ -102,6 +103,7 @@ export async function exportMultiCampagne(
   contexts: ExportContext[],
   filename: string,
 ): Promise<void> {
+  const ExcelJS = (await import('exceljs')).default
   const master = new ExcelJS.Workbook()
   const usedNames = new Set<string>()
 
