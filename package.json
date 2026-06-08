@@ -14,14 +14,17 @@
     "test:e2e:report": "playwright show-report"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.104.1",
-    "@tanstack/react-query": "^5.100.5",
+    "@supabase/supabase-js": "^2.108.0",
+    "@tanstack/react-query": "^5.101.0",
     "dexie": "^4.4.3",
     "exceljs": "^4.4.0",
     "jszip": "^3.10.1",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
-    "react-router-dom": "^7.14.2"
+    "react-router-dom": "^7.17.0"
+  },
+  "overrides": {
+    "tmp": "^0.2.6"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
