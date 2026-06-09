@@ -2,6 +2,8 @@ import type { ReactNode } from 'react'
 import { lazy, Suspense } from 'react'
 import { Routes, Route, useLocation } from 'react-router-dom'
 import { AppLockProvider, useAppLock } from './contexts/AppLockContext'
+import { useAuth } from './contexts/AuthContext'
+import LoginScreen from './components/LoginScreen'
 import PinScreen from './components/PinScreen'
 import Spinner from './components/Spinner'
 import AppErrorBoundary from './components/AppErrorBoundary'
@@ -27,6 +29,32 @@ function RouteFallback() {
       <Spinner size={20} />
     </div>
   )
+}
+
+function AuthGate({ children }: { children: ReactNode }) {
+  const { session, loading } = useAuth()
+
+  if (loading) {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '100vh',
+          color: 'var(--text-secondary)',
+        }}
+      >
+        <Spinner size={20} />
+      </div>
+    )
+  }
+
+  if (!session) {
+    return <LoginScreen />
+  }
+
+  return <>{children}</>
 }
 
 function AppGate({ children }: { children: ReactNode }) {
@@ -61,22 +89,24 @@ function AppGate({ children }: { children: ReactNode }) {
 function App() {
   const location = useLocation()
   return (
-    <AppLockProvider>
-      <AppGate>
-        <AppErrorBoundary key={location.pathname}>
-          <Suspense fallback={<RouteFallback />}>
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/anagrafica" element={<Anagrafica />} />
-              <Route path="/cantieri/:id" element={<PaginaCantiere />} />
-              <Route path="/cantieri/:id/moduli/:moduloId" element={<ListaCampagne />} />
-              <Route path="/cantieri/:id/moduli/:moduloId/campagne/:campagnaId" element={<FoglioCampagna />} />
-              <Route path="/cantieri/nuovo" element={<NuovoCantiere />} />
-            </Routes>
-          </Suspense>
-        </AppErrorBoundary>
-      </AppGate>
-    </AppLockProvider>
+    <AuthGate>
+      <AppLockProvider>
+        <AppGate>
+          <AppErrorBoundary key={location.pathname}>
+            <Suspense fallback={<RouteFallback />}>
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/anagrafica" element={<Anagrafica />} />
+                <Route path="/cantieri/:id" element={<PaginaCantiere />} />
+                <Route path="/cantieri/:id/moduli/:moduloId" element={<ListaCampagne />} />
+                <Route path="/cantieri/:id/moduli/:moduloId/campagne/:campagnaId" element={<FoglioCampagna />} />
+                <Route path="/cantieri/nuovo" element={<NuovoCantiere />} />
+              </Routes>
+            </Suspense>
+          </AppErrorBoundary>
+        </AppGate>
+      </AppLockProvider>
+    </AuthGate>
   )
 }
 
