@@ -293,7 +293,9 @@ const styles: Record<string, React.CSSProperties> = {
   input: {
     width: '100%',
     background: 'var(--bg-card)',
-    border: '0.5px solid var(--border)',
+    borderWidth: '0.5px',
+    borderStyle: 'solid',
+    borderColor: 'var(--border)',
     borderRadius: 8,
     padding: '10px 12px',
     fontSize: 14,

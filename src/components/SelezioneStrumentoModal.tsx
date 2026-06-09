@@ -205,7 +205,7 @@ const styles: Record<string, React.CSSProperties> = {
   rowBody: { flex: 1, minWidth: 0 },
   rowName: { fontSize: 13, color: 'var(--text-primary)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   rowSub: { fontSize: 11, color: 'var(--text-secondary)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  radio: { width: 20, height: 20, borderRadius: '50%', border: '1.5px solid var(--border)', background: 'var(--bg-card)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  radio: { width: 20, height: 20, borderRadius: '50%', borderWidth: '1.5px', borderStyle: 'solid', borderColor: 'var(--border)', background: 'var(--bg-card)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   radioChecked: { borderColor: 'var(--accent)' },
   radioDot: { width: 10, height: 10, borderRadius: '50%', background: 'var(--accent)' },
   footer: { borderTop: '0.5px solid var(--border)', paddingTop: 12 },

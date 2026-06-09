@@ -207,7 +207,7 @@ const styles: Record<string, React.CSSProperties> = {
   avatar: { width: 28, height: 28, borderRadius: '50%', background: 'var(--bg-badge-open)', color: 'var(--text-badge-open)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 500, flexShrink: 0 },
   rowBody: { flex: 1, minWidth: 0 },
   rowName: { fontSize: 13, color: 'var(--text-primary)', fontWeight: 500 },
-  checkbox: { width: 20, height: 20, borderRadius: 4, border: '1.5px solid var(--border)', background: 'var(--bg-card)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  checkbox: { width: 20, height: 20, borderRadius: 4, borderWidth: '1.5px', borderStyle: 'solid', borderColor: 'var(--border)', background: 'var(--bg-card)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   checkboxChecked: { background: 'var(--accent)', borderColor: 'var(--accent)' },
   checkmark: { color: 'var(--text-on-accent)', fontSize: 13, fontWeight: 500, lineHeight: 1 },
   footer: { borderTop: '0.5px solid var(--border)', paddingTop: 12 },
