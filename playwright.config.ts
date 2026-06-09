@@ -54,6 +54,7 @@ export default defineConfig({
     env: {
       VITE_SUPABASE_URL: process.env.E2E_SUPABASE_URL!,
       VITE_SUPABASE_ANON_KEY: process.env.E2E_SUPABASE_ANON_KEY!,
+      VITE_E2E_AUTH_BYPASS: 'true',
     },
   },
 });

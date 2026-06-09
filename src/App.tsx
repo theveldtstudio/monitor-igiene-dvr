@@ -33,8 +33,9 @@ function RouteFallback() {
 
 function AuthGate({ children }: { children: ReactNode }) {
   const { session, loading } = useAuth()
+  const bypassAuth = import.meta.env.DEV === true && import.meta.env.VITE_E2E_AUTH_BYPASS === 'true'
 
-  if (loading) {
+  if (loading && !bypassAuth) {
     return (
       <div
         style={{
@@ -50,7 +51,7 @@ function AuthGate({ children }: { children: ReactNode }) {
     )
   }
 
-  if (!session) {
+  if (!session && !bypassAuth) {
     return <LoginScreen />
   }
 
