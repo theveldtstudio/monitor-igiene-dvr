@@ -1,6 +1,6 @@
 # 🤝 HANDOVER — App Monitoraggi 81/08
 
-**Stato al 5 giugno 2026**
+**Stato al 28 settembre 2026**
 Documento di passaggio di consegne / fotografia attuale del progetto.
 
 ---
@@ -9,7 +9,13 @@ Documento di passaggio di consegne / fotografia attuale del progetto.
 
 App web per RSPP (Responsabile Servizio Prevenzione e Protezione) per la raccolta in cantiere di misure di campionamento ai sensi del **D.Lgs. 81/08**. 16 moduli di campionamento (rumore, polveri, vibrazioni, OWAS, MMC, OCRA, CEM, ecc.).
 
-Utente: **un singolo RSPP** (non multi-utente). App personale per uso in cantiere, mobile + desktop.
+Utente oggi: **Davide** (uso personale in cantiere, mobile + desktop). App in produzione su **Netlify**, già testata in cantiere.
+
+**Obiettivo da settembre 2026**: terminarla e **venderla ad altri professionisti**, in due pacchetti:
+- **Monitoraggi** — questa app, standalone
+- **Monitoraggi + DVR** — una copia collegata a un software esterno per la redazione del DVR
+
+⚠️ Oggi l'app è **single-tenant** (nessun `org_id`/`user_id` nei dati): prima di vendere serve la Fase K (multi-tenancy, licenze, legale). Vedi `06_TODO_completa.md`.
 
 Repository: `https://github.com/theveldtstudio/monitor-igiene.git`
 Cartella di lavoro Claude Code: `monitor-igiene/app-web`
@@ -26,7 +32,9 @@ Cartella di lavoro Claude Code: `monitor-igiene/app-web`
 - **ExcelJS** per export `.xlsx` (unico formato export — PDF rimosso 21 mag 2026, vedi branch backup)
 - **Offline-first**: Dexie (store locale) + sync queue + PWA (vite-plugin-pwa, service worker, manifest) — in `src/lib/offline/`
 - **Sistema toast** custom (no libreria esterna) — in `src/lib/toast/`
-- **Playwright 1.60+** per test E2E (solo Chromium, headless, scope `e2e/`)
+- **Supabase Auth** (login email+password) + PIN locale
+- **Netlify** per il deploy (`netlify.toml`)
+- **Playwright 1.60+** per test E2E (solo Chromium, headless, scope `e2e/`, DB Supabase di TEST separato)
 - **Chrome DevTools MCP** (ufficiale Google) configurato scope user di Claude Code per diagnostica live: aprire app, leggere console/network, ispezionare DOM, screenshot
 - ESLint configurato, no Prettier
 
@@ -45,15 +53,18 @@ src/
 ├── hooks/           21+ hook custom TanStack Query
 ├── data/            6 file (moduliRegistry, moduliCampionamento, cardSubtitles,
 │                            owasLookup, exportSchemas, ocraChecklistData)
-├── contexts/        AppLockContext (PIN/lock app)
+├── contexts/        AppLockContext (PIN/lock app), AuthContext (login Supabase)
 ├── utils/           pinStorage, fotoStorage
 ├── lib/
 │   ├── supabase.ts
 │   ├── exportExcel.ts          (orchestratore Excel)
 │   ├── exportFotoSheet.ts      (foglio foto Excel)
 │   ├── exportPaginazione.ts    (paginazione multi-foglio + cloneSheet)
+│   ├── exportCantiereZip.ts    (export cantiere completo in zip)
+│   ├── humanizeError.ts        (messaggi di errore leggibili)
+│   ├── queryClient.ts, saveBlob.ts
 │   ├── offline/                (offline-first: db.ts, syncQueue.ts, syncExecutor.ts,
-│   │                            pullExecutor.ts, fotoSyncExecutor.ts, initSync.ts,
+│   │                            pullExecutor.ts, lwwMerge.ts, fotoSyncExecutor.ts, initSync.ts,
 │   │                            useOnlineStatus.ts, OfflineBanner.tsx, repositories/,
 │   │                            types.ts, index.ts)
 │   └── toast/                  (ToastProvider, toastApi, useToast, styles, types, index)
@@ -63,9 +74,12 @@ src/
 ├── styles/          globals.css (design tokens)
 └── assets/
 
-e2e/                 (Playwright)
+e2e/                 (Playwright — DB Supabase di TEST)
 ├── home.spec.ts             (smoke test Home)
-└── rumore-modal.spec.ts     (flusso UI modale Rumore, no save no DB)
+├── rumore-modal.spec.ts     (flusso UI modale Rumore)
+├── export-<modulo>.spec.ts  (×16: seed → export → parse xlsx → assert)
+├── helpers/testDb.ts        (seed/cleanup con service-key)
+└── global-teardown.ts
 playwright.config.ts
 
 public/
@@ -113,6 +127,11 @@ tools/               script Python per fix template .xlsx (numFmt, build)
 - Bottone manuale 🔒 "Blocca app" **SOLO nella Home** (scelta esplicita di design)
 - Reset PIN via dialog "Hai dimenticato il PIN?"
 - File: `src/utils/pinStorage.ts`, `src/contexts/AppLockContext.tsx`, `src/components/PinKeypad.tsx`, `src/components/PinScreen.tsx`
+
+### Login Supabase ✅ (9 giu 2026)
+- Gate pre-PIN: `AuthGate` in `App.tsx` -> `LoginScreen` -> PIN -> app
+- `src/contexts/AuthContext.tsx` (signIn, signOut, resetPassword via email)
+- Bypass solo per E2E: `import.meta.env.DEV && VITE_E2E_AUTH_BYPASS === 'true'` (inerte e rimosso in build di produzione)
 
 ⚠️ I campi `pin_tecnico` e `pin_osservatore` su `Campagna` sono **diversi** dal PIN-app: sono PIN di firma metrologica della campagna.
 
@@ -169,7 +188,7 @@ Architettura reale in `src/lib/offline/`:
 - `queryClient` con `networkMode: 'offlineFirst'`
 - Repository pattern in `repositories/`, tipi in `types.ts`, barrel `index.ts`
 - **PWA completa**: vite-plugin-pwa, service worker, manifest, avviso aggiornamento nuova versione
-- **Conflict resolution**: NO LWW (manca `updated_at` su 7 tabelle) → **last-pusher-wins**, LWW rimandato a commercializzazione
+- **Conflict resolution** (LWW step 1-3, 8 giu 2026): `updated_at` su tutte le tabelle sincronizzate; nel **pull** vince il record più recente (`lwwMerge.ts`, confronto numerico, tie → remoto) salvo record locali `sync_pending`; nel **push** (insert/update) vince chi scrive per ultimo
 
 ### 🔔 Sistema toast ✅ (UX3)
 
@@ -177,54 +196,53 @@ Architettura reale in `src/lib/offline/`:
 - API imperativa `toast.success/error/warning/info`
 - Nessuna libreria esterna
 
-### 🧪 Testing E2E ✅ (nuovo — 13 maggio 2026)
+### 🧪 Testing E2E ✅ (13 mag → 9 giu 2026)
 
-**Playwright** (solo chromium, headless) per smoke + flussi UI.
+**Playwright** (solo chromium, headless, `workers: 1`). Il `webServer` di Playwright avvia `npm run dev` puntato al **progetto Supabase di TEST** (variabili `E2E_*` in `.env.test`, mai la prod) con `VITE_E2E_AUTH_BYPASS=true`. `reuseExistingServer: false`: chiudere un eventuale dev server manuale sulla 5173 prima di lanciare.
 
-File:
-- `playwright.config.ts` in root, `baseURL: http://localhost:5173`, `workers: 1` (test seriali, evita race future con Supabase), `headless: true`, reporter `list + html`
-- `e2e/home.spec.ts`: smoke test Home — caricamento + nessun errore console (filtrati favicon/ServiceWorker/Manifest)
-- `e2e/rumore-modal.spec.ts`: flusso UI completo Home → cantiere → modulo Rumore → campagna → modale → compila Leq dB(A) → verifica UI (titolo, 4 input, bottone Salva enabled). **NON salva, NON tocca DB esplicitamente**
+18 spec (ultima run 9 giu 2026: tutte verdi):
+- `e2e/home.spec.ts` — smoke Home
+- `e2e/rumore-modal.spec.ts` — flusso UI modale Rumore
+- `e2e/export-<modulo>.spec.ts` × 16 — seed dati via service-key (`e2e/helpers/testDb.ts`) → export Excel → parse xlsx → assert valori
+- `e2e/global-teardown.ts` — pulizia cantieri `TEST_E2E_*`
 
-Comandi:
-- `npm run test:e2e` — esecuzione (~10-15s totali)
-- `npm run test:e2e:ui` — modalità UI interattiva
-- `npm run test:e2e:report` — apre l'ultimo HTML report
+Comandi: `npm run test:e2e`, `npm run test:e2e:ui`, `npm run test:e2e:report`.
 
-**Bypass PIN AppLock** via `page.addInitScript` che inietta `app_pin_hash` (SHA-256 di "1234" = `03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4`) + `app_locked='0'` in localStorage prima del `goto`. Helper riusabile `bypassPinLock(page)` definito nello spec stesso.
+**Bypass PIN AppLock** via `page.addInitScript` (hash SHA-256 di "1234" + `app_locked='0'` in localStorage).
 
-**Selettori stabili**: data-testid aggiunti in:
-- `Home.tsx` riga 215: `data-testid="cantiere-card"` sui Link cantieri
-- `PaginaCantiere.tsx` riga 64: `data-testid="modulo-card-${modulo.id}"` sui Link moduli
+**Selettori**: `getByTestId` > `#id` stabile > `getByRole` > `getByText`. data-testid solo dove servono (`cantiere-card`, `modulo-card-<id>`).
 
-**Pattern dirty-guard MisuraModalShell**: alla chiusura del modale se il form è dirty appare dialog "Hai scritto dei dati. Vuoi davvero scartarli?". Il test gestisce esplicitamente cliccando "Scarta" dopo "Annulla".
+**Chrome DevTools MCP** registrato in Claude Code per diagnostica live di `localhost:5173`.
 
-**Strategia "no DB cleanup"** (scelta consapevole): i cantieri `TEST_E2E_<timestamp>` creati dai test restano nel DB tra run. Pulizia manuale occasionale dalla Supabase dashboard (~10 run = 5 sec di housekeeping). Quando servirà un test che salva davvero in DB, useremo `E2E_SUPABASE_SERVICE_KEY` (non ancora configurata).
+### 🚀 Deploy ✅
+- Netlify: `npm run build`, publish `dist`, redirect SPA `/* → /index.html` (`netlify.toml`)
+- Env di produzione (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`) configurate su Netlify
 
-**Chrome DevTools MCP** (Google ufficiale) registrato scope user di Claude Code:
-```
-claude mcp add chrome-devtools --scope user -- npx -y chrome-devtools-mcp@latest --no-usage-statistics
-```
-Usato per diagnostica live (es. "apri localhost:5173 e leggi errori console", "fai screenshot del modale Rumore", "ispeziona DOM della Home"). Non avvia il dev server: il dev server deve essere già attivo su `:5173`.
+### ⚡ Performance ✅ (8 giu 2026)
+- Route code-splitting (`React.lazy`), vendor split `manualChunks`, ExcelJS lazy → entry ~12 kB gzip
 
 ---
 
 ## ⏸️ Cosa resta da fare
 
-> Fase I (offline + sync + PWA) e sistema toast sono **COMPLETATI** (vedi sopra), non più nel backlog. Export PDF e relative estensioni lab (che implicavano PDF) sono chiusi: PDF rimosso, estensioni lab non necessarie (copertura fogli campagna 100%, dati di concentrazione/microbiologici nei referti).
+Dettaglio in `docs/06_TODO_completa.md`.
 
-### Priorità alta
-1. **Validazione end-to-end offline/sync** — oggi ZERO test sul flusso offline. Verificare drain queue, pull cloud→locale, comportamento offline→online su scenario reale
-2. **Copertura E2E** — solo 2 spec su 16 moduli (`home.spec.ts` + `rumore-modal.spec.ts`)
+### 🔴 Fase K — Preparazione alla vendita
+0. **Decisione architettura**: un progetto Supabase per cliente vs. multi-tenant condiviso (`org_id` + RLS)
+1. **Multi-tenancy + RLS** per organizzazione su tabelle e bucket foto; sync offline filtrato per tenant
+2. **Account/onboarding/licenze** per i due pacchetti; logo e intestazione del professionista negli export
+3. **Legale/commerciale**: EULA, privacy + DPA Art. 28 GDPR, listino, assistenza, backup
+4. **Pacchetto Monitoraggi + DVR**: contratto dati verso il software DVR, strategia repo (fork vs. feature flag)
 
-### Priorità media
-3. **Code-split bundle** — bundle ~2MB senza code splitting dinamico
-4. **Test E2E con salvataggio DB** — aggiungere `E2E_SUPABASE_SERVICE_KEY` in `.env.local`, test che salvano misure + cleanup automatico
-5. **Test E2E altri 15 modali** — replicare pattern di `rumore-modal.spec.ts`. Solo quando serve davvero
+### 🟡 Qualità
+5. Test E2E offline/sync (oggi zero)
+6. Verifica su più dispositivi con PWA installata; monitoraggio errori in produzione
 
-### Debt minore
-6. Routing legacy `/cantiere/:id` (singolare) da rimuovere
-7. Naming OWAS camelCase → da normalizzare a snake_case
+### 🟢 Debt minore
+7. Naming OWAS camelCase → snake_case
+8. Refactor `set-state-in-effect` (49 disable-line)
+9. Cosmetici export Bucket C
+10. `src/pages/Cantiere.tsx` codice morto
 
 ---
 
@@ -363,7 +381,7 @@ Per scrivere un test E2E di un modale `MisuraXxxModal`:
 2. **Selettori preferenziali**, in ordine: `getByTestId` > `locator('#id-html-stabile')` > `getByRole('button'/'link', {name: 'Testo esatto'})` > `getByText` (ultima scelta, fragile)
 3. **Nomi cantieri test**: prefisso `TEST_E2E_<Date.now()>` per riconoscibilità
 4. **Pattern dirty-guard**: dopo `Annulla` su modale con form compilato, cliccare `Scarta` per chiudere il dialog di conferma
-5. **Non salvare** finché non c'è `E2E_SUPABASE_SERVICE_KEY` configurata: limitarsi a verificare UI fino al bottone Salva
+5. **Test che salvano dati**: seed via helper in `e2e/helpers/testDb.ts` (service-key sul DB di TEST), mai scrivere sul DB di produzione
 
 ### Sync offline-first (ATTIVO — Fase I completata)
 
@@ -444,9 +462,9 @@ Sono read-only di riferimento.
 
 ## 🔑 Anomalie note (debt da pulire in futuro)
 
-1. **Routing legacy**: coesistono `/cantiere/:id` (singolare, vecchio) e `/cantieri/:id` (plurale, nuovo) in `App.tsx`. Da rimuovere il legacy quando sicuri non sia usato.
+1. **Routing legacy**: route `/cantiere/:id` rimossa (3 giu 2026); resta il file `src/pages/Cantiere.tsx` non più usato.
 2. **Naming OWAS camelCase**: tutti gli altri schemi usano snake_case, OWAS è camelCase. Da normalizzare.
-3. **Bucket B audit (R-4)**: overflow >32 misure per modulo. Decisione di design pendente: split file numerati / multi-pagina dentro stesso file / limite hard 32 con warning.
+3. **Bucket B audit (R-4)**: overflow >32 misure — RISOLTO con paginazione multi-foglio.
 4. **Bucket C audit cosmetici**: strumento Rumore hardcoded → leggere da `ctx.strumento`; label "Tecnico rilevatore" inconsistenti tra moduli; statistiche WBV per gruppo; numerazione HAV blocchi; decimali OWAS.
 5. **Lint warning `react-hooks/set-state-in-effect`** — RISOLTO: 0 errori lint. I 49 warning sui modali sono stati silenziati con `disable-line` mirati (bug runtime già risolto col pattern split useEffect). Refactor architetturale dell'antipattern rimandato.
 
@@ -466,7 +484,7 @@ npm run test:e2e:report   # Apri HTML report ultima run
 
 PowerShell Windows — apri localhost: `start http://localhost:5173`
 
-Git workflow: feature branches → merge in `main` → `git push origin main`. Le deny rules in `.claude/settings.json` impediscono a Claude Code di fare `git push`: va fatto manualmente in una PowerShell separata.
+Git workflow: feature branches → merge in `main` → `git push origin main`. Il push lo fa Davide manualmente in una PowerShell separata.
 
 ---
 
@@ -480,4 +498,4 @@ Allega questo file alla nuova chat (o caricalo come Project file per averlo perm
 
 ---
 
-*Fine handover. Aggiornato 13 maggio 2026.*
+*Fine handover. Aggiornato 28 settembre 2026.*

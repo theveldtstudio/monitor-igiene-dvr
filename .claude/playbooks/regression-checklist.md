@@ -49,7 +49,7 @@ Per ogni modulo toccato, verifica:
 - [ ] **Pull cloud→locale**: i dati remoti aggiornano Dexie SENZA sovrascrivere record con `sync_pending` (local-wins guard)
 - [ ] **Offline→online**: `initSync` parte su evento `online` + `visibilitychange`; `OfflineBanner` riflette lo stato
 - [ ] **Foto sync**: le foto pendenti salgono dopo il drain dei record (FK-ordered)
-- [ ] **Conflitti**: comportamento last-pusher-wins atteso (NO LWW — manca `updated_at`)
+- [ ] **Conflitti**: nel pull vince il record con `updated_at` più recente (LWW, tie -> remoto), salvo record locali `sync_pending`; nel push vince chi scrive per ultimo
 
 ---
 

@@ -1,3 +1,5 @@
+<!-- Copia di CLAUDE.md per Codex e altri agenti. Fonte di verità: CLAUDE.md — tenere allineati. -->
+
 # Monitor Igiene — Contesto progetto
 
 App web (PWA) per la raccolta in cantiere delle misure di campionamento di igiene del lavoro ai sensi del **D.Lgs. 81/08**. Mobile + desktop, offline-first.
@@ -173,7 +175,7 @@ ATTENZIONE: `getRow()` è 1-indexed, `addImage` `tl.row` è 0-indexed.
 - `.claude/playbooks/regression-checklist.md` -> checklist cross-modulo
 - `.claude/EXCEL_EXPORT_RULES.md` -> regole template Excel
 - `.claude/playbooks/_archive/pdf-engine-REMOVED.md` -> SOLO memoria storica
-- `AGENTS.md` -> copia di questo file per Codex/altri agenti: tenerli allineati
+- `CLAUDE.md` -> file sorgente di questo documento
 
 ---
 

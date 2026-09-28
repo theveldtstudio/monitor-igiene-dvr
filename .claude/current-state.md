@@ -1,7 +1,15 @@
-﻿# Current State
+# Current State
 
-> Aggiornato: 2026-06-05
+> Aggiornato: 2026-09-28
 > Aggiornare a OGNI milestone importante.
+
+## In sintesi
+
+App **funzionalmente completa per uso personale**, in produzione su Netlify e già testata in cantiere.
+Ultimo sviluppo codice: 9 giu 2026. Da set 2026 l'obiettivo è **terminarla e venderla** ad altri professionisti,
+in due pacchetti: **Monitoraggi** (standalone) e **Monitoraggi + DVR** (copia collegata a un software DVR esterno).
+
+---
 
 ## Completato
 
@@ -10,81 +18,85 @@
 - Refactor R1+R2+R3 (modal shell + card generica + registry)
 
 ### Moduli — 16/16
-Tutti i moduli misura completi (vedi `CLAUDE.md` per elenco).
+Tutti i moduli misura completi (elenco in `CLAUDE.md`).
 
-### Phase H — PIN/Auth
-- PIN locale 4 cifre, SHA-256 in localStorage
-- Lock auto all'apertura/refresh
-- Bottone lock SOLO nella Home (scelta di design esplicita)
-- Reset via "Hai dimenticato il PIN?"
+### Accesso
+- Phase H — PIN locale 4 cifre (SHA-256 in localStorage), lock all'apertura, bottone lock solo in Home, reset "Hai dimenticato il PIN?"
+- **Login Supabase email+password** come gate pre-PIN (`AuthContext`, `LoginScreen`, `AuthGate`) — 9 giu 2026
+- Bypass AuthGate per E2E con doppia guardia DEV+flag, inerte in prod — 9 giu 2026
 
 ### Phase G — Foto
-- Bucket Supabase privato `misure-foto`
-- Pattern uniforme su tutti i 16 modali
-- Compressione client 1280px/q0.7
-- Max 5 foto/misura
+- Bucket privato `misure-foto`, pattern uniforme 16 modali, compressione 1280px/q0.7, max 5 foto/misura
 
-### Phase J — Export (Excel-only — PDF rimosso 21 mag 2026)
-- J1 + J1-bis: Excel 16/16 moduli con `ExportContext` arricchito
-- J2 + J2.1: foto in Excel (foglio dedicato, 16/16 moduli)
-- Paginazione multi-foglio: overflow misure genera fogli "Misure X-Y" via `cloneSheet` (`src/lib/exportPaginazione.ts`)
-- Fix committente vuoto + strumentazione/label tecnico footer su rumore/wbv/hav
-- MMC step A: labels normative xlsx ("(NIOSH)", "(Snook-Ciriello)")
-- PDF: RIMOSSO completamente (engine cancellato sotto `src/lib`, i pacchetti PDF fuori da package.json). Branch backup conserva la history.
+### Phase J — Export (solo Excel — PDF rimosso 21 mag 2026)
+- Excel 16/16 moduli con `ExportContext` arricchito, foto in foglio dedicato
+- Paginazione multi-foglio (overflow -> "Misure X-Y")
+- Export multi-campagna (1 foglio per campagna) — 5 giu 2026
+- Export cantiere completo in zip
+- Footer strumentazione/tecnico e committente su rumore/wbv/hav; label normative MMC
 
-### Fase I — Offline + sync + PWA  ✅ COMPLETATA E PUSHATA
-- Offline-first con Dexie (`src/lib/offline/db.ts`)
-- Sync queue FK-ordered (syncQueue.ts + syncExecutor.ts): drain record poi foto (fotoSyncExecutor.ts)
-- Pull cloud->locale (pullExecutor.ts) con local-wins guard su `sync_pending`
-- `initSync` su online + visibilitychange; `useOnlineStatus` + `OfflineBanner`
-- queryClient networkMode `offlineFirst`
-- PWA completa: vite-plugin-pwa, service worker, manifest, avviso aggiornamento nuova versione
-- Conflict resolution: last-pusher-wins (NO LWW — manca `updated_at` su 7 tabelle); LWW rimandato a commercializzazione
+### Fase I — Offline + sync + PWA
+- Dexie + sync queue FK-ordered + pull cloud->locale + PWA con avviso aggiornamento
+- **LWW nel pull su `updated_at`** (step 1-3, 8 giu 2026): confronto numerico in `lwwMerge.ts`, guard `sync_pending`
+- Safety net su update di record cancellati
 
-### UX3 — Sistema toast  ✅ COMPLETATO
-- `src/lib/toast/` (ToastProvider, toastApi, useToast, styles, types, index)
-- API imperativa `toast.success/error/warning/info`, nessuna libreria esterna
+### Qualità / UX
+- Sistema toast custom; `humanizeError`; `AppErrorBoundary` resettato per route
+- Dirty-guard + focus automatico su NuovaCampagnaModal / NuovoCantiereModal
+- Perf: route code-splitting (`React.lazy`), vendor split `manualChunks`, ExcelJS lazy (entry ~12 kB gzip)
+- Deps aggiornate per vulnerabilità npm audit (8 giu 2026)
+- Lint 0 errori/0 warning emessi; `tsc` pulito (verificato 28 set 2026)
 
-### Lint  ✅
-- 0 errori. 49 warning `react-hooks/set-state-in-effect` silenziati con `disable-line` mirati (bug runtime già risolto col pattern split useEffect)
+### Test E2E — 18 spec, ultima run verde (9 giu 2026)
+- `home`, `rumore-modal` (UI)
+- 16/16 `export-<modulo>`: seed su DB Supabase di TEST via service-key -> export -> parse xlsx -> assert; teardown globale
+- Playwright avvia il dev server puntato al DB di test (mai prod)
 
-### Bug fix sistemici
-- Bug modali risolto su 15 modali residui (split useEffect)
+### Deploy
+- Netlify (`netlify.toml`: `npm run build`, publish `dist`, redirect SPA)
 
 ---
 
 ## Focus corrente
 
-**Nessun task attivo.** In attesa di scelta utente sul prossimo fronte.
+**Fase K — Preparazione alla vendita** (vedi `docs/06_TODO_completa.md`).
+Primo passo da decidere con Davide: modello di distribuzione (un progetto Supabase per cliente vs. multi-tenant condiviso con `org_id` + RLS).
 
 ---
 
-## Prossimi fronti reali
+## Prossimi fronti
 
-1. **Validazione end-to-end offline/sync** — zero test oggi: verificare drain queue, pull cloud->locale, comportamento offline->online su scenario reale
-2. **Copertura E2E** — solo 2 spec su 16 moduli (home + rumore-modal)
-3. **Code-split bundle** — ~2MB, nessun code splitting dinamico
-4. **Debt minore** — routing legacy `/cantiere/:id`, naming OWAS camelCase
+1. **Multi-tenancy + RLS per utente/organizzazione** — bloccante per vendere
+2. **Registrazione/onboarding cliente, licenze/abbonamenti**
+3. **Aspetti legali**: EULA/termini, privacy e DPA (Art. 28 GDPR), fatturazione
+4. **Confine dati verso DVR**: contratto di export/API per il pacchetto Monitoraggi + DVR
+5. **Validazione E2E offline/sync** — ancora zero test automatici su drain/pull/conflitti
+6. Debt minore: naming OWAS camelCase, cosmetici export Bucket C, refactor set-state-in-effect
 
 ---
 
-## Debt noto (da pulire)
+## Debt noto
 
-- Routing legacy `/cantiere/:id` (singolare) da rimuovere
 - Naming OWAS camelCase -> da normalizzare a snake_case
-- Bundle ~2MB senza code-split dinamico
+- 49 `react-hooks/set-state-in-effect` silenziati con disable-line (bug runtime già risolto)
+- Push sync: vince l'ultimo che scrive (LWW solo nel pull)
+- Branch locale `backup/pre-rdp-removal-20260603` residuo (tenere o cancellare a scelta)
+- `src/pages/Cantiere.tsx` non più importato da nessuna route (codice morto dopo rimozione route legacy)
 
 ---
 
 ## NON aprire (task chiusi)
 
 - PDF: rimosso 21 mag 2026, non reintrodurre senza decisione esplicita
-- Conflict resolution LWW: rimandato a commercializzazione (manca `updated_at`)
-- Estensioni lab M1/M2/M3: chiuse non-necessarie (copertura fogli campagna 100%, dati lab nei referti)
+- RdP (Rapporti di Prova): cancellati 3 giu 2026
+- Estensioni lab M1/M2/M3: non necessarie (dati lab nei referti)
+- Granularità J4: "tutte va bene"
 - B1 overflow >32 misure: risolto con paginazione multi-foglio
-- Workflow OCRA: deciso UI digitale nativa (no OCR cartaceo)
+- Workflow OCRA: UI digitale nativa (no OCR cartaceo)
 - Regression numFmt OWAS: risolto via Python script
 - Bug committente vuoto WBV/HAV/Rumore: risolto
-- Data HAV come stringa: risolto (template `mm-dd-yy` -> `dd/mm/yyyy`)
-- Label `DURATA [SEC.]` Rumore: risolto (-> `[hh:mm:ss]`)
-- DurationPicker OWAS: chiuso 6 maggio (gia su main, non riaprire)
+- Data HAV come stringa: risolto
+- Label `DURATA` Rumore: risolto (durata in minuti interi, retrocompat hh:mm:ss)
+- DurationPicker OWAS: chiuso 6 maggio
+- Route legacy `/cantiere/:id`: rimossa 3 giu 2026
+- Code-split bundle: fatto 8 giu 2026
