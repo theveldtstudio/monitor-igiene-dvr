@@ -143,6 +143,206 @@ export async function cleanupByPrefix(): Promise<void> {
   await admin.from('cantieri').delete().in('id', cantiereIds);
 }
 
+export const WBV_AW_X = 1.11;
+export const WBV_AW_Y = 2.22;
+export const WBV_AW_Z = 3.33;
+
+const datiWbv = {
+  aw_x: WBV_AW_X,
+  aw_y: WBV_AW_Y,
+  aw_z: WBV_AW_Z,
+  durata: 30,
+  macchina_nome: 'Macchina Test',
+  fase_nome: 'Fase Test',
+};
+
+export async function seedWbvCampagna(): Promise<SeedIds> {
+  const cantiereNome = `TEST_E2E_${Date.now()}`;
+
+  const { data: cantiere, error: e1 } = await admin
+    .from('cantieri')
+    .insert({
+      nome: cantiereNome,
+      indirizzo: 'Via Test 1',
+      committente: 'Committente Test',
+      stato: 'aperto',
+    })
+    .select('id')
+    .single();
+  if (e1) throw new Error(`seed cantiere: ${e1.message}`);
+  const cantiereId = cantiere.id as string;
+
+  const { data: campagna, error: e2 } = await admin
+    .from('campagne')
+    .insert({
+      cantiere_id: cantiereId,
+      tipo_campionamento: 'vibrazioni_wbv',
+      data_ora: new Date().toISOString(),
+      tecnici_ids: [],
+      pin_tecnico: '',
+      pin_osservatore: '',
+      stato: 'bozza',
+      sync_pending: false,
+    })
+    .select('id')
+    .single();
+  if (e2) throw new Error(`seed campagna: ${e2.message}`);
+  const campagnaId = campagna.id as string;
+
+  const { data: misura, error: e3 } = await admin
+    .from('misure')
+    .insert({
+      campagna_id: campagnaId,
+      numero: 1,
+      dati: datiWbv,
+      note: '',
+    })
+    .select('id')
+    .single();
+  if (e3) throw new Error(`seed misura: ${e3.message}`);
+  const misuraId = misura.id as string;
+
+  return { cantiereId, campagnaId, misuraId, cantiereNome };
+}
+
+export const HAV_AW_X = 4.44;
+export const HAV_AW_Y = 5.55;
+export const HAV_AW_Z = 6.66;
+
+const datiHav = {
+  aw_x: HAV_AW_X,
+  aw_y: HAV_AW_Y,
+  aw_z: HAV_AW_Z,
+  durata: 30,
+  utensile: 'Utensile Test',
+  fase_nome: 'Fase Test',
+  impugnatura: 'destra',
+};
+
+export async function seedHavCampagna(): Promise<SeedIds> {
+  const cantiereNome = `TEST_E2E_${Date.now()}`;
+
+  const { data: cantiere, error: e1 } = await admin
+    .from('cantieri')
+    .insert({
+      nome: cantiereNome,
+      indirizzo: 'Via Test 1',
+      committente: 'Committente Test',
+      stato: 'aperto',
+    })
+    .select('id')
+    .single();
+  if (e1) throw new Error(`seed cantiere: ${e1.message}`);
+  const cantiereId = cantiere.id as string;
+
+  const { data: campagna, error: e2 } = await admin
+    .from('campagne')
+    .insert({
+      cantiere_id: cantiereId,
+      tipo_campionamento: 'vibrazioni_hav',
+      data_ora: new Date().toISOString(),
+      tecnici_ids: [],
+      pin_tecnico: '',
+      pin_osservatore: '',
+      stato: 'bozza',
+      sync_pending: false,
+    })
+    .select('id')
+    .single();
+  if (e2) throw new Error(`seed campagna: ${e2.message}`);
+  const campagnaId = campagna.id as string;
+
+  const { data: misura, error: e3 } = await admin
+    .from('misure')
+    .insert({
+      campagna_id: campagnaId,
+      numero: 1,
+      dati: datiHav,
+      note: '',
+    })
+    .select('id')
+    .single();
+  if (e3) throw new Error(`seed misura: ${e3.message}`);
+  const misuraId = misura.id as string;
+
+  return { cantiereId, campagnaId, misuraId, cantiereNome };
+}
+
+// ─── Helper parametrico blocchi 4×8 ──────────────────────────────────────────
+
+export interface SeedBlocco4x8Opts {
+  tipoCampionamento: string;
+  dati: Record<string, unknown>;
+  committente?: string;
+}
+
+/**
+ * Seed generico per i 13 moduli "4 blocchi × 8 misure" (layout Foglio1, dataStart r4).
+ * Crea cantiere + campagna (tipo_campionamento = opts.tipoCampionamento) + 1 misura con
+ * dati = opts.dati. Non crea risorse_cantiere: questi moduli usano stringhe denormalizzate
+ * nei dati (postazione_nome, fase_nome) senza FK su risorse_cantiere.
+ */
+export async function seedBlocco4x8Campagna(opts: SeedBlocco4x8Opts): Promise<SeedIds> {
+  const cantiereNome = `TEST_E2E_${Date.now()}`;
+  const committente = opts.committente ?? 'Committente Test';
+
+  const { data: cantiere, error: e1 } = await admin
+    .from('cantieri')
+    .insert({
+      nome: cantiereNome,
+      indirizzo: 'Via Test 1',
+      committente,
+      stato: 'aperto',
+    })
+    .select('id')
+    .single();
+  if (e1) throw new Error(`seed cantiere: ${e1.message}`);
+  const cantiereId = cantiere.id as string;
+
+  const { data: campagna, error: e2 } = await admin
+    .from('campagne')
+    .insert({
+      cantiere_id: cantiereId,
+      tipo_campionamento: opts.tipoCampionamento,
+      data_ora: new Date().toISOString(),
+      tecnici_ids: [],
+      pin_tecnico: '',
+      pin_osservatore: '',
+      stato: 'bozza',
+      sync_pending: false,
+    })
+    .select('id')
+    .single();
+  if (e2) throw new Error(`seed campagna: ${e2.message}`);
+  const campagnaId = campagna.id as string;
+
+  const { data: misura, error: e3 } = await admin
+    .from('misure')
+    .insert({
+      campagna_id: campagnaId,
+      numero: 1,
+      dati: opts.dati,
+      note: '',
+    })
+    .select('id')
+    .single();
+  if (e3) throw new Error(`seed misura: ${e3.message}`);
+  const misuraId = misura.id as string;
+
+  return { cantiereId, campagnaId, misuraId, cantiereNome };
+}
+
+// ─── Costanti moduli campione ─────────────────────────────────────────────────
+
+export const MICROCLIMA_TA = 11.1;
+export const MICROCLIMA_WBGT = 22.2;
+
+export const CEM_CAMPO_E = 33.3;
+export const CEM_INDICE_ESPOSIZIONE = 44.4;
+
+export const POLVERI_CONC_POLVERI = 55.5;
+export const POLVERI_CONC_SILICE = 66.6;
+
 /**
  * Conteggio cantieri TEST_E2E_ residui (verifica post-cleanup).
  */
