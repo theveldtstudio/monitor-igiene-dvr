@@ -88,7 +88,8 @@ describe('valutazione completa Xenia', () => {
     expect(v.perFascia.hav[1].length).toBe(2)
     expect(v.perFascia.hav[2]).toEqual([])
   })
-  it('segnala la mansione senza TAV mano-braccio (Caposquadra TBM)', () => {
-    expect(v.avvisi.some((a) => a.mansione === 'Caposquadra TBM' && a.codice === 'nessun_periodo')).toBe(true)
+  it('senza periodi mano-braccio la mansione è trascurabile per l’HAV (Caposquadra TBM), senza errori', () => {
+    expect(v.perFascia.hav[0]).toContain('Caposquadra TBM')
+    expect(v.avvisi.filter((a) => a.mansione === 'Caposquadra TBM' && a.livello === 'errore')).toEqual([])
   })
 })

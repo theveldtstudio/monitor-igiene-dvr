@@ -53,7 +53,6 @@ export interface AvvisoVibrazioni {
   codice:
     | 'minuti_diversi_da_480'
     | 'periodo_non_valido'
-    | 'nessun_periodo'
     | 'dati_storici'
     | 'limite_breve'
     | 'limite_superato'
@@ -102,9 +101,7 @@ export function valutaVibrazioni(
   const avvisi: AvvisoVibrazioni[] = []
   const nome = ETICHETTE_TIPO[tipo]
 
-  if (periodi.length === 0) {
-    avvisi.push({ livello: 'errore', codice: 'nessun_periodo', messaggio: `Nessun periodo per le vibrazioni ${nome}.` })
-  }
+  // Nessun periodo = la mansione non usa macchine/utensili per questo tipo di vibrazione: esposizione trascurabile.
   periodi.forEach((p, i) => {
     if (!(p.minuti > 0) || !Number.isFinite(p.a) || p.a < 0) {
       avvisi.push({ livello: 'errore', codice: 'periodo_non_valido', messaggio: `${nome}, riga ${i + 1} (${p.fase}): minuti o accelerazione non validi.` })
