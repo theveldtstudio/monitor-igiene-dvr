@@ -1,7 +1,7 @@
 /**
  * Generazione del DVR Rumore nel browser: legge tutto dal database, calcola, riempie il template Word.
  */
-import * as api from '../api'
+import { caricaIngresso } from '../comune/ingresso'
 import { generaDocx, sostituisciImmagine } from '../comune/generaDocx'
 import { controllaDpi } from './dpi'
 import { datiDaDatabase } from './daDatabase'
@@ -10,25 +10,7 @@ import { datiTemplateRumore } from './documento'
 export const URL_TEMPLATE_RUMORE = '/templates/dvr/rumore.docx'
 /** Riquadro del logo cliente nel template: 198,45 × 52,6 pt. */
 export const RAPPORTO_LOGO_CLIENTE = 198.45 / 52.6
-const MEDIA_LOGO_CLIENTE = 'word/media/image1.png'
-
-export async function caricaIngresso(cantiereId: string, documentoId: string) {
-  const documento = await api.leggiDocumento(documentoId)
-  const [anagrafica, revisioni, ambiti, mansioni, documentoMansioni, tempi, misure, macchine, dpi, tarature] = await Promise.all([
-    api.leggiAnagrafica(cantiereId),
-    api.leggiRevisioni(documentoId),
-    api.leggiAmbiti(cantiereId),
-    api.leggiMansioni(cantiereId),
-    api.leggiDocumentoMansioni(documentoId),
-    api.leggiTempi(documentoId),
-    api.leggiMisureRumore(cantiereId, documento.campagne_ids),
-    api.leggiMacchine(cantiereId),
-    api.leggiDpi(cantiereId),
-    api.leggiTarature(),
-  ])
-  if (!anagrafica) throw new Error('Compila prima l’anagrafica DVR del cantiere.')
-  return { anagrafica, documento, revisioni, ambiti, mansioni, documentoMansioni, tempi, misure, macchine, dpi, tarature }
-}
+export const MEDIA_LOGO_CLIENTE = 'word/media/image1.png'
 
 export async function generaDvrRumore(cantiereId: string, documentoId: string) {
   const ingresso = await caricaIngresso(cantiereId, documentoId)
@@ -52,7 +34,7 @@ export async function generaDvrRumore(cantiereId: string, documentoId: string) {
   }
 }
 
-function dataUrlInByte(dataUrl: string): Uint8Array {
+export function dataUrlInByte(dataUrl: string): Uint8Array {
   const base64 = dataUrl.split(',')[1] ?? ''
   const bin = atob(base64)
   const out = new Uint8Array(bin.length)

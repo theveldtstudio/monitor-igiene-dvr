@@ -1,6 +1,6 @@
 # Modulo DVR – pacchetto Monitoraggi + DVR
 
-Stato al 28 settembre 2026: **DVR Rumore** completo (dati, calcolo, Word). Gli altri rischi seguiranno lo stesso schema.
+Stato al 29 settembre 2026: **DVR Rumore** e **DVR Vibrazioni** completi (dati, calcolo, Word). Gli altri rischi seguiranno lo stesso schema.
 
 ## Flusso d'uso
 
@@ -20,6 +20,16 @@ Stato al 28 settembre 2026: **DVR Rumore** completo (dati, calcolo, Word). Gli a
 - Fasce art. 189 su valore arrotondato a 0,1 dB, soglie incluse: ≥ 80 → 2ª, ≥ 85 → 3ª (anche per picco 135/137 dB(C)). Opzione `valore_piu_incertezza` per il criterio cautelativo.
 - DPI: attenuazione reale = β × H/M/L (UNI 9432: 0,5 inserti, 0,75 cuffie); livello all'orecchio con metodo HML (UNI EN ISO 4869-2); protezione secondo UNI 9432 prospetto C.5; verifica del valore limite 87 dB(A) con i DPI.
 - Controlli: giornata ≠ 480 min, mansioni duplicate, stessa postazione con livelli diversi tra mansioni, dati storici, casi al confine con l'incertezza, refusi nelle schede DPI.
+
+## Vibrazioni (src/dvr/vibrazioni)
+
+- A(8) = √(Σ a²·T / 480), con a = A(w)max (corpo intero, già pesato 1,4 sugli assi orizzontali da seduti nel modulo WBV) o A(w)sum (mano-braccio).
+- Esposizione giornaliera = A(8) × 1,2 (incremento del 20% per l'incertezza, linee guida INAIL), arrotondata al centesimo.
+- Valori per il calcolo: misure ripetute sulla stessa macchina, fase e regime → media + deviazione standard (di popolazione); utensili con doppia impugnatura → impugnatura con la vibrazione più alta.
+- Fasce art. 201: trascurabile (nessuna macchina/utensile), sotto azione, oltre azione (> 0,5 / 2,5 m/s²), oltre limite (> 1 / 5 m/s²). Le soglie vanno "superate" (art. 203-204): 0,50 resta sotto.
+- Riproduce le 45 TAV e la tabella dei valori medi del DVR Vibrazioni Xenia 2026.
+- Nella matrice dei tempi ogni riga ha il tipo (WBV/HAV); una mansione senza righe di un tipo ha esposizione trascurabile per quel tipo.
+- Template: `tools/dvr/costruisci_template_vibrazioni.py` → `public/templates/dvr/vibrazioni.docx` (loghi COCIV/CTG del modello sostituiti dal logo cliente, firme tolte, "arrotondati per eccesso" corretto).
 
 ## Template Word
 

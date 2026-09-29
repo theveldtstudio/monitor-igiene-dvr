@@ -8,13 +8,13 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import { useCantiere } from '../../hooks/useCantiere'
-import { humanizeError } from '../../lib/humanizeError'
 import { supabase } from '../../lib/supabase'
 import { toast } from '../../lib/toast/toastApi'
 import * as api from '../api'
 import { ETICHETTE_AMBITO, TIPI_AMBITO, type AnagraficaDvr, type MansioneDvr, type TipoAmbito } from '../comune/tipi'
 import { BETA_PREDEFINITO, controllaDpi, type DpiUdito, type TipoDpiUdito } from '../rumore/dpi'
 import { AreaTesto, Bottone, Campo, Sezione } from '../ui/Kit'
+import { esegui } from '../ui/esegui'
 import { numeroDa, stili } from '../ui/stili'
 
 const vuota = (cantiereId: string): AnagraficaDvr => ({
@@ -34,16 +34,6 @@ const vuota = (cantiereId: string): AnagraficaDvr => ({
   approvato: '',
 })
 
-async function esegui(azione: () => Promise<unknown>, messaggio?: string): Promise<boolean> {
-  try {
-    await azione()
-    if (messaggio) toast.success(messaggio)
-    return true
-  } catch (e) {
-    toast.error(humanizeError(e))
-    return false
-  }
-}
 
 // ---------------------------------------------------------------- anagrafica
 
@@ -641,19 +631,20 @@ function SezioneDocumenti({ cantiereId }: { cantiereId: string }) {
   const q = useQuery({ queryKey: ['dvr', 'documenti', cantiereId], queryFn: () => api.leggiDocumenti(cantiereId) })
   const [creando, setCreando] = useState(false)
 
-  const nuovo = async () => {
+  const nuovo = async (rischio: 'rumore' | 'vibrazioni') => {
     setCreando(true)
     await esegui(async () => {
       const [ambiti, campagne, mansioni, anagrafica] = await Promise.all([
         api.leggiAmbiti(cantiereId),
-        api.leggiCampagneRumore(cantiereId),
+        api.leggiCampagne(cantiereId, rischio === 'rumore' ? ['rumore'] : ['vibrazioni-wbv', 'vibrazioni-hav', 'vibrazioni_wbv', 'vibrazioni_hav']),
         api.leggiMansioni(cantiereId),
         api.leggiAnagrafica(cantiereId),
       ])
       if (!anagrafica) throw new Error('Compila e salva prima l’anagrafica DVR.')
       const doc = await api.salvaDocumento({
         cantiere_id: cantiereId,
-        titolo: 'DVR Rumore',
+        rischio,
+        titolo: rischio === 'rumore' ? 'DVR Rumore' : 'DVR Vibrazioni',
         periodo_riferimento: '',
         ambiti_ids: ambiti.map((a) => a.id),
         campagne_ids: campagne.map((c) => c.id),
@@ -682,7 +673,19 @@ function SezioneDocumenti({ cantiereId }: { cantiereId: string }) {
   }
 
   return (
-    <Sezione titolo="Documenti DVR" azioni={<Bottone tipo="primario" disabled={creando} onClick={() => void nuovo()}>+ Nuovo DVR Rumore</Bottone>}>
+    <Sezione
+      titolo="Documenti DVR"
+      azioni={
+        <>
+          <Bottone tipo="primario" disabled={creando} onClick={() => void nuovo('rumore')}>
+            + Nuovo DVR Rumore
+          </Bottone>
+          <Bottone tipo="primario" disabled={creando} onClick={() => void nuovo('vibrazioni')}>
+            + Nuovo DVR Vibrazioni
+          </Bottone>
+        </>
+      }
+    >
       {(q.data ?? []).length === 0 && <p style={stili.nota}>Nessun DVR per questo cantiere.</p>}
       <table style={stili.tabella}>
         <tbody>

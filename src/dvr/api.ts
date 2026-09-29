@@ -152,12 +152,15 @@ export interface ContenutiRumore {
   logoCliente?: string | null
   tarature_ids?: string[]
   dpi_ids?: string[]
+  /** Numeri dei rapporti di prova (DVR Vibrazioni). */
+  rapportoWbv?: string | null
+  rapportoHav?: string | null
 }
 
 export interface DocumentoDvr {
   id: string
   cantiere_id: string
-  rischio: 'rumore'
+  rischio: 'rumore' | 'vibrazioni'
   titolo: string | null
   periodo_riferimento: string | null
   ambiti_ids: string[]
@@ -248,7 +251,16 @@ export interface RigaTempi {
   macchine: string | null
   origine: 'misura' | 'storico' | 'convenzionale'
   misura_id: string | null
-  valori: { laeq?: number; lceq?: number | null; lpeak?: number | null }
+  valori: {
+    laeq?: number
+    lceq?: number | null
+    lpeak?: number | null
+    /** DVR Vibrazioni: tipo, accelerazione, regime/impugnatura e gruppo di misure collegato. */
+    tipo?: 'wbv' | 'hav'
+    a?: number
+    dettaglio?: string | null
+    gruppo?: string | null
+  }
   nota: string | null
 }
 
@@ -311,7 +323,7 @@ export interface MisuraRumore {
 }
 
 /** Misure di rumore delle campagne scelte, numerate in ordine di campagna e di misura (codice rilievo). */
-export async function leggiMisureRumore(cantiereId: string, campagneIds: string[]): Promise<MisuraRumore[]> {
+export async function leggiMisure(cantiereId: string, campagneIds: string[]): Promise<MisuraRumore[]> {
   if (campagneIds.length === 0) return []
   const campagne = ok(
     await supabase.from('campagne').select('*').eq('cantiere_id', cantiereId).in('id', campagneIds).order('data_ora'),
@@ -325,6 +337,20 @@ export async function leggiMisureRumore(cantiereId: string, campagneIds: string[
     }
   }
   return out
+}
+
+/** Stesse misure, nome storico usato dal DVR Rumore. */
+export const leggiMisureRumore = leggiMisure
+
+export async function leggiCampagne(cantiereId: string, tipi: string[]): Promise<Campagna[]> {
+  return ok(
+    await supabase
+      .from('campagne')
+      .select('*')
+      .eq('cantiere_id', cantiereId)
+      .in('tipo_campionamento', tipi)
+      .order('data_ora', { ascending: false }),
+  )
 }
 
 export async function leggiCampagneRumore(cantiereId: string): Promise<Campagna[]> {

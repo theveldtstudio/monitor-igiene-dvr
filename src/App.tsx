@@ -15,7 +15,7 @@ const PaginaCantiere = lazy(() => import('./pages/PaginaCantiere'))
 const ListaCampagne = lazy(() => import('./pages/ListaCampagne'))
 const FoglioCampagna = lazy(() => import('./pages/FoglioCampagna'))
 const PaginaDvr = lazy(() => import('./dvr/pagine/PaginaDvr'))
-const EditorDvrRumore = lazy(() => import('./dvr/pagine/EditorDvrRumore'))
+const EditorDvr = lazy(() => import('./dvr/pagine/EditorDvr'))
 
 function RouteFallback() {
   return (
@@ -104,7 +104,7 @@ function App() {
                 <Route path="/cantieri/:id/moduli/:moduloId" element={<ListaCampagne />} />
                 <Route path="/cantieri/:id/moduli/:moduloId/campagne/:campagnaId" element={<FoglioCampagna />} />
                 <Route path="/cantieri/:id/dvr" element={<PaginaDvr />} />
-                <Route path="/cantieri/:id/dvr/:docId" element={<EditorDvrRumore />} />
+                <Route path="/cantieri/:id/dvr/:docId" element={<EditorDvr />} />
                 <Route path="/cantieri/nuovo" element={<NuovoCantiere />} />
               </Routes>
             </Suspense>
