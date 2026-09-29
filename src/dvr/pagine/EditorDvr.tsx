@@ -10,6 +10,7 @@ import { stili } from '../ui/stili'
 const EditorDvrRumore = lazy(() => import('./EditorDvrRumore'))
 const EditorDvrVibrazioni = lazy(() => import('./EditorDvrVibrazioni'))
 const EditorDvrPosture = lazy(() => import('./EditorDvrPosture'))
+const EditorDvrMmc = lazy(() => import('./EditorDvrMmc'))
 
 export default function EditorDvr() {
   const { docId } = useParams<{ docId: string }>()
@@ -18,7 +19,15 @@ export default function EditorDvr() {
   if (!q.data) return <div style={stili.pagina}><Spinner size={20} /></div>
   return (
     <Suspense fallback={<div style={stili.pagina}><Spinner size={20} /></div>}>
-      {q.data.rischio === 'vibrazioni' ? <EditorDvrVibrazioni /> : q.data.rischio === 'posture' ? <EditorDvrPosture /> : <EditorDvrRumore />}
+      {q.data.rischio === 'vibrazioni' ? (
+        <EditorDvrVibrazioni />
+      ) : q.data.rischio === 'posture' ? (
+        <EditorDvrPosture />
+      ) : q.data.rischio === 'mmc' ? (
+        <EditorDvrMmc />
+      ) : (
+        <EditorDvrRumore />
+      )}
     </Suspense>
   )
 }

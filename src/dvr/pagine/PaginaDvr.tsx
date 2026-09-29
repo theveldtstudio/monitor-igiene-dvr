@@ -630,6 +630,7 @@ const RISCHI_DVR: Record<api.DocumentoDvr['rischio'], { titolo: string; campagne
   rumore: { titolo: 'DVR Rumore', campagne: ['rumore'] },
   vibrazioni: { titolo: 'DVR Vibrazioni', campagne: ['vibrazioni-wbv', 'vibrazioni-hav', 'vibrazioni_wbv', 'vibrazioni_hav'] },
   posture: { titolo: 'DVR Posture incongrue', campagne: ['posture_owas', 'owas'] },
+  mmc: { titolo: 'DVR Movimentazione manuale dei carichi', campagne: ['mmc', 'movimenti_ripetitivi_ocra'] },
 }
 
 function SezioneDocumenti({ cantiereId }: { cantiereId: string }) {

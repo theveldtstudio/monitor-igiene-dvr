@@ -4,7 +4,7 @@
  */
 import type React from 'react'
 import { useState } from 'react'
-import { stili } from './stili'
+import { numeroDa, stili } from './stili'
 
 export function Bottone({
   children,
@@ -72,6 +72,51 @@ export function Campo({
         onChange={(e) => onChange(e.target.value)}
         style={stili.input}
       />
+    </label>
+  )
+}
+
+/** Campo numerico con virgola decimale: il numero passa al genitore solo quando è valido. */
+export function CampoNumero({
+  etichetta,
+  valore,
+  onChange,
+  larghezza,
+  unita,
+}: {
+  etichetta: string
+  valore: number | null | undefined
+  onChange: (v: number | null) => void
+  larghezza?: number
+  unita?: string
+}) {
+  const formatta = (x: number | null | undefined) => (x === null || x === undefined ? '' : String(x).replace('.', ','))
+  const [testo, setTesto] = useState(formatta(valore))
+  const [ultimo, setUltimo] = useState(valore)
+  if (valore !== ultimo) {
+    setUltimo(valore)
+    if (numeroDa(testo) !== (valore ?? null)) setTesto(formatta(valore))
+  }
+  return (
+    <label style={{ ...stili.campo, ...(larghezza ? { width: larghezza } : {}) }}>
+      {etichetta}
+      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+        <input
+          type="text"
+          inputMode="decimal"
+          value={testo}
+          onChange={(e) => {
+            setTesto(e.target.value)
+            const n = numeroDa(e.target.value)
+            if (n !== null || e.target.value.trim() === '') {
+              setUltimo(n)
+              onChange(n)
+            }
+          }}
+          style={{ ...stili.input, width: '100%' }}
+        />
+        {unita && <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{unita}</span>}
+      </span>
     </label>
   )
 }

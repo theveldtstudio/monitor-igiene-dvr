@@ -5,8 +5,10 @@ import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import * as api from '../api'
 import type { Ingresso } from '../comune/ingresso'
+import { eGalleria } from '../comune/tipi'
 import { adattaLogo } from '../rumore/generaDvrRumore'
-import { Bottone, Campo, Sezione } from '../ui/Kit'
+import { CICLO_PREDEFINITO } from '../rumore/testiPredefiniti'
+import { AreaTesto, Bottone, Campo, Sezione } from '../ui/Kit'
 import { esegui } from '../ui/esegui'
 import { numeroDa, stili } from '../ui/stili'
 
@@ -196,6 +198,35 @@ export function Revisioni({ ing, aggiorna }: { ing: Ingresso; aggiorna: () => Pr
           })}
         </tbody>
       </table>
+    </Sezione>
+  )
+}
+
+// ---------------------------------------------------------------- ciclo di lavoro
+
+/** Testo del ciclo di lavoro (paragrafi con elenco puntato), predefinito secondo il tipo di ambito. */
+export function CicloLavoro({ ing, aggiorna, titolo }: { ing: Ingresso; aggiorna: () => Promise<void>; titolo: string }) {
+  const doc = ing.documento
+  const tipoPrincipale = ing.ambiti.filter((a) => doc.ambiti_ids.includes(a.id)).map((a) => a.tipo).find(eGalleria)
+  const [c, setC] = useState<api.ContenutiRumore>(doc.contenuti ?? {})
+  const ciclo = c.ciclo ?? (tipoPrincipale ? CICLO_PREDEFINITO[tipoPrincipale] : undefined) ?? [{ testo: '', punti: [] }]
+  const salva = () =>
+    esegui(async () => {
+      await api.aggiornaContenuti(doc.id, { ciclo: c.ciclo ?? null })
+      await aggiorna()
+    }, 'Salvato')
+  return (
+    <Sezione titolo={titolo} chiusa azioni={<Bottone tipo="primario" onClick={() => void salva()}>Salva</Bottone>}>
+      {ciclo.map((b, i) => (
+        <div key={i} style={{ ...stili.griglia, gridTemplateColumns: '1fr 1fr', marginTop: 10 }}>
+          <AreaTesto etichetta={`Paragrafo ${i + 1}`} valore={b.testo} onChange={(v) => setC({ ...c, ciclo: ciclo.map((x, j) => (j === i ? { ...x, testo: v } : x)) })} righe={5} />
+          <AreaTesto etichetta="Elenco puntato (una voce per riga)" valore={b.punti.join('\n')} onChange={(v) => setC({ ...c, ciclo: ciclo.map((x, j) => (j === i ? { ...x, punti: v.split('\n').filter((y) => y.trim()) } : x)) })} righe={5} />
+        </div>
+      ))}
+      <div style={stili.riga}>
+        <Bottone onClick={() => setC({ ...c, ciclo: [...ciclo, { testo: '', punti: [] }] })}>+ Paragrafo</Bottone>
+        {c.ciclo && <Bottone onClick={() => setC({ ...c, ciclo: undefined })}>Ripristina testo predefinito</Bottone>}
+      </div>
     </Sezione>
   )
 }

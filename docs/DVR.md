@@ -1,6 +1,6 @@
 # Modulo DVR – pacchetto Monitoraggi + DVR
 
-Stato al 29 settembre 2026: **DVR Rumore**, **DVR Vibrazioni** e **DVR Posture incongrue** completi (dati, calcolo, Word). Gli altri rischi seguiranno lo stesso schema. Il tipo di DVR si sceglie nella pagina DVR del cantiere (menu “Rischio del nuovo DVR”).
+Stato al 29 settembre 2026: **DVR Rumore**, **DVR Vibrazioni**, **DVR Posture incongrue** e **DVR Movimentazione manuale dei carichi** completi (dati, calcolo, Word). Gli altri rischi seguiranno lo stesso schema. Il tipo di DVR si sceglie nella pagina DVR del cantiere (menu “Rischio del nuovo DVR”).
 
 ## Flusso d'uso
 
@@ -40,6 +40,16 @@ Stato al 29 settembre 2026: **DVR Rumore**, **DVR Vibrazioni** e **DVR Posture i
 - Riproduce le 61 TAV (150 giornate) del DVR Posture Castagnola 2025; differenze del modello documentate nei test (riepiloghi non aggiornati in 13 TAV, Tabella 17 diversa in 5 mansioni, 3 posture con classe diversa dalla tabella standard, Figura 2 con 5 celle di colore diverso).
 - Template: `tools/dvr/costruisci_template_posture.py` → `public/templates/dvr/posture.docx`. Le celle "Fase lavorativa"/"Attività" uguali si uniscono in verticale dopo la compilazione (`src/dvr/comune/unisciCelle.ts`: i dati marcano le celle con `unibile(chiave, testo)`).
 
+## Movimentazione manuale dei carichi (src/dvr/mmc)
+
+- Una **attività** per ogni movimentazione valutata, con le mansioni che la svolgono (`dvr_documenti.contenuti.attivitaMmc`); le mansioni senza attività sono "non esposte". Si possono importare dalle misure MMC e OCRA delle campagne.
+- **NIOSH** (UNI ISO 11228-1): PLR = CP × A × B × C × D × E × F (× 0,85 in più persone, × 0,6 con una mano), CP 25 kg adulti e 20 kg giovani/over 45; PLR a 0,1 kg, IS = peso per persona / PLR a 0,01. Fattori: valori della tabella del DVR nei punti della tabella, formule della norma tra un punto e l'altro, frequenza interpolata per durata. Fasce: ≤ 0,85 verde, fino a 0,99 gialla, da 1 rossa.
+- **NIOSH composto**: ISC = IS del compito più gravoso + Σ ISIF·(1/E cumulata − 1/E precedente).
+- **Snook e Ciriello** (UNI ISO 11228-2): tabelle maschili del DVR; colonna con distanza uguale o superiore e frequenza uguale o più frequente (a favore di sicurezza); spinta/traino col peggiore tra forza iniziale e di mantenimento. Fasce: ≤ 0,75 verde, fino a 1,25 gialla, oltre rossa, oltre 3 viola.
+- **Check list OCRA** (UNI ISO 11228-3): punteggio dal modulo di misura OCRA, fasce 7,5 / 11 / 14 / 22,5 e indice OCRA equivalente (2,2 / 3,5 / 4,5 / 9).
+- Riproduce le 20 valutazioni del DVR MMC Xenia 2026 (differenze del modello documentate nei test).
+- Template: `tools/dvr/costruisci_template_mmc.py` → `public/templates/dvr/mmc.docx`; il capitolo 6 è un ciclo sulle attività con il blocco del metodo.
+
 ## Template Word
 
 `tools/dvr/costruisci_template_rumore.py <DVR modello.docx> public/templates/dvr/rumore.docx` ricava il template dal DVR Rumore Xenia 2026. Correzioni applicate al modello: IEC 651/804 → IEC 61672, SIT → ACCREDIA, disuguaglianze delle fasce, sezione piè di pagina dell'Allegato 1, logo CTG nell'Allegato 3, firme scansionate tolte dalla copertina, numerazione tabelle automatica, art. 196 per la sorveglianza sanitaria.
@@ -48,6 +58,6 @@ Il logo del cliente si carica nel documento (riquadro 198,45 × 52,6 pt); il log
 
 ## Da fare
 
-- Altri rischi: chimico/cancerogeno (servono i risultati di laboratorio), microclima, MMC, ROA; DVR mancanti da scrivere da zero (CEM, amianto, IPA, biologico, acqua).
+- Altri rischi: chimico/cancerogeno (servono i risultati di laboratorio), microclima, ROA; DVR mancanti da scrivere da zero (CEM, amianto, IPA, biologico, acqua).
 - Varianti dei testi per galleria tradizionale e viadotti da rivedere con Davide.
 - Logo dello studio configurabile (per la vendita ad altri professionisti) e multi-tenancy (Fase K).
