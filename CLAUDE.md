@@ -11,7 +11,7 @@ App web (PWA) per la raccolta in cantiere delle misure di campionamento di igien
 1. **Terminare l'app** e renderla vendibile ad altri professionisti (RSPP, consulenti sicurezza, laboratori).
 2. Offerta in **due pacchetti**:
    - **Monitoraggi** — questa app, standalone.
-   - **Monitoraggi + DVR** — una copia di questa app collegata a un software esterno per la redazione del DVR.
+   - **Monitoraggi + DVR** — QUESTO repository (`app-monitoraggi-dvr`): copia dell'app Monitoraggi con in più il modulo DVR (`src/dvr/`). Le correzioni comuni si fanno nell'app Monitoraggi (`../app-web`, remote git `monitoraggi`) e si portano qui con `git fetch monitoraggi && git merge monitoraggi/main`.
 3. Conseguenze architetturali: servono multi-tenancy, gestione licenze/abbonamenti, un confine dati pulito verso il DVR. Vedi `.claude/current-state.md` e `docs/06_TODO_completa.md` (Fase K).
 
 Oggi l'app è **single-tenant**: nessuna colonna `user_id`/`org_id` nelle tabelle, un solo progetto Supabase, policy storage foto aperte ad anon+authenticated. I dati non hanno un proprietario: più utenti sullo stesso progetto vedrebbero tutto. Non vendere a terzi finché la Fase K non è chiusa.
@@ -131,10 +131,20 @@ ATTENZIONE: `getRow()` è 1-indexed, `addImage` `tl.row` è 0-indexed.
 
 ---
 
+## Modulo DVR (solo in questa copia)
+
+Vedi `docs/DVR.md`. In breve:
+- `src/dvr/rumore/` motore di calcolo (LEX,8h, incertezza ISO 9612, fasce art. 189, DPI HML) + preparazione dati del Word; test `npm test` (vitest) sulle 23 TAV del DVR Xenia 2026.
+- `public/templates/dvr/rumore.docx` template docxtemplater, generato da `tools/dvr/costruisci_template_rumore.py` a partire dal DVR modello (non modificarlo a mano: si rigenera).
+- Tabelle `dvr_*` (migrazione `supabase/migrations/20260928160000_dvr_schema.sql`), solo online, niente Dexie.
+- Pagine: `/cantieri/:id/dvr` (anagrafica, ambiti, mansioni con conferma e storico, DPI, macchine, tarature, documenti) e `/cantieri/:id/dvr/:docId` (redazione DVR Rumore e generazione Word).
+- E2E `e2e/dvr-rumore.spec.ts` usa un Supabase finto in memoria (`e2e/helpers/supabaseFinto.ts`): non tocca nessun database.
+
 ## Test
 
 - `npm run test:e2e` — Playwright avvia da solo il dev server puntato al **DB di TEST** (`.env.test`, variabili `E2E_*`), mai alla produzione. Chiudere un eventuale `npm run dev` manuale sulla 5173 prima di lanciare.
-- 18 spec: `home`, `rumore-modal` (UI) + 16 `export-<modulo>` (seed via service-key -> export -> parse xlsx -> assert). Teardown globale pulisce i cantieri `TEST_E2E_*`.
+- `npm test` — test unitari vitest dei motori DVR.
+- 19 spec: `home`, `rumore-modal` (UI) + 16 `export-<modulo>` (seed via service-key -> export -> parse xlsx -> assert). Teardown globale pulisce i cantieri `TEST_E2E_*`.
 - Prima di toccare modali/export/offline: `.claude/playbooks/regression-checklist.md`.
 
 ---

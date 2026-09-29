@@ -493,6 +493,20 @@ def main(modello, uscita):
         trasforma_piede(d)
         d.write(str(piede), xml_declaration=True, encoding='UTF-8', standalone=True)
 
+    # Logo del cliente (image1): stesso riquadro 198,45 × 52,6 pt in copertina e intestazioni, senza ritagli.
+    # Il generatore lo sostituisce con il logo caricato, già adattato a queste proporzioni (RAPPORTO_LOGO_CLIENTE).
+    def logo_senza_ritaglio(percorso, rid):
+        s = percorso.read_text(encoding='utf-8')
+        s = re.sub(r'(<v:imagedata r:id="%s")[^>]*?(/>)' % rid, r'\1 o:title=""\2', s)
+        percorso.write_text(s, encoding='utf-8')
+    logo_senza_ritaglio(doc_path, 'rId8')
+    logo_senza_ritaglio(lavoro / 'word' / 'header2.xml', 'rId1')
+    logo_senza_ritaglio(lavoro / 'word' / 'header5.xml', 'rId1')
+    h5 = lavoro / 'word' / 'header5.xml'
+    h5.write_text(h5.read_text(encoding='utf-8').replace('width:150.8pt;height:69.75pt', 'width:198.45pt;height:52.6pt'), encoding='utf-8')
+    from PIL import Image
+    Image.new('RGBA', (794, 210), (255, 255, 255, 0)).save(lavoro / 'word' / 'media' / 'image1.png')
+
     # Allegato 3: logo CTG rimasto da un altro cantiere -> logo del cliente (image1)
     rels = lavoro / 'word' / '_rels' / 'header5.xml.rels'
     rels.write_text(rels.read_text(encoding='utf-8').replace('media/image6.png', 'media/image1.png'), encoding='utf-8')

@@ -1,0 +1,110 @@
+/** Stili condivisi del modulo DVR (token grafici dell'app). */
+import type React from 'react'
+
+export const stili: Record<string, React.CSSProperties> = {
+  pagina: {
+    minHeight: '100vh',
+    background: 'var(--bg-app)',
+    padding: 'var(--space-page-top) var(--space-page-x) var(--space-page-bottom)',
+    maxWidth: 1100,
+    margin: '0 auto',
+  },
+  barra: { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 },
+  indietro: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    background: 'var(--bg-card)',
+    borderWidth: 0.5,
+    borderStyle: 'solid',
+    borderColor: 'var(--border)',
+    color: 'var(--accent)',
+    fontSize: 18,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+  },
+  titolo: { fontSize: 20, fontWeight: 500, color: 'var(--text-primary)', margin: '0 0 4px' },
+  sottotitolo: { fontSize: 13, color: 'var(--text-secondary)', margin: 0 },
+  sezione: {
+    background: 'var(--bg-card)',
+    borderWidth: 0.5,
+    borderStyle: 'solid',
+    borderColor: 'var(--border)',
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 14,
+  },
+  sezioneTitolo: { fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', letterSpacing: '0.5px', margin: '0 0 10px' },
+  griglia: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 },
+  campo: { display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: 'var(--text-secondary)' },
+  input: {
+    fontFamily: 'var(--font-sans)',
+    fontSize: 14,
+    paddingTop: 7,
+    paddingBottom: 7,
+    paddingLeft: 9,
+    paddingRight: 9,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: 'var(--border)',
+    background: 'var(--bg-app)',
+    color: 'var(--text-primary)',
+    minWidth: 0,
+  },
+  riga: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' },
+  tabella: { width: '100%', borderCollapse: 'collapse', fontSize: 13 },
+  th: {
+    textAlign: 'left',
+    fontWeight: 500,
+    color: 'var(--text-tertiary)',
+    fontSize: 11,
+    paddingTop: 6,
+    paddingBottom: 6,
+    paddingLeft: 6,
+    paddingRight: 6,
+    borderBottomWidth: 1,
+    borderBottomStyle: 'solid',
+    borderBottomColor: 'var(--border)',
+  },
+  td: {
+    paddingTop: 5,
+    paddingBottom: 5,
+    paddingLeft: 6,
+    paddingRight: 6,
+    borderBottomWidth: 0.5,
+    borderBottomStyle: 'solid',
+    borderBottomColor: 'var(--border)',
+    verticalAlign: 'middle',
+  },
+  nota: { fontSize: 12, color: 'var(--text-secondary)', margin: '6px 0' },
+  avviso: {
+    fontSize: 13,
+    background: 'var(--error-bg)',
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: 'var(--error-border)',
+    borderRadius: 8,
+    padding: '8px 10px',
+    margin: '6px 0',
+  },
+  attenzione: {
+    fontSize: 13,
+    background: '#fffaeb',
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: '#fedf89',
+    color: '#7a2e0e',
+    borderRadius: 8,
+    padding: '8px 10px',
+    margin: '6px 0',
+  },
+}
+
+/** Converte il testo di un input numerico: vuoto -> null, virgola italiana accettata. */
+export function numeroDa(v: string): number | null {
+  const t = v.trim().replace(',', '.')
+  if (t === '') return null
+  const n = Number(t)
+  return Number.isFinite(n) ? n : null
+}

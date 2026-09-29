@@ -172,6 +172,9 @@ export default function PaginaCantiere() {
               <h1 style={styles.titleCantiere}>{cantiere.nome}</h1>
               <div style={styles.headerActions}>
                 <span style={badgeStyle()}>{cantiere.stato.toUpperCase()}</span>
+                <Link to={`/cantieri/${cantiere.id}/dvr`} style={styles.btnDvr} data-testid="link-dvr">
+                  📄 DVR
+                </Link>
                 <button
                   type="button"
                   onClick={() => { void exportZip.avvia() }}
@@ -369,6 +372,22 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     gap: 10,
     flexShrink: 0,
+  },
+  btnDvr: {
+    backgroundColor: 'var(--bg-card)',
+    color: 'var(--accent)',
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: 'var(--border)',
+    borderRadius: 8,
+    paddingTop: 7,
+    paddingBottom: 7,
+    paddingLeft: 12,
+    paddingRight: 12,
+    fontSize: 13,
+    fontWeight: 500,
+    textDecoration: 'none',
+    whiteSpace: 'nowrap' as const,
   },
   btnEsportaZip: {
     backgroundColor: 'var(--accent)',
