@@ -59,6 +59,15 @@ Stato al 29 settembre 2026: **DVR Rumore**, **DVR Vibrazioni**, **DVR Posture in
 - Test sui quattro DVR modello (Castagnola 2025 galleria inverno ed estate, CTG 2025 esterno estate, Xenia 2026 esterno inverno) con le differenze del modello documentate.
 - Template: `tools/dvr/costruisci_template_microclima.py` (base galleria inverno, tabelle degli altri scenari copiate dai rispettivi modelli) → `public/templates/dvr/microclima.docx`. Didascalie numerate dal generatore in base alle sezioni accese.
 
+## Radiazioni ottiche artificiali (src/dvr/roa)
+
+- **Sorgenti** censite (macchine, lampade, laser) in `dvr_documenti.contenuti.roa`, importabili dalle misure ROA. Giustificabili dalla classificazione: macchine di categoria 0 (UNI EN 12198), lampade del gruppo esente (CEI EN 62471), laser di classe 1 e 2 (CEI EN 60825-1); saldature e tagli termici mai giustificabili; il tecnico può forzare la scelta (segnalata negli avvisi).
+- Per le **non giustificabili**: analisi della situazione lavorativa (spettro, distanza, tempo, esposti diretti e indebiti, necessità di misure).
+- **Luminanza** Lv = Ev / ω dalle misure di illuminamento, limite 10.000 cd/m².
+- **DPI per saldatura** (UNI EN 169): numeri di graduazione richiesti nel campo di corrente o portata (prospetti II, III e IV), adeguato se per ogni numero richiesto c'è un filtro pari o di un grado più scuro.
+- Conclusioni e piano proposti dal calcolo, modificabili. Test sul DVR ROA Castagnola 2026.
+- Template: `tools/dvr/costruisci_template_roa.py` → `public/templates/dvr/roa.docx`; le didascalie restano numerate con i campi SEQ del modello.
+
 ## Template Word
 
 `tools/dvr/costruisci_template_rumore.py <DVR modello.docx> public/templates/dvr/rumore.docx` ricava il template dal DVR Rumore Xenia 2026. Correzioni applicate al modello: IEC 651/804 → IEC 61672, SIT → ACCREDIA, disuguaglianze delle fasce, sezione piè di pagina dell'Allegato 1, logo CTG nell'Allegato 3, firme scansionate tolte dalla copertina, numerazione tabelle automatica, art. 196 per la sorveglianza sanitaria.
@@ -67,6 +76,6 @@ Il logo del cliente si carica nel documento (riquadro 198,45 × 52,6 pt); il log
 
 ## Da fare
 
-- Altri rischi: chimico/cancerogeno (servono i risultati di laboratorio), ROA; DVR mancanti da scrivere da zero (CEM, amianto, IPA, biologico, acqua).
+- Altri rischi: chimico/cancerogeno (servono i risultati di laboratorio); DVR mancanti da scrivere da zero (CEM, amianto, IPA, biologico, acqua).
 - Varianti dei testi per galleria tradizionale e viadotti da rivedere con Davide.
 - Logo dello studio configurabile (per la vendita ad altri professionisti) e multi-tenancy (Fase K).
