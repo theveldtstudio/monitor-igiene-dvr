@@ -261,10 +261,11 @@ def trasforma_documento(doc):
         t.addnext(paragrafo_tag(B[521], '{/%sPresenti}' % nome))
 
 
-def normalizza_loghi(lavoro: Path):
+def normalizza_loghi(lavoro: Path, clienti=None, da_eliminare=('image7.png', 'image10.png')):
     """Nelle intestazioni e in copertina ogni logo di cliente (Xenia, COCIV, CTG) diventa image1.png
     in un riquadro fisso e senza ritagli; si toglie il collegamento al sito COCIV."""
-    clienti = {'media/image1.png', 'media/image7.png', 'media/image10.png'}
+    if clienti is None:
+        clienti = {'media/image1.png', 'media/image7.png', 'media/image10.png'}
     parti = [lavoro / 'word' / 'document.xml'] + sorted((lavoro / 'word').glob('header*.xml'))
     for parte in parti:
         rels_path = parte.parent / '_rels' / (parte.name + '.rels')
@@ -305,7 +306,7 @@ def normalizza_loghi(lavoro: Path):
         d.write(str(parte), xml_declaration=True, encoding='UTF-8', standalone=True)
     from PIL import Image
     Image.new('RGBA', (794, 210), (255, 255, 255, 0)).save(lavoro / 'word' / 'media' / 'image1.png')
-    for f in ('image7.png', 'image10.png'):
+    for f in da_eliminare:
         (lavoro / 'word' / 'media' / f).unlink(missing_ok=True)
 
 
