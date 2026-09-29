@@ -11,7 +11,8 @@
     "generate-pwa-assets": "pwa-assets-generator",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test:e2e:report": "playwright show-report"
+    "test:e2e:report": "playwright show-report",
+    "test": "vitest run"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.108.0",
@@ -41,6 +42,7 @@
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.58.2",
     "vite": "^8.0.10",
-    "vite-plugin-pwa": "^1.3.0"
+    "vite-plugin-pwa": "^1.3.0",
+    "vitest": "^5.0.2"
   }
 }
