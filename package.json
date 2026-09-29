@@ -17,6 +17,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.108.0",
     "@tanstack/react-query": "^5.101.0",
+    "@xmldom/xmldom": "^0.9.12",
     "dexie": "^4.4.3",
     "docxtemplater": "^3.71.0",
     "exceljs": "^4.4.0",

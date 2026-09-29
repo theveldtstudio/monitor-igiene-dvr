@@ -4,6 +4,7 @@
  */
 import Docxtemplater from 'docxtemplater'
 import PizZip from 'pizzip'
+import { unisciCelleMarcate } from './unisciCelle'
 
 export class ErroreTemplate extends Error {
   dettagli: string[]
@@ -35,7 +36,10 @@ export function generaDocx(template: ArrayBuffer | Uint8Array, dati: Record<stri
     ]
     throw new ErroreTemplate(lista)
   }
-  return doc.getZip().generate({ type: 'uint8array', compression: 'DEFLATE' })
+  const out = doc.getZip()
+  const xml = out.file('word/document.xml')?.asText()
+  if (xml) out.file('word/document.xml', unisciCelleMarcate(xml))
+  return out.generate({ type: 'uint8array', compression: 'DEFLATE' })
 }
 
 /**

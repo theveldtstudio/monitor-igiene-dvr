@@ -75,3 +75,6 @@ coverage/
 /playwright/.cache/
 
 .scratch/
+
+# Python
+__pycache__/
