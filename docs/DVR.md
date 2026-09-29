@@ -1,6 +1,6 @@
 # Modulo DVR – pacchetto Monitoraggi + DVR
 
-Stato al 29 settembre 2026: **DVR Rumore** e **DVR Vibrazioni** completi (dati, calcolo, Word). Gli altri rischi seguiranno lo stesso schema.
+Stato al 29 settembre 2026: **DVR Rumore**, **DVR Vibrazioni** e **DVR Posture incongrue** completi (dati, calcolo, Word). Gli altri rischi seguiranno lo stesso schema. Il tipo di DVR si sceglie nella pagina DVR del cantiere (menu “Rischio del nuovo DVR”).
 
 ## Flusso d'uso
 
@@ -31,6 +31,15 @@ Stato al 29 settembre 2026: **DVR Rumore** e **DVR Vibrazioni** completi (dati, 
 - Nella matrice dei tempi ogni riga ha il tipo (WBV/HAV); una mansione senza righe di un tipo ha esposizione trascurabile per quel tipo.
 - Template: `tools/dvr/costruisci_template_vibrazioni.py` → `public/templates/dvr/vibrazioni.docx` (loghi COCIV/CTG del modello sostituiti dal logo cliente, firme tolte, "arrotondati per eccesso" corretto).
 
+## Posture incongrue (src/dvr/posture)
+
+- Metodo OWAS: ogni postura ha un codice schiena-braccia-gambe-carico; la classe 1–4 viene dalla tabella standard (`src/data/owasLookup.ts`, la stessa del modulo di misura, verificata cella per cella sulla Tabla 6 di Ergonautas – UPV).
+- Per mansione una o più **giornate tipo** (righe di `dvr_tempi` con `valori.giornata`, `valori.attivita`, `valori.classe`; classe 0 = operazioni ordinarie ripartite in parti uguali sulle quattro classi).
+- Indice I = (a·1 + b·2 + c·3 + d·4)·100 con a…d frazioni del tempo in classe 1…4; alla mansione si assegna la giornata più gravosa. Fasce: 100 assente, fino a 200 lieve, fino a 300 medio, oltre elevato.
+- Catalogo delle attività (capitoli 5 e 6) in `dvr_documenti.contenuti.catalogoPosture`: gruppo/tabella, fase, attività, descrizione, mansioni, posture con codice OWAS. Si può importare dalle misure OWAS delle campagne (`posture_owas`); le righe delle giornate collegate a una misura ricalcolano la classe dal codice.
+- Riproduce le 61 TAV (150 giornate) del DVR Posture Castagnola 2025; differenze del modello documentate nei test (riepiloghi non aggiornati in 13 TAV, Tabella 17 diversa in 5 mansioni, 3 posture con classe diversa dalla tabella standard, Figura 2 con 5 celle di colore diverso).
+- Template: `tools/dvr/costruisci_template_posture.py` → `public/templates/dvr/posture.docx`. Le celle "Fase lavorativa"/"Attività" uguali si uniscono in verticale dopo la compilazione (`src/dvr/comune/unisciCelle.ts`: i dati marcano le celle con `unibile(chiave, testo)`).
+
 ## Template Word
 
 `tools/dvr/costruisci_template_rumore.py <DVR modello.docx> public/templates/dvr/rumore.docx` ricava il template dal DVR Rumore Xenia 2026. Correzioni applicate al modello: IEC 651/804 → IEC 61672, SIT → ACCREDIA, disuguaglianze delle fasce, sezione piè di pagina dell'Allegato 1, logo CTG nell'Allegato 3, firme scansionate tolte dalla copertina, numerazione tabelle automatica, art. 196 per la sorveglianza sanitaria.
@@ -39,6 +48,6 @@ Il logo del cliente si carica nel documento (riquadro 198,45 × 52,6 pt); il log
 
 ## Da fare
 
-- Altri rischi: vibrazioni (stesso schema), chimico/cancerogeno (servono i risultati di laboratorio), microclima, MMC, posture, ROA; DVR mancanti da scrivere da zero (CEM, amianto, IPA, biologico, acqua).
+- Altri rischi: chimico/cancerogeno (servono i risultati di laboratorio), microclima, MMC, ROA; DVR mancanti da scrivere da zero (CEM, amianto, IPA, biologico, acqua).
 - Varianti dei testi per galleria tradizionale e viadotti da rivedere con Davide.
 - Logo dello studio configurabile (per la vendita ad altri professionisti) e multi-tenancy (Fase K).

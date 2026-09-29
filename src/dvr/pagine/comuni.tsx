@@ -17,11 +17,14 @@ export function DatiDocumento({
   aggiorna,
   tipiCampagna,
   etichettaCampagne,
+  conTarature = true,
 }: {
   ing: Ingresso
   aggiorna: () => Promise<void>
   tipiCampagna: string[]
   etichettaCampagne: string
+  /** false per i rischi valutati senza strumenti di misura (es. posture) */
+  conTarature?: boolean
 }) {
   const [d, setD] = useState(ing.documento)
   const campagne = useQuery({ queryKey: ['dvr', 'campagne', d.cantiere_id, tipiCampagna.join()], queryFn: () => api.leggiCampagne(d.cantiere_id, tipiCampagna) })
@@ -45,7 +48,7 @@ export function DatiDocumento({
                 campagne_ids: d.campagne_ids,
                 ambiti_ids: d.ambiti_ids,
               })
-              await api.aggiornaContenuti(d.id, { logoCliente: d.contenuti.logoCliente ?? null, tarature_ids: taratureScelte })
+              await api.aggiornaContenuti(d.id, conTarature ? { logoCliente: d.contenuti.logoCliente ?? null, tarature_ids: taratureScelte } : { logoCliente: d.contenuti.logoCliente ?? null })
               await aggiorna()
             }, 'Documento salvato')
           }
@@ -92,8 +95,8 @@ export function DatiDocumento({
         {ing.ambiti.length === 0 && <span style={stili.nota}>Nessun ambito: aggiungili nella pagina DVR del cantiere.</span>}
       </div>
 
-      <p style={{ ...stili.nota, marginTop: 12 }}>Strumenti usati (dalle tarature):</p>
-      <div style={stili.riga}>
+      {conTarature && <p style={{ ...stili.nota, marginTop: 12 }}>Strumenti usati (dalle tarature):</p>}
+      {conTarature && <div style={stili.riga}>
         {(tarature.data ?? []).map((t) => (
           <label key={t.id} style={{ fontSize: 13 }}>
             <input
@@ -105,7 +108,7 @@ export function DatiDocumento({
           </label>
         ))}
         {tarature.data?.length === 0 && <span style={stili.nota}>Nessuna taratura: aggiungile nella pagina DVR del cantiere.</span>}
-      </div>
+      </div>}
 
       <p style={{ ...stili.nota, marginTop: 12 }}>Logo del cliente (copertina e intestazioni):</p>
       <div style={stili.riga}>

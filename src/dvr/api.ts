@@ -5,6 +5,7 @@
 import { supabase } from '../lib/supabase'
 import type { Campagna, Misura } from '../types'
 import type { AmbitoDvr, AnagraficaDvr, MacchinaDvr, MansioneDvr, RevisioneDvr, TaraturaDvr } from './comune/tipi'
+import type { AttivitaCatalogo } from './posture/valutazione'
 import type { DpiUdito } from './rumore/dpi'
 
 function ok<T>(r: { data: T | null; error: { message: string } | null }): T {
@@ -155,12 +156,14 @@ export interface ContenutiRumore {
   /** Numeri dei rapporti di prova (DVR Vibrazioni). */
   rapportoWbv?: string | null
   rapportoHav?: string | null
+  /** Catalogo delle attività con le posture OWAS (DVR Posture, capitoli 5 e 6). */
+  catalogoPosture?: AttivitaCatalogo[]
 }
 
 export interface DocumentoDvr {
   id: string
   cantiere_id: string
-  rischio: 'rumore' | 'vibrazioni'
+  rischio: 'rumore' | 'vibrazioni' | 'posture'
   titolo: string | null
   periodo_riferimento: string | null
   ambiti_ids: string[]
@@ -260,6 +263,10 @@ export interface RigaTempi {
     a?: number
     dettaglio?: string | null
     gruppo?: string | null
+    /** DVR Posture: giornata tipo, attività e classe OWAS (0 = ripartita sulle quattro classi). */
+    giornata?: string
+    attivita?: string
+    classe?: 0 | 1 | 2 | 3 | 4
   }
   nota: string | null
 }

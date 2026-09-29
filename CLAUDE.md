@@ -136,10 +136,11 @@ ATTENZIONE: `getRow()` è 1-indexed, `addImage` `tl.row` è 0-indexed.
 Vedi `docs/DVR.md`. In breve:
 - `src/dvr/rumore/` motore di calcolo (LEX,8h, incertezza ISO 9612, fasce art. 189, DPI HML) + preparazione dati del Word; test `npm test` (vitest) sulle 23 TAV del DVR Xenia 2026.
 - `src/dvr/vibrazioni/` motore WBV/HAV (A(8), +20% INAIL, fasce art. 201, media + dev. std) + Word; test sulle 45 TAV del DVR Vibrazioni Xenia 2026.
+- `src/dvr/posture/` metodo OWAS (classe dal codice con `src/data/owasLookup.ts`, indice per giornata tipo, giornata più gravosa) + Word; test sulle 61 TAV del DVR Posture Castagnola 2025.
 - `public/templates/dvr/*.docx` template docxtemplater, generati da `tools/dvr/costruisci_template_<rischio>.py` a partire dai DVR modello (non modificarli a mano: si rigenerano).
 - Tabelle `dvr_*` (migrazione `supabase/migrations/20260928160000_dvr_schema.sql`), solo online, niente Dexie.
-- Pagine: `/cantieri/:id/dvr` (anagrafica, ambiti, mansioni con conferma e storico, DPI, macchine, tarature, documenti) e `/cantieri/:id/dvr/:docId` (`EditorDvr` apre l'editor del rischio: Rumore o Vibrazioni; parti comuni in `pagine/comuni.tsx`).
-- E2E `e2e/dvr-rumore.spec.ts` e `e2e/dvr-vibrazioni.spec.ts` usano un Supabase finto in memoria (`e2e/helpers/supabaseFinto.ts`): non tocca nessun database.
+- Pagine: `/cantieri/:id/dvr` (anagrafica, ambiti, mansioni con conferma e storico, DPI, macchine, tarature, documenti) e `/cantieri/:id/dvr/:docId` (`EditorDvr` apre l'editor del rischio: Rumore, Vibrazioni o Posture; parti comuni in `pagine/comuni.tsx`).
+- E2E `e2e/dvr-rumore.spec.ts`, `e2e/dvr-vibrazioni.spec.ts` e `e2e/dvr-posture.spec.ts` usano un Supabase finto in memoria (`e2e/helpers/supabaseFinto.ts`): non tocca nessun database.
 
 ## Test
 

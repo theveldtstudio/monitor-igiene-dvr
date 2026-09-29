@@ -52,7 +52,8 @@ test('DVR Vibrazioni: matrice WBV e HAV fino al Word', async ({ page }) => {
   page.on('pageerror', (e) => errori.push(e.message))
 
   await page.goto(`/cantieri/${CANTIERE}/dvr`)
-  await page.getByRole('button', { name: '+ Nuovo DVR Vibrazioni' }).click()
+  await page.getByLabel('Rischio del nuovo DVR').selectOption('vibrazioni')
+  await page.getByRole('button', { name: '+ Nuovo DVR' }).click()
   await expect(page.getByRole('heading', { name: /DVR Vibrazioni – rev\. 00/ })).toBeVisible()
   expect(tabelle.dvr_documenti?.[0]).toMatchObject({ rischio: 'vibrazioni', campagne_ids: [CAMP_WBV, CAMP_HAV] })
 

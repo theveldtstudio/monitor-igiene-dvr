@@ -625,18 +625,27 @@ function SezioneTarature() {
 
 // ---------------------------------------------------------------- documenti
 
+/** Rischi per cui l'app redige il DVR: titolo e tipi di campagna da cui prendere le misure. */
+const RISCHI_DVR: Record<api.DocumentoDvr['rischio'], { titolo: string; campagne: string[] }> = {
+  rumore: { titolo: 'DVR Rumore', campagne: ['rumore'] },
+  vibrazioni: { titolo: 'DVR Vibrazioni', campagne: ['vibrazioni-wbv', 'vibrazioni-hav', 'vibrazioni_wbv', 'vibrazioni_hav'] },
+  posture: { titolo: 'DVR Posture incongrue', campagne: ['posture_owas', 'owas'] },
+}
+
 function SezioneDocumenti({ cantiereId }: { cantiereId: string }) {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const q = useQuery({ queryKey: ['dvr', 'documenti', cantiereId], queryFn: () => api.leggiDocumenti(cantiereId) })
   const [creando, setCreando] = useState(false)
 
-  const nuovo = async (rischio: 'rumore' | 'vibrazioni') => {
+  const [rischioNuovo, setRischioNuovo] = useState<api.DocumentoDvr['rischio']>('rumore')
+
+  const nuovo = async (rischio: api.DocumentoDvr['rischio']) => {
     setCreando(true)
     await esegui(async () => {
       const [ambiti, campagne, mansioni, anagrafica] = await Promise.all([
         api.leggiAmbiti(cantiereId),
-        api.leggiCampagne(cantiereId, rischio === 'rumore' ? ['rumore'] : ['vibrazioni-wbv', 'vibrazioni-hav', 'vibrazioni_wbv', 'vibrazioni_hav']),
+        api.leggiCampagne(cantiereId, RISCHI_DVR[rischio].campagne),
         api.leggiMansioni(cantiereId),
         api.leggiAnagrafica(cantiereId),
       ])
@@ -644,7 +653,7 @@ function SezioneDocumenti({ cantiereId }: { cantiereId: string }) {
       const doc = await api.salvaDocumento({
         cantiere_id: cantiereId,
         rischio,
-        titolo: rischio === 'rumore' ? 'DVR Rumore' : 'DVR Vibrazioni',
+        titolo: RISCHI_DVR[rischio].titolo,
         periodo_riferimento: '',
         ambiti_ids: ambiti.map((a) => a.id),
         campagne_ids: campagne.map((c) => c.id),
@@ -677,11 +686,15 @@ function SezioneDocumenti({ cantiereId }: { cantiereId: string }) {
       titolo="Documenti DVR"
       azioni={
         <>
-          <Bottone tipo="primario" disabled={creando} onClick={() => void nuovo('rumore')}>
-            + Nuovo DVR Rumore
-          </Bottone>
-          <Bottone tipo="primario" disabled={creando} onClick={() => void nuovo('vibrazioni')}>
-            + Nuovo DVR Vibrazioni
+          <select aria-label="Rischio del nuovo DVR" style={stili.input} value={rischioNuovo} onChange={(e) => setRischioNuovo(e.target.value as api.DocumentoDvr['rischio'])}>
+            {Object.entries(RISCHI_DVR).map(([k, r]) => (
+              <option key={k} value={k}>
+                {r.titolo}
+              </option>
+            ))}
+          </select>
+          <Bottone tipo="primario" disabled={creando} onClick={() => void nuovo(rischioNuovo)}>
+            + Nuovo DVR
           </Bottone>
         </>
       }

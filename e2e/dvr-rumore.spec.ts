@@ -94,7 +94,8 @@ test('DVR Rumore: dall’anagrafica al documento Word', async ({ page }) => {
   if (process.env.DVR_SCREEN_DIR) await page.screenshot({ path: `${process.env.DVR_SCREEN_DIR}/pagina-dvr.png`, fullPage: true })
 
   // Nuovo DVR
-  await page.getByRole('button', { name: '+ Nuovo DVR Rumore' }).click()
+  await page.getByLabel('Rischio del nuovo DVR').selectOption('rumore')
+  await page.getByRole('button', { name: '+ Nuovo DVR' }).click()
   await expect(page.getByRole('heading', { name: /DVR Rumore – rev\. 00/ })).toBeVisible()
   await page.getByLabel('Periodo di riferimento').fill('Maggio – Giugno 2026')
   await page.getByLabel('Data di emissione').fill('2026-07-15')
