@@ -146,3 +146,14 @@ describe('valutazione completa Xenia', () => {
     expect(TABELLA13_XENIA['Operatore TBM – Meccanico TBM/Aiuto meccanico TBM'].lex).toBe(83.2)
   })
 })
+
+describe('controlli sui dati dei DPI', () => {
+  it('trova i due refusi della scheda Portwest EP16 nel DVR Xenia', async () => {
+    const { controllaDpi } = await import('./dpi')
+    const { OTTAVE_XENIA } = await import('./__fixtures__/xenia2026Extra')
+    const avvisi = controllaDpi({ ...PORTWEST, ottave: OTTAVE_XENIA[2] })
+    expect(avvisi.some((a) => a.includes('2000 Hz'))).toBe(true)
+    expect(avvisi.some((a) => a.includes('8000 Hz'))).toBe(true)
+    expect(controllaDpi({ ...COVERGUARD, ottave: OTTAVE_XENIA[0] })).toEqual([])
+  })
+})

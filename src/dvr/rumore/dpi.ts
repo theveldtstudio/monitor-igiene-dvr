@@ -124,3 +124,22 @@ export function lexConDpi(periodi: PeriodoEsposizione[], dpi: DpiUdito, sogliaUs
     MINUTI_RIFERIMENTO,
   )
 }
+
+/**
+ * Controlli sui dati del DPI copiati dalla scheda del costruttore: segnala valori quasi certamente
+ * sbagliati (es. virgola persa: deviazione 46 invece di 4,6, attenuazione 4,8 invece di 48).
+ */
+export function controllaDpi(dpi: DpiUdito): string[] {
+  const avvisi: string[] = []
+  if (!(dpi.h >= dpi.m && dpi.m >= dpi.l)) avvisi.push(`${dpi.nome}: di norma H ≥ M ≥ L (dati: H ${dpi.h}, M ${dpi.m}, L ${dpi.l}).`)
+  if (dpi.beta <= 0 || dpi.beta > 1) avvisi.push(`${dpi.nome}: coefficiente β fuori intervallo (${dpi.beta}).`)
+  const ott = dpi.ottave ?? []
+  ott.forEach((o, i) => {
+    if (o.deviazione > 15) avvisi.push(`${dpi.nome}: deviazione standard a ${o.frequenza} Hz pari a ${o.deviazione} dB, probabile errore di battitura.`)
+    const vicini = [ott[i - 1]?.media, ott[i + 1]?.media].filter((x): x is number => typeof x === 'number')
+    if (vicini.length && o.media < Math.min(...vicini) / 3) {
+      avvisi.push(`${dpi.nome}: attenuazione a ${o.frequenza} Hz pari a ${o.media} dB, molto più bassa delle bande vicine: verificare.`)
+    }
+  })
+  return avvisi
+}
