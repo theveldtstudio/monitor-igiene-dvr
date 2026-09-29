@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase'
 import type { Campagna, Misura } from '../types'
 import type { AmbitoDvr, AnagraficaDvr, MacchinaDvr, MansioneDvr, RevisioneDvr, TaraturaDvr } from './comune/tipi'
 import type { ContenutiMicroclima } from './microclima/daDatabase'
+import type { ContenutiRoa } from './roa/daDatabase'
 import type { AttivitaMmc } from './mmc/valutazione'
 import type { AttivitaCatalogo } from './posture/valutazione'
 import type { DpiUdito } from './rumore/dpi'
@@ -164,12 +165,14 @@ export interface ContenutiRumore {
   attivitaMmc?: AttivitaMmc[]
   /** Scenario, lavorazioni, rilievi e testi del DVR Microclima. */
   microclima?: ContenutiMicroclima
+  /** Sorgenti, rilievi di illuminamento, DPI per saldatura e testi del DVR ROA. */
+  roa?: ContenutiRoa
 }
 
 export interface DocumentoDvr {
   id: string
   cantiere_id: string
-  rischio: 'rumore' | 'vibrazioni' | 'posture' | 'mmc' | 'microclima'
+  rischio: 'rumore' | 'vibrazioni' | 'posture' | 'mmc' | 'microclima' | 'roa'
   titolo: string | null
   periodo_riferimento: string | null
   ambiti_ids: string[]

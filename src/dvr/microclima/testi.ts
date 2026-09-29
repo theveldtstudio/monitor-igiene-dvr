@@ -2,18 +2,16 @@
  * Testi predefiniti del DVR Microclima, ricavati dai quattro DVR modello e resi generici.
  * Il tecnico li può sostituire dall'editor (misure preventive, piano, vestiario).
  */
+import type { VocePiano } from '../comune/piano'
 import { estivo, type ScenarioMicroclima } from './valutazione'
+
+export { pianoDaTesto, pianoInTesto, type VocePiano } from '../comune/piano'
 
 export interface CapoVestiario {
   capo: string
   clo: number
 }
 
-export interface VocePiano {
-  testo: string
-  /** sotto-elenco (es. i sintomi da evidenziare negli incontri formativi) */
-  sotto?: string[]
-}
 
 export const galleria = (s: ScenarioMicroclima) => s === 'galleria_inverno' || s === 'galleria_estate'
 
@@ -113,16 +111,3 @@ export function pianoPredefinito(s: ScenarioMicroclima): VocePiano[] {
   }
   return out
 }
-
-/** Piano come testo: una voce per riga, le righe che iniziano con "- " sono il sotto-elenco della voce sopra. */
-export function pianoDaTesto(t: string): VocePiano[] {
-  const out: VocePiano[] = []
-  for (const riga of t.split('\n')) {
-    const s = riga.trim()
-    if (!s) continue
-    if (s.startsWith('- ') && out.length) (out[out.length - 1].sotto ??= []).push(s.slice(2).trim())
-    else out.push({ testo: s })
-  }
-  return out
-}
-export const pianoInTesto = (p: VocePiano[]) => p.map((v) => [v.testo, ...(v.sotto ?? []).map((x) => `- ${x}`)].join('\n')).join('\n')
