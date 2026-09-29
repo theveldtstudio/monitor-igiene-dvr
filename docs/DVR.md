@@ -50,6 +50,15 @@ Stato al 29 settembre 2026: **DVR Rumore**, **DVR Vibrazioni**, **DVR Posture in
 - Riproduce le 20 valutazioni del DVR MMC Xenia 2026 (differenze del modello documentate nei test).
 - Template: `tools/dvr/costruisci_template_mmc.py` → `public/templates/dvr/mmc.docx`; il capitolo 6 è un ciclo sulle attività con il blocco del metodo.
 
+## Microclima (src/dvr/microclima)
+
+- Quattro **scenari**, come i DVR modello: galleria inverno (PMV/PPD sui rilievi), galleria estate (WBGTi sui rilievi), esterno estate (PMV/PPD sulle medie meteo mensili + WBGTe nella giornata più gravosa), esterno inverno (PMV/PPD sulle medie + IREQ, DLE e WCI nelle giornate peggiori). Tutto in `dvr_documenti.contenuti.microclima` (parametri, rilievi, lavorazioni, vestiario, misure, piano); i rilievi si importano dalle misure delle campagne microclima.
+- **PMV/PPD** UNI EN ISO 7730 (algoritmo dell'Allegato D); in galleria la temperatura radiante si ricava dal globotermometro in convezione forzata con il diametro indicato (i PMV del DVR Castagnola si riproducono con 0,05 m). Categorie A–D dal PMV a 0,1.
+- **WBGT** UNI EN ISO 7243: WBGTi = 0,7 Tuvn + 0,3 Tg, WBGTe = 0,7 Tuvn + 0,2 Tg + 0,1 Ta; limiti per classe metabolica (≤ 65, 130, 200, 260 W/m²) acclimatati 33/30/28/25/23, non acclimatati 32/29/26/22/18 (aria ferma).
+- **IREQ** UNI EN ISO 11079 (IREQmin/IREQneu iterativi, DLE con Qlim 144 kJ/m²) e **WCI** = 1,16 (10,45 + 10√Va − Va)(33 − Ta) con la tabella degli effetti.
+- Test sui quattro DVR modello (Castagnola 2025 galleria inverno ed estate, CTG 2025 esterno estate, Xenia 2026 esterno inverno) con le differenze del modello documentate.
+- Template: `tools/dvr/costruisci_template_microclima.py` (base galleria inverno, tabelle degli altri scenari copiate dai rispettivi modelli) → `public/templates/dvr/microclima.docx`. Didascalie numerate dal generatore in base alle sezioni accese.
+
 ## Template Word
 
 `tools/dvr/costruisci_template_rumore.py <DVR modello.docx> public/templates/dvr/rumore.docx` ricava il template dal DVR Rumore Xenia 2026. Correzioni applicate al modello: IEC 651/804 → IEC 61672, SIT → ACCREDIA, disuguaglianze delle fasce, sezione piè di pagina dell'Allegato 1, logo CTG nell'Allegato 3, firme scansionate tolte dalla copertina, numerazione tabelle automatica, art. 196 per la sorveglianza sanitaria.
@@ -58,6 +67,6 @@ Il logo del cliente si carica nel documento (riquadro 198,45 × 52,6 pt); il log
 
 ## Da fare
 
-- Altri rischi: chimico/cancerogeno (servono i risultati di laboratorio), microclima, ROA; DVR mancanti da scrivere da zero (CEM, amianto, IPA, biologico, acqua).
+- Altri rischi: chimico/cancerogeno (servono i risultati di laboratorio), ROA; DVR mancanti da scrivere da zero (CEM, amianto, IPA, biologico, acqua).
 - Varianti dei testi per galleria tradizionale e viadotti da rivedere con Davide.
 - Logo dello studio configurabile (per la vendita ad altri professionisti) e multi-tenancy (Fase K).
