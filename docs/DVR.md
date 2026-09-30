@@ -1,6 +1,6 @@
 # Modulo DVR – pacchetto Monitoraggi + DVR
 
-Stato al 30 settembre 2026: completi (dati, calcolo, Word) i DVR Rumore, Vibrazioni, Posture incongrue, Movimentazione manuale dei carichi, Microclima, ROA, Agenti chimici, Fumi di saldatura, Agenti cancerogeni Campi elettromagnetici, Amianto e IPA. Mancano biologico e acqua. Il tipo di DVR si sceglie nella pagina DVR del cantiere (menu “Rischio del nuovo DVR”).
+Stato al 30 settembre 2026: completi (dati, calcolo, Word) i DVR Rumore, Vibrazioni, Posture incongrue, Movimentazione manuale dei carichi, Microclima, ROA, Agenti chimici, Fumi di saldatura, Agenti cancerogeni Campi elettromagnetici, Amianto, IPA, Agenti biologici e il monitoraggio delle acque: tutti i moduli di misura dell'app hanno il loro documento. Il tipo di DVR si sceglie nella pagina DVR del cantiere (menu “Rischio del nuovo DVR”).
 
 ## Flusso d'uso
 
@@ -95,6 +95,18 @@ Scritto senza DVR modello: struttura e testi sono una proposta da far rivedere a
 - Esito per mansione dalle sorgenti a cui lavora vicino; conclusioni e piano proposti dal calcolo (segnaletica di zona, art. 210 e sorveglianza sanitaria oltre i VA, cavi di saldatura, detonatori in galleria tradizionale con radio/RF, magneti), modificabili. Paragrafo sui lavoratori particolarmente sensibili (portatori di dispositivi impiantati, gravidanza).
 - Template: `tools/dvr/costruisci_template_cem.py public/templates/dvr/roa.docx public/templates/dvr/cem.docx` (parte dal template ROA per copertina, stili e piè di pagina).
 
+## Agenti biologici (src/dvr/biologico, senza modello)
+
+- Titolo X, esposizione potenziale (art. 271 c. 4). **Agenti potenziali** in `contenuti.biologico` (elenco proposto secondo gli ambiti: tetano, leptospira, legionella, enterobatteri/epatite A, muffe, HBV/HCV/HIV per il primo soccorso, zecche per le opere all'esterno), con gruppo (allegato XLVI), probabilità P 1–4, danno D dal gruppo (modificabile), R = P × D: 1–2 trascurabile, 3–4 basso, 6–8 medio, 9–16 alto. Un agente senza mansioni indicate riguarda tutte le mansioni.
+- **Carica microbica dell'aria** (SAS): batteri a 22 °C e 36 °C, muffe e lieviti in UFC/m³, importati dalle campagne `biologico_sas`, classificati con le categorie indicative ECA report n. 12 (1993) per ambienti non industriali (non sono limiti di legge).
+- Template: `tools/dvr/costruisci_template_biologico.py public/templates/dvr/cem.docx public/templates/dvr/biologico.docx`.
+
+## Monitoraggio delle acque (src/dvr/acqua, senza modello)
+
+- Rischio `acqua`: relazione di monitoraggio delle acque di cantiere (non una valutazione di esposizione). **Punti** con destinazione (consumo umano D.Lgs. 18/2023: pH 6,5–9,5 e conducibilità ≤ 2500 µS/cm; scarico in acque superficiali o in fognatura D.Lgs. 152/2006 tab. 3: pH 5,5–9,5; solo monitoraggio senza limiti) e limiti modificabili per punto (prescrizioni dell'autorizzazione). **Misure** di pH, conducibilità, temperatura dell'acqua e dell'aria, ossigeno disciolto importate dalle campagne `monitoraggio_acqua` e raggruppate per punto (destinazione proposta dal nome del punto).
+- Template: `tools/dvr/costruisci_template_acqua.py public/templates/dvr/cem.docx public/templates/dvr/acqua.docx`.
+- Biologico e acqua usano `tools/dvr/scheletro.py`: copertina, indice, intestazioni e stili del template CEM con il corpo scritto da una lista di blocchi (titoli, paragrafi, elenchi, tabelle, condizioni). Se cambia il template CEM vanno rigenerati.
+
 ## Testi secondo gli ambiti
 
 `rumore/testiPredefiniti.ts`: il ciclo di lavoro predefinito ha un blocco per ogni tipo di ambito del documento (galleria TBM o tradizionale, viadotto, opere in esterno, piazzale, officina, campo base, uffici) nell'ordine delle lavorazioni (`cicloPredefinito`); la zonizzazione del rumore è quella della galleria o, per viadotti e opere in esterno, quella delle lavorazioni all'aperto (`zonizzazionePredefinita`); `luoghiLavoro` scrive dove operano i lavoratori ("sulla TBM, sul piazzale e in officina"). Tutti i testi restano modificabili nel documento.
@@ -107,7 +119,6 @@ Il logo del cliente si carica nel documento (riquadro 198,45 × 52,6 pt); il log
 
 ## Da fare
 
-- DVR mancanti da scrivere da zero (biologico, acqua).
-- Rivedere con Davide struttura, testi e soglie dei DVR CEM, Amianto e IPA (nessun modello ECO-TER).
+- Rivedere con Davide struttura, testi e soglie dei DVR CEM, Amianto, IPA, Biologico e della relazione Acque (nessun modello ECO-TER).
 - Rivedere con Davide i testi predefiniti per ambito (`rumore/testiPredefiniti.ts`).
 - Logo dello studio configurabile (per la vendita ad altri professionisti) e multi-tenancy (Fase K).

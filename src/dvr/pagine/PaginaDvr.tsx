@@ -639,6 +639,8 @@ const RISCHI_DVR: Record<api.DocumentoDvr['rischio'], { titolo: string; campagne
   cem: { titolo: 'DVR Campi elettromagnetici', campagne: ['cem'] },
   amianto: { titolo: 'DVR Amianto', campagne: ['amianto'] },
   ipa: { titolo: 'DVR Idrocarburi policiclici aromatici (IPA)', campagne: ['ipa'] },
+  biologico: { titolo: 'DVR Agenti biologici', campagne: ['biologico_sas'] },
+  acqua: { titolo: 'Monitoraggio delle acque', campagne: ['monitoraggio_acqua'] },
 }
 
 function SezioneDocumenti({ cantiereId }: { cantiereId: string }) {

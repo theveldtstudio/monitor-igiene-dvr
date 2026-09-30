@@ -9,6 +9,8 @@ import type { ContenutiMicroclima } from './microclima/daDatabase'
 import type { ContenutiRoa } from './roa/daDatabase'
 import type { ContenutiChimico } from './chimico/daDatabase'
 import type { ContenutiCem } from './cem/daDatabase'
+import type { ContenutiBiologico } from './biologico/daDatabase'
+import type { ContenutiAcqua } from './acqua/daDatabase'
 import type { AttivitaMmc } from './mmc/valutazione'
 import type { AttivitaCatalogo } from './posture/valutazione'
 import type { DpiUdito } from './rumore/dpi'
@@ -173,12 +175,16 @@ export interface ContenutiRumore {
   chimico?: ContenutiChimico
   /** Sorgenti, misure e testi del DVR Campi elettromagnetici. */
   cem?: ContenutiCem
+  /** Agenti potenziali, misure SAS e testi del DVR Agenti biologici. */
+  biologico?: ContenutiBiologico
+  /** Punti, misure e testi del monitoraggio delle acque. */
+  acqua?: ContenutiAcqua
 }
 
 export interface DocumentoDvr {
   id: string
   cantiere_id: string
-  rischio: 'rumore' | 'vibrazioni' | 'posture' | 'mmc' | 'microclima' | 'roa' | 'chimico' | 'fumi_saldatura' | 'cancerogeno' | 'cem' | 'amianto' | 'ipa'
+  rischio: 'rumore' | 'vibrazioni' | 'posture' | 'mmc' | 'microclima' | 'roa' | 'chimico' | 'fumi_saldatura' | 'cancerogeno' | 'cem' | 'amianto' | 'ipa' | 'biologico' | 'acqua'
   titolo: string | null
   periodo_riferimento: string | null
   ambiti_ids: string[]

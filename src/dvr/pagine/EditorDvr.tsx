@@ -16,6 +16,8 @@ const EditorDvrMicroclima = lazy(() => import('./EditorDvrMicroclima'))
 const EditorDvrRoa = lazy(() => import('./EditorDvrRoa'))
 const EditorDvrChimico = lazy(() => import('./EditorDvrChimico'))
 const EditorDvrCem = lazy(() => import('./EditorDvrCem'))
+const EditorDvrBiologico = lazy(() => import('./EditorDvrBiologico'))
+const EditorDvrAcqua = lazy(() => import('./EditorDvrAcqua'))
 
 export default function EditorDvr() {
   const { docId } = useParams<{ docId: string }>()
@@ -34,6 +36,10 @@ export default function EditorDvr() {
         <EditorDvrMicroclima />
       ) : q.data.rischio === 'roa' ? (
         <EditorDvrRoa />
+      ) : q.data.rischio === 'acqua' ? (
+        <EditorDvrAcqua />
+      ) : q.data.rischio === 'biologico' ? (
+        <EditorDvrBiologico />
       ) : q.data.rischio === 'cem' ? (
         <EditorDvrCem />
       ) : eRischioChimico(q.data.rischio) ? (

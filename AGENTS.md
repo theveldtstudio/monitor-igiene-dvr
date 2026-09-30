@@ -145,10 +145,11 @@ Vedi `docs/DVR.md`. In breve:
 - `src/dvr/chimico/` Agenti chimici, Fumi di saldatura e Agenti cancerogeni: ambienti con le misure, modello Regione Piemonte, TWA per mansione + Word; test sui tre DVR modello Castagnola.
 - `src/dvr/chimico/` anche Amianto (fibre SEM/MOCF, valore limite art. 254, ESEDI) e IPA (benzo[a]pirene e BaP eq. dai rapporti di prova), senza modello: template da `costruisci_template_amianto_ipa.py`.
 - `src/dvr/cem/` Campi elettromagnetici (senza modello): sorgenti giustificabili CEI EN 50499, misure E/B confrontate con i VA dell'Allegato XXXVI e con i livelli per la popolazione, zone 0/1/2 e distanze di rispetto + Word.
+- `src/dvr/biologico/` Agenti biologici (agenti potenziali P × D, carica microbica SAS con categorie ECA) e `src/dvr/acqua/` monitoraggio delle acque (pH, conducibilità, T, O₂ contro i limiti della destinazione), senza modello: template scritti da `tools/dvr/scheletro.py` sullo scheletro del CEM.
 - `public/templates/dvr/*.docx` template docxtemplater, generati da `tools/dvr/costruisci_template_<rischio>.py` a partire dai DVR modello (non modificarli a mano: si rigenerano).
 - Tabelle `dvr_*` (migrazione `supabase/migrations/20260928160000_dvr_schema.sql`), solo online, niente Dexie.
-- Pagine: `/cantieri/:id/dvr` (anagrafica, ambiti, mansioni con conferma e storico, DPI, macchine, tarature, documenti) e `/cantieri/:id/dvr/:docId` (`EditorDvr` apre l'editor del rischio: Rumore, Vibrazioni, Posture, MMC, Microclima, ROA, la famiglia chimica (chimico, fumi di saldatura, cancerogeno, amianto, IPA) o CEM; parti comuni in `pagine/comuni.tsx`).
-- E2E `e2e/dvr-rumore.spec.ts`, `e2e/dvr-vibrazioni.spec.ts`, `e2e/dvr-posture.spec.ts`, `e2e/dvr-mmc.spec.ts`, `e2e/dvr-microclima.spec.ts`, `e2e/dvr-roa.spec.ts`, `e2e/dvr-chimico.spec.ts` e `e2e/dvr-cem.spec.ts` usano un Supabase finto in memoria (`e2e/helpers/supabaseFinto.ts`): non tocca nessun database.
+- Pagine: `/cantieri/:id/dvr` (anagrafica, ambiti, mansioni con conferma e storico, DPI, macchine, tarature, documenti) e `/cantieri/:id/dvr/:docId` (`EditorDvr` apre l'editor del rischio: Rumore, Vibrazioni, Posture, MMC, Microclima, ROA, la famiglia chimica (chimico, fumi di saldatura, cancerogeno, amianto, IPA), CEM, biologico o acqua; parti comuni in `pagine/comuni.tsx`).
+- E2E `e2e/dvr-rumore.spec.ts`, `e2e/dvr-vibrazioni.spec.ts`, `e2e/dvr-posture.spec.ts`, `e2e/dvr-mmc.spec.ts`, `e2e/dvr-microclima.spec.ts`, `e2e/dvr-roa.spec.ts`, `e2e/dvr-chimico.spec.ts`, `e2e/dvr-cem.spec.ts`, `e2e/dvr-biologico.spec.ts` e `e2e/dvr-acqua.spec.ts` usano un Supabase finto in memoria (`e2e/helpers/supabaseFinto.ts`): non tocca nessun database.
 
 ## Test
 
