@@ -4,6 +4,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import * as api from '../api'
+import { FASI_AVANZAMENTO, totaleMetro, type Avanzamento, type MetodoScavo } from '../comune/avanzamento'
 import type { Ingresso } from '../comune/ingresso'
 import { adattaLogo } from '../rumore/generaDvrRumore'
 import { cicloPredefinito, type BloccoTesto } from '../rumore/testiPredefiniti'
@@ -204,14 +205,113 @@ export function Revisioni({ ing, aggiorna }: { ing: Ingresso; aggiorna: () => Pr
 // ---------------------------------------------------------------- ciclo di lavoro
 
 /** Testo del ciclo di lavoro (paragrafi con elenco puntato), predefinito secondo il tipo di ambito. */
+/** Numero con la virgola in una cella (vuoto = null). */
+function CellaNumero({ valore, onChange, etichetta }: { valore: number | null; onChange: (x: number | null) => void; etichetta: string }) {
+  return (
+    <input
+      aria-label={etichetta}
+      inputMode="decimal"
+      style={{ ...stili.input, width: 90, padding: '4px 6px' }}
+      defaultValue={valore == null ? '' : String(valore).replace('.', ',')}
+      onChange={(e) => {
+        const n = e.target.value.trim() === '' ? null : numeroDa(e.target.value)
+        if (e.target.value.trim() === '' || n !== null) onChange(n)
+      }}
+    />
+  )
+}
+
+/** Tempi per metro lineare di avanzamento (scavo tradizionale) e metri scavati nel periodo. */
+function EditorAvanzamento({ a, cambia }: { a: Avanzamento; cambia: (a: Avanzamento | null) => void }) {
+  const fase = (i: number, p: Partial<Avanzamento['fasi'][number]>) => cambia({ ...a, fasi: a.fasi.map((f, j) => (j === i ? { ...f, ...p } : f)) })
+  const prod = (i: number, p: Partial<Avanzamento['produzione'][number]>) => cambia({ ...a, produzione: a.produzione.map((f, j) => (j === i ? { ...f, ...p } : f)) })
+  const tot = (m: MetodoScavo) => {
+    const t = totaleMetro(a, m)
+    return t == null ? '–' : `${String(t).replace('.', ',')} min/m`
+  }
+  return (
+    <div role="group" aria-label="Tempi per metro lineare di avanzamento" style={{ marginTop: 14 }}>
+      <b style={{ fontSize: 14 }}>Tempi per metro lineare di avanzamento (scavo tradizionale)</b>
+      <p style={stili.nota}>Dati della direzione di cantiere: durata media di ogni fase per metro di avanzamento. Il DVR riporta la tabella dopo il ciclo di lavoro; le fasi senza tempi non compaiono.</p>
+      <table style={stili.tabella}>
+        <thead>
+          <tr>
+            {['Fase', 'Esplosivo [min/m]', 'Martellone [min/m]', ''].map((h) => (
+              <th key={h} style={stili.th}>
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {a.fasi.map((f, i) => (
+            <tr key={i}>
+              <td style={stili.td}>
+                <input aria-label={`Fase di avanzamento ${i + 1}`} style={{ ...stili.input, padding: '4px 6px' }} value={f.fase} onChange={(e) => fase(i, { fase: e.target.value })} />
+              </td>
+              <td style={stili.td}>
+                <CellaNumero etichetta={`${f.fase || `Fase ${i + 1}`} – esplosivo`} valore={f.esplosivo} onChange={(x) => fase(i, { esplosivo: x })} />
+              </td>
+              <td style={stili.td}>
+                <CellaNumero etichetta={`${f.fase || `Fase ${i + 1}`} – martellone`} valore={f.martellone} onChange={(x) => fase(i, { martellone: x })} />
+              </td>
+              <td style={stili.td}>
+                <Bottone tipo="pericolo" onClick={() => cambia({ ...a, fasi: a.fasi.filter((_, j) => j !== i) })}>
+                  ×
+                </Bottone>
+              </td>
+            </tr>
+          ))}
+          <tr>
+            <td style={{ ...stili.td, fontWeight: 600 }}>Totale per metro</td>
+            <td style={stili.td}>{tot('esplosivo')}</td>
+            <td style={stili.td}>{tot('martellone')}</td>
+            <td style={stili.td} />
+          </tr>
+        </tbody>
+      </table>
+      <div style={{ ...stili.riga, marginTop: 6 }}>
+        <Bottone onClick={() => cambia({ ...a, fasi: [...a.fasi, { fase: '', esplosivo: null, martellone: null }] })}>+ Fase</Bottone>
+      </div>
+      <div style={{ marginTop: 10 }}>
+        <Campo etichetta="Periodo della produzione (vuoto = periodo di riferimento del documento)" valore={a.periodo ?? ''} onChange={(v) => cambia({ ...a, periodo: v })} />
+      </div>
+      {a.produzione.map((p, i) => (
+        <div key={i} style={{ ...stili.riga, marginTop: 6 }}>
+          <select aria-label={`Metodo di scavo ${i + 1}`} style={stili.input} value={p.metodo} onChange={(e) => prod(i, { metodo: e.target.value as MetodoScavo })}>
+            <option value="martellone">Martellone</option>
+            <option value="esplosivo">Esplosivo</option>
+          </select>
+          <label style={{ fontSize: 13 }}>
+            metri <CellaNumero etichetta={`Metri di avanzamento ${i + 1}`} valore={p.metri} onChange={(x) => prod(i, { metri: x })} />
+          </label>
+          <label style={{ fontSize: 13 }}>
+            in giorni <CellaNumero etichetta={`Giorni di avanzamento ${i + 1}`} valore={p.giorni} onChange={(x) => prod(i, { giorni: x })} />
+          </label>
+          <Bottone tipo="pericolo" onClick={() => cambia({ ...a, produzione: a.produzione.filter((_, j) => j !== i) })}>
+            ×
+          </Bottone>
+        </div>
+      ))}
+      <div style={{ ...stili.riga, marginTop: 6 }}>
+        <Bottone onClick={() => cambia({ ...a, produzione: [...a.produzione, { metodo: 'martellone', metri: null, giorni: null }] })}>+ Metri scavati</Bottone>
+        <Bottone tipo="pericolo" onClick={() => cambia(null)}>
+          Togli i tempi per metro
+        </Bottone>
+      </div>
+    </div>
+  )
+}
+
 export function CicloLavoro({ ing, aggiorna, titolo, predefinito }: { ing: Ingresso; aggiorna: () => Promise<void>; titolo: string; predefinito?: BloccoTesto[] }) {
   const doc = ing.documento
   const tipi = ing.ambiti.filter((a) => doc.ambiti_ids.includes(a.id)).map((a) => a.tipo)
   const [c, setC] = useState<api.ContenutiRumore>(doc.contenuti ?? {})
   const ciclo = c.ciclo ?? predefinito ?? (cicloPredefinito(tipi).length ? cicloPredefinito(tipi) : [{ testo: '', punti: [] }])
+  const tradizionale = (tipi.length ? tipi : ing.ambiti.map((a) => a.tipo)).includes('galleria_tradizionale')
   const salva = () =>
     esegui(async () => {
-      await api.aggiornaContenuti(doc.id, { ciclo: c.ciclo ?? null })
+      await api.aggiornaContenuti(doc.id, { ciclo: c.ciclo ?? null, avanzamento: c.avanzamento ?? null })
       await aggiorna()
     }, 'Salvato')
   return (
@@ -225,7 +325,16 @@ export function CicloLavoro({ ing, aggiorna, titolo, predefinito }: { ing: Ingre
       <div style={stili.riga}>
         <Bottone onClick={() => setC({ ...c, ciclo: [...ciclo, { testo: '', punti: [] }] })}>+ Paragrafo</Bottone>
         {c.ciclo && <Bottone onClick={() => setC({ ...c, ciclo: undefined })}>Ripristina testo predefinito</Bottone>}
+        {!c.avanzamento && (
+          <Bottone
+            onClick={() => setC({ ...c, avanzamento: { fasi: FASI_AVANZAMENTO.map((f) => ({ fase: f, esplosivo: null, martellone: null })), produzione: [] } })}
+            title="Tabella dei tempi medi per metro lineare di avanzamento, come nei DVR dello scavo tradizionale"
+          >
+            + Tempi per metro lineare{tradizionale ? '' : ' (scavo tradizionale)'}
+          </Bottone>
+        )}
       </div>
+      {c.avanzamento && <EditorAvanzamento a={c.avanzamento} cambia={(a) => setC({ ...c, avanzamento: a })} />}
     </Sezione>
   )
 }

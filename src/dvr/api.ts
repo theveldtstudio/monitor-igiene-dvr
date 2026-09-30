@@ -9,6 +9,7 @@ import type { ContenutiMicroclima } from './microclima/daDatabase'
 import type { ContenutiRoa } from './roa/daDatabase'
 import type { ContenutiChimico } from './chimico/daDatabase'
 import type { ContenutiCem } from './cem/daDatabase'
+import type { Avanzamento } from './comune/avanzamento'
 import type { ContenutiBiologico } from './biologico/daDatabase'
 import type { ContenutiAcqua } from './acqua/daDatabase'
 import type { AttivitaMmc } from './mmc/valutazione'
@@ -153,6 +154,8 @@ export interface ContenutiRumore {
   impulsivi?: { zona: string; componente: string; lpeak: number }[]
   segnali?: { fase: string; sorgente: string; ambiente: number; segnale: number }[]
   ciclo?: { testo: string; punti: string[] }[] | null
+  /** Tempi per metro lineare di avanzamento (scavo tradizionale), scritti dopo il ciclo in tutti i DVR. */
+  avanzamento?: Avanzamento | null
   zonizzazione?: string | null
   pianoIntro?: string
   pianoPunti?: string[]

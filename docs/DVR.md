@@ -116,6 +116,12 @@ Scritto senza DVR modello: struttura e testi sono una proposta da far rivedere a
 - CEM, biologico e acque usano già gli ambiti (detonatori in galleria tradizionale, zecche nelle opere all'aperto, gestione delle acque di galleria).
 Tutti i testi restano modificabili nel documento.
 
+## Tempi per metro lineare di avanzamento
+
+Scavo tradizionale, come nei DVR Castagnola: nella sezione del ciclo di lavoro di ogni DVR ("+ Tempi per metro lineare") si scrivono la durata media di ogni fase per metro con esplosivo e con martellone (fasi proposte: perforazione, caricamento volata, volata + sfumo, disgaggio/scavo, smarino, pre-spritz/spritz, posa centina) e i metri scavati nel periodo con i giorni. I dati stanno in `contenuti.avanzamento` (`comune/avanzamento.ts`) e tutti i generatori li passano al template: dopo il ciclo compaiono il paragrafo, la tabella con il totale per metro e l'elenco dei metri scavati (m al giorno calcolati). Senza tempi il blocco non compare.
+
+Nei template il blocco `{#conAvanzamento}` lo aggiunge `tools/dvr/avanzamento.py`, chiamato alla fine di ogni costruttore (idempotente; il costruttore CEM lo toglie dal template ROA prima di lavorare sugli indici). Ordine di rigenerazione completo: rumore, vibrazioni, posture, mmc, microclima, roa, chimico, fumi_saldatura, cancerogeno (dai modelli), poi cem (da roa), amianto/ipa (da cancerogeno), biologico e acqua (da cem).
+
 ## Template Word
 
 `tools/dvr/costruisci_template_rumore.py <DVR modello.docx> public/templates/dvr/rumore.docx` ricava il template dal DVR Rumore Xenia 2026. Correzioni applicate al modello: IEC 651/804 → IEC 61672, SIT → ACCREDIA, disuguaglianze delle fasce, sezione piè di pagina dell'Allegato 1, logo CTG nell'Allegato 3, firme scansionate tolte dalla copertina, numerazione tabelle automatica, art. 196 per la sorveglianza sanitaria.

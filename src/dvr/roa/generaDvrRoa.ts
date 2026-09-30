@@ -1,4 +1,5 @@
 /** Generazione del DVR Radiazioni ottiche artificiali nel browser. */
+import { datiAvanzamento } from '../comune/avanzamento'
 import { generaDocx, sostituisciImmagine } from '../comune/generaDocx'
 import { caricaIngresso } from '../comune/ingresso'
 import { dataUrlInByte, MEDIA_LOGO_CLIENTE } from '../rumore/generaDvrRumore'
@@ -13,7 +14,7 @@ export async function generaDvrRoa(cantiereId: string, documentoId: string) {
   const { dati: datiTemplate, valutazione } = datiTemplateRoa(dati)
   const risposta = await fetch(URL_TEMPLATE_ROA)
   if (!risposta.ok) throw new Error(`Template non disponibile (HTTP ${risposta.status})`)
-  let docx = generaDocx(await risposta.arrayBuffer(), datiTemplate)
+  let docx = generaDocx(await risposta.arrayBuffer(), { ...datiAvanzamento(ingresso.documento.contenuti?.avanzamento, ingresso.documento.periodo_riferimento ?? ''), ...datiTemplate })
   const logo = ingresso.documento.contenuti?.logoCliente
   if (logo) docx = sostituisciImmagine(docx, MEDIA_LOGO_CLIENTE, dataUrlInByte(logo))
   return {

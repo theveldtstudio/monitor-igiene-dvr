@@ -89,6 +89,8 @@ def ciclo_paragrafi(rif, nome):
 
 def trasforma_documento(doc):
     body = doc.getroot().find(W + 'body')
+    from avanzamento import togli_avanzamento  # il template ROA lo contiene già: gli indici sono quelli senza
+    togli_avanzamento(body)
     B = list(body)
     corpo, elenco, didasc, tit2 = B[50], B[58], B[99], B[70]
     tag = lambda s: paragrafo_tag(corpo, s)  # noqa: E731
@@ -313,6 +315,8 @@ def main():
             if f.is_file():
                 z.write(f, f.relative_to(lavoro).as_posix())
     shutil.rmtree(lavoro)
+    from avanzamento import aggiungi_avanzamento  # noqa: E402
+    aggiungi_avanzamento(uscita)
     print('Template scritto in', uscita)
 
 

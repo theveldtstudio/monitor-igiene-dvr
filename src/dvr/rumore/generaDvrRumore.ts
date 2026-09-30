@@ -2,6 +2,7 @@
  * Generazione del DVR Rumore nel browser: legge tutto dal database, calcola, riempie il template Word.
  */
 import { caricaIngresso } from '../comune/ingresso'
+import { datiAvanzamento } from '../comune/avanzamento'
 import { generaDocx, sostituisciImmagine } from '../comune/generaDocx'
 import { controllaDpi } from './dpi'
 import { datiDaDatabase } from './daDatabase'
@@ -19,7 +20,7 @@ export async function generaDvrRumore(cantiereId: string, documentoId: string) {
 
   const risposta = await fetch(URL_TEMPLATE_RUMORE)
   if (!risposta.ok) throw new Error(`Template non disponibile (HTTP ${risposta.status})`)
-  let docx = generaDocx(await risposta.arrayBuffer(), datiTemplate)
+  let docx = generaDocx(await risposta.arrayBuffer(), { ...datiAvanzamento(ingresso.documento.contenuti?.avanzamento, ingresso.documento.periodo_riferimento ?? ''), ...datiTemplate })
 
   const logo = ingresso.documento.contenuti?.logoCliente
   if (logo) docx = sostituisciImmagine(docx, MEDIA_LOGO_CLIENTE, dataUrlInByte(logo))

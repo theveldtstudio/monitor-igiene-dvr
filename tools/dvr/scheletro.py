@@ -146,4 +146,6 @@ def costruisci(sorgente, uscita, oggetto, capo, titolo_piede, blocchi):
             if f.is_file():
                 z.write(f, f.relative_to(lavoro).as_posix())
     shutil.rmtree(lavoro)
+    from avanzamento import aggiungi_avanzamento  # noqa: E402
+    aggiungi_avanzamento(uscita)
     print('Template scritto in', uscita)
