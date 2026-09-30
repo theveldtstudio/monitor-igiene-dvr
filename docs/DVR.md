@@ -1,6 +1,6 @@
 # Modulo DVR – pacchetto Monitoraggi + DVR
 
-Stato al 29 settembre 2026: **DVR Rumore**, **DVR Vibrazioni**, **DVR Posture incongrue** e **DVR Movimentazione manuale dei carichi** completi (dati, calcolo, Word). Gli altri rischi seguiranno lo stesso schema. Il tipo di DVR si sceglie nella pagina DVR del cantiere (menu “Rischio del nuovo DVR”).
+Stato al 30 settembre 2026: completi (dati, calcolo, Word) i DVR Rumore, Vibrazioni, Posture incongrue, Movimentazione manuale dei carichi, Microclima, ROA, Agenti chimici, Fumi di saldatura, Agenti cancerogeni e Campi elettromagnetici. Mancano amianto, IPA, biologico e acqua. Il tipo di DVR si sceglie nella pagina DVR del cantiere (menu “Rischio del nuovo DVR”).
 
 ## Flusso d'uso
 
@@ -77,6 +77,16 @@ Stato al 29 settembre 2026: **DVR Rumore**, **DVR Vibrazioni**, **DVR Posture in
 - Test sui DVR Chimico Castagnola 2026, Fumi di saldatura II sem. 2025 e Cancerogeno II sem. 2025 (segnalano le medie e i totali sbagliati dei modelli).
 - Template: `tools/dvr/costruisci_template_{chimico,fumi_saldatura,cancerogeno}.py` (parti comuni in `chimico_comune.py`) → `public/templates/dvr/*.docx`; didascalie con campi SEQ, titoli su un solo elenco numerato, piè di pagina degli allegati corretti.
 
+## Campi elettromagnetici (src/dvr/cem)
+
+Scritto senza DVR modello: struttura e testi sono una proposta da far rivedere a Davide.
+
+- **Sorgenti** in `dvr_documenti.contenuti.cem`, per categoria (17): giustificabili secondo la CEI EN 50499 tab. 1 (PC, utensili, caricabatterie, radio e telefoni CE, impianti BT ≤ 100 A…) oppure da valutare (saldatura, induzione, cabine e quadri di potenza, motori e TBM, gruppi elettrogeni, magneti, trasmettitori RF, radar). Il tecnico può forzare la giustificazione.
+- **Misure** per sorgente (postazione, distanza, frequenza, E, B o H), importabili dalle misure CEM delle campagne (collegate alla sorgente con lo stesso nome; se manca, la sorgente si crea con la categoria probabile dal nome).
+- **Confronto** con i valori di azione dell'Allegato XXXVI (D.Lgs. 159/2016 = Dir. 2013/35/UE: VA inferiori e superiori per E, VA per B e VA per gli arti, effetti termici da 100 kHz, campi statici) e con i livelli per la popolazione della Racc. 1999/519/CE. Zone: 0 entro i livelli per la popolazione, 1 oltre la popolazione ma entro i VA (con sotto-casi), 2 oltre i VA superiori. Distanza di rispetto = distanza minima misurata entro i livelli per la popolazione.
+- Esito per mansione dalle sorgenti a cui lavora vicino; conclusioni e piano proposti dal calcolo (segnaletica di zona, art. 210 e sorveglianza sanitaria oltre i VA, cavi di saldatura, detonatori in galleria tradizionale con radio/RF, magneti), modificabili. Paragrafo sui lavoratori particolarmente sensibili (portatori di dispositivi impiantati, gravidanza).
+- Template: `tools/dvr/costruisci_template_cem.py public/templates/dvr/roa.docx public/templates/dvr/cem.docx` (parte dal template ROA per copertina, stili e piè di pagina).
+
 ## Testi secondo gli ambiti
 
 `rumore/testiPredefiniti.ts`: il ciclo di lavoro predefinito ha un blocco per ogni tipo di ambito del documento (galleria TBM o tradizionale, viadotto, opere in esterno, piazzale, officina, campo base, uffici) nell'ordine delle lavorazioni (`cicloPredefinito`); la zonizzazione del rumore è quella della galleria o, per viadotti e opere in esterno, quella delle lavorazioni all'aperto (`zonizzazionePredefinita`); `luoghiLavoro` scrive dove operano i lavoratori ("sulla TBM, sul piazzale e in officina"). Tutti i testi restano modificabili nel documento.
@@ -89,6 +99,7 @@ Il logo del cliente si carica nel documento (riquadro 198,45 × 52,6 pt); il log
 
 ## Da fare
 
-- DVR mancanti da scrivere da zero (CEM, amianto, IPA, biologico, acqua).
+- DVR mancanti da scrivere da zero (amianto, IPA, biologico, acqua).
+- Rivedere con Davide struttura e testi del DVR CEM (nessun modello ECO-TER).
 - Rivedere con Davide i testi predefiniti per ambito (`rumore/testiPredefiniti.ts`).
 - Logo dello studio configurabile (per la vendita ad altri professionisti) e multi-tenancy (Fase K).

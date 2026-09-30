@@ -8,6 +8,7 @@ import type { AmbitoDvr, AnagraficaDvr, MacchinaDvr, MansioneDvr, RevisioneDvr, 
 import type { ContenutiMicroclima } from './microclima/daDatabase'
 import type { ContenutiRoa } from './roa/daDatabase'
 import type { ContenutiChimico } from './chimico/daDatabase'
+import type { ContenutiCem } from './cem/daDatabase'
 import type { AttivitaMmc } from './mmc/valutazione'
 import type { AttivitaCatalogo } from './posture/valutazione'
 import type { DpiUdito } from './rumore/dpi'
@@ -170,12 +171,14 @@ export interface ContenutiRumore {
   roa?: ContenutiRoa
   /** Ambienti di lavoro con le misure, limiti e testi dei DVR Agenti chimici, Fumi di saldatura e Agenti cancerogeni. */
   chimico?: ContenutiChimico
+  /** Sorgenti, misure e testi del DVR Campi elettromagnetici. */
+  cem?: ContenutiCem
 }
 
 export interface DocumentoDvr {
   id: string
   cantiere_id: string
-  rischio: 'rumore' | 'vibrazioni' | 'posture' | 'mmc' | 'microclima' | 'roa' | 'chimico' | 'fumi_saldatura' | 'cancerogeno'
+  rischio: 'rumore' | 'vibrazioni' | 'posture' | 'mmc' | 'microclima' | 'roa' | 'chimico' | 'fumi_saldatura' | 'cancerogeno' | 'cem'
   titolo: string | null
   periodo_riferimento: string | null
   ambiti_ids: string[]

@@ -143,10 +143,11 @@ Vedi `docs/DVR.md`. In breve:
 - `src/dvr/microclima/` PMV/PPD, WBGT, IREQ/DLE e WCI in quattro scenari (galleria o esterno, estate o inverno) + Word; test sui quattro DVR Microclima modello.
 - `src/dvr/roa/` giustificazione delle sorgenti ROA, luminanza, filtri UNI EN 169 + Word; test sul DVR ROA Castagnola 2026.
 - `src/dvr/chimico/` Agenti chimici, Fumi di saldatura e Agenti cancerogeni: ambienti con le misure, modello Regione Piemonte, TWA per mansione + Word; test sui tre DVR modello Castagnola.
+- `src/dvr/cem/` Campi elettromagnetici (senza modello): sorgenti giustificabili CEI EN 50499, misure E/B confrontate con i VA dell'Allegato XXXVI e con i livelli per la popolazione, zone 0/1/2 e distanze di rispetto + Word.
 - `public/templates/dvr/*.docx` template docxtemplater, generati da `tools/dvr/costruisci_template_<rischio>.py` a partire dai DVR modello (non modificarli a mano: si rigenerano).
 - Tabelle `dvr_*` (migrazione `supabase/migrations/20260928160000_dvr_schema.sql`), solo online, niente Dexie.
-- Pagine: `/cantieri/:id/dvr` (anagrafica, ambiti, mansioni con conferma e storico, DPI, macchine, tarature, documenti) e `/cantieri/:id/dvr/:docId` (`EditorDvr` apre l'editor del rischio: Rumore, Vibrazioni, Posture, MMC, Microclima, ROA o i tre chimici; parti comuni in `pagine/comuni.tsx`).
-- E2E `e2e/dvr-rumore.spec.ts`, `e2e/dvr-vibrazioni.spec.ts`, `e2e/dvr-posture.spec.ts`, `e2e/dvr-mmc.spec.ts`, `e2e/dvr-microclima.spec.ts`, `e2e/dvr-roa.spec.ts` e `e2e/dvr-chimico.spec.ts` usano un Supabase finto in memoria (`e2e/helpers/supabaseFinto.ts`): non tocca nessun database.
+- Pagine: `/cantieri/:id/dvr` (anagrafica, ambiti, mansioni con conferma e storico, DPI, macchine, tarature, documenti) e `/cantieri/:id/dvr/:docId` (`EditorDvr` apre l'editor del rischio: Rumore, Vibrazioni, Posture, MMC, Microclima, ROA, i tre chimici o CEM; parti comuni in `pagine/comuni.tsx`).
+- E2E `e2e/dvr-rumore.spec.ts`, `e2e/dvr-vibrazioni.spec.ts`, `e2e/dvr-posture.spec.ts`, `e2e/dvr-mmc.spec.ts`, `e2e/dvr-microclima.spec.ts`, `e2e/dvr-roa.spec.ts`, `e2e/dvr-chimico.spec.ts` e `e2e/dvr-cem.spec.ts` usano un Supabase finto in memoria (`e2e/helpers/supabaseFinto.ts`): non tocca nessun database.
 
 ## Test
 
