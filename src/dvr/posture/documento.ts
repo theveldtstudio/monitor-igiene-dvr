@@ -7,7 +7,7 @@ import { arrotonda } from '../comune/numeri'
 import { eGalleria, type AmbitoDvr, type AnagraficaDvr } from '../comune/tipi'
 import { unibile } from '../comune/unisciCelle'
 import { numeroIt } from '../rumore/documento'
-import { CICLO_PREDEFINITO, type BloccoTesto } from '../rumore/testiPredefiniti'
+import { cicloPredefinito, type BloccoTesto } from '../rumore/testiPredefiniti'
 import { DESCRIZIONI_OWAS, FASCE_POSTURE, type ClasseOwas, type FasciaPosture, type RigaGiornata } from './calcolo'
 import { valutaDvrPosture, type AttivitaCatalogo, type MansionePosture, type ValutazioneDvrPosture } from './valutazione'
 
@@ -121,8 +121,7 @@ export function datiTemplatePosture(d: DatiDvrPosture) {
   const a = d.anagrafica
   const tipi = d.ambiti.map((x) => x.tipo)
   const galleria = tipi.some(eGalleria)
-  const tipoPrincipale = tipi.find(eGalleria) ?? tipi[0]
-  const ciclo = d.testi?.ciclo ?? (tipoPrincipale ? CICLO_PREDEFINITO[tipoPrincipale] : undefined) ?? []
+  const ciclo = d.testi?.ciclo ?? cicloPredefinito(tipi)
   const cantiere = a.denominazione ? `del cantiere ${a.denominazione}` : 'del cantiere'
   const soggetti = `lavoratori${a.impresa ? ` di ${a.impresa}` : ''} operanti ${galleria ? `nelle gallerie ${cantiere}` : `nell’ambito ${cantiere}`}`
   const lavoratori = `i ${soggetti}`

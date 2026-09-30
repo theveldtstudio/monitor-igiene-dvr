@@ -3,10 +3,10 @@
  * (public/templates/dvr/roa.docx), come il DVR ROA Castagnola 2026.
  */
 import { datiCopertina, elenco, type DocumentoCopertina } from '../comune/copertina'
-import { eGalleria, type AmbitoDvr, type AnagraficaDvr } from '../comune/tipi'
+import type { AmbitoDvr, AnagraficaDvr } from '../comune/tipi'
 import { unibile } from '../comune/unisciCelle'
 import type { VocePiano } from '../comune/piano'
-import { CICLO_PREDEFINITO, type BloccoTesto } from '../rumore/testiPredefiniti'
+import { cicloPredefinito, type BloccoTesto } from '../rumore/testiPredefiniti'
 import { PROCESSI_EN169 } from './en169'
 import { giustificabile, LIMITE_LUMINANZA, lvArrotondata, TIPI_SORGENTE, valutaRoa, type DpiSaldatura, type RilievoLuminanza, type SorgenteRoa, type TipoSorgente, type ValutazioneRoa } from './valutazione'
 
@@ -170,8 +170,7 @@ export function datiTemplateRoa(d: DatiDvrRoa) {
   const a = d.anagrafica
   const t = d.testi ?? {}
   const tipi = d.ambiti.map((x) => x.tipo)
-  const tipoPrincipale = tipi.find(eGalleria) ?? tipi[0]
-  const ciclo = t.ciclo ?? (tipoPrincipale ? CICLO_PREDEFINITO[tipoPrincipale] : undefined) ?? []
+  const ciclo = t.ciclo ?? cicloPredefinito(tipi)
   const lavoratori = `lavoratori${a.impresa ? ` di ${a.impresa}` : ''} operanti nel cantiere ${a.denominazione ?? ''}`.trim()
   const ordinate = [...d.sorgenti].sort((x, y) => ORDINE.indexOf(x.tipo) - ORDINE.indexOf(y.tipo))
   const ng = v.nonGiustificabili

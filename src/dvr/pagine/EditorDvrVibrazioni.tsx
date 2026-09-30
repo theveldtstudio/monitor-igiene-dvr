@@ -10,8 +10,7 @@ import { humanizeError } from '../../lib/humanizeError'
 import { saveBlob } from '../../lib/saveBlob'
 import * as api from '../api'
 import { caricaIngresso, type Ingresso } from '../comune/ingresso'
-import { eGalleria } from '../comune/tipi'
-import { CICLO_PREDEFINITO } from '../rumore/testiPredefiniti'
+import { cicloPredefinito } from '../rumore/testiPredefiniti'
 import { SOGLIE_VIBRAZIONI, valutaVibrazioni, type FasciaVibrazioni, type TipoVibrazione, type ValorePerCalcolo } from '../vibrazioni/calcolo'
 import { datiVibrazioniDaDatabase, mappaValori, periodoVibDaRiga, rilieviVibrazioni } from '../vibrazioni/daDatabase'
 import { generaDvrVibrazioni } from '../vibrazioni/generaDvrVibrazioni'
@@ -299,9 +298,9 @@ function MatriceTempi({ ing, aggiorna }: { ing: Ingresso; aggiorna: () => Promis
 
 function Contenuti({ ing, aggiorna }: { ing: Ingresso; aggiorna: () => Promise<void> }) {
   const doc = ing.documento
-  const tipoPrincipale = ing.ambiti.filter((a) => doc.ambiti_ids.includes(a.id)).map((a) => a.tipo).find(eGalleria)
+  const tipi = ing.ambiti.filter((a) => doc.ambiti_ids.includes(a.id)).map((a) => a.tipo)
   const [c, setC] = useState<api.ContenutiRumore>(doc.contenuti ?? {})
-  const ciclo = c.ciclo ?? (tipoPrincipale ? CICLO_PREDEFINITO[tipoPrincipale] : undefined) ?? [{ testo: '', punti: [] }]
+  const ciclo = c.ciclo ?? (cicloPredefinito(tipi).length ? cicloPredefinito(tipi) : [{ testo: '', punti: [] }])
   const salva = () =>
     esegui(async () => {
       await api.aggiornaContenuti(doc.id, { ciclo: c.ciclo ?? null, rapportoWbv: c.rapportoWbv ?? null, rapportoHav: c.rapportoHav ?? null })

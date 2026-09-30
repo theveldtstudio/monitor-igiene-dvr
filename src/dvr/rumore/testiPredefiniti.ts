@@ -51,7 +51,87 @@ export const CICLO_PREDEFINITO: Partial<Record<TipoAmbito, BloccoTesto[]>> = {
       ],
     },
   ],
+  opere_esterne: [
+    {
+      testo:
+        'Le opere in esterno (rilevati, trincee, opere di sostegno, viabilità e piazzali) comprendono le seguenti fasi principali:',
+      punti: [
+        'scavi e movimenti terra con escavatori, pale e autocarri;',
+        'realizzazione di fondazioni e opere di sostegno (pali, micropali, paratie, muri);',
+        'posa delle armature e getti di calcestruzzo;',
+        'formazione dei rilevati e sistemazione della viabilità di cantiere.',
+      ],
+    },
+  ],
+  piazzale: [
+    {
+      testo: 'Sul piazzale di cantiere si svolgono le attività di supporto alle lavorazioni:',
+      punti: [
+        'movimentazione e stoccaggio dei materiali con sollevatori telescopici, carrelli elevatori e gru;',
+        'carico e scarico dei mezzi e gestione dei depositi di materiale;',
+        'rifornimento di carburante dei mezzi;',
+        'bagnatura e manutenzione delle piste.',
+      ],
+    },
+  ],
+  officina: [
+    {
+      testo: 'Nell’officina di cantiere si svolgono:',
+      punti: [
+        'manutenzione e riparazione dei mezzi e delle attrezzature;',
+        'lavorazioni di carpenteria metallica, taglio e saldatura;',
+        'lavorazioni al banco (mola, trapano a colonna, smerigliatrice).',
+      ],
+    },
+  ],
+  campo_base: [
+    {
+      testo: 'Nel campo base si svolgono le attività di servizio al cantiere (mensa, alloggi, spogliatoi, magazzino) e la manutenzione ordinaria delle strutture.',
+      punti: [],
+    },
+  ],
+  uffici: [
+    {
+      testo:
+        'Negli uffici di cantiere si svolgono le attività tecniche e amministrative di supporto e le riunioni di coordinamento; il personale accede alle aree operative per i sopralluoghi.',
+      punti: [],
+    },
+  ],
 }
+
+/** Ordine in cui si descrivono gli ambiti nel ciclo di lavoro. */
+const ORDINE_AMBITI: TipoAmbito[] = ['galleria_tbm', 'galleria_tradizionale', 'viadotto', 'opere_esterne', 'piazzale', 'officina', 'campo_base', 'uffici']
+
+/**
+ * Ciclo di lavoro predefinito per gli ambiti del documento: un blocco per ciascun tipo di ambito
+ * (gallerie, viadotti, opere in esterno, piazzale, officina…), nell'ordine delle lavorazioni.
+ */
+export function cicloPredefinito(tipi: readonly TipoAmbito[]): BloccoTesto[] {
+  return ORDINE_AMBITI.filter((t) => tipi.includes(t)).flatMap((t) => CICLO_PREDEFINITO[t] ?? [])
+}
+
+const LUOGO: Record<TipoAmbito, string> = {
+  galleria_tbm: 'sulla TBM',
+  galleria_tradizionale: 'in galleria',
+  viadotto: 'sui viadotti',
+  opere_esterne: 'nelle opere in esterno',
+  piazzale: 'sul piazzale',
+  officina: 'in officina',
+  campo_base: 'nel campo base',
+  uffici: 'negli uffici',
+}
+
+/** "sulla TBM, sul piazzale e in officina" secondo gli ambiti del documento. */
+export function luoghiLavoro(tipi: readonly TipoAmbito[]): string {
+  const l = ORDINE_AMBITI.filter((t) => tipi.includes(t)).map((t) => LUOGO[t])
+  if (!l.length) return 'nelle aree di cantiere'
+  return l.length === 1 ? l[0] : `${l.slice(0, -1).join(', ')} e ${l[l.length - 1]}`
+}
+
+const ZONIZZAZIONE_ESTERNO =
+  'Le lavorazioni si svolgono all’aperto, dove il livello sonoro si riduce con la distanza dalle sorgenti. Durante le ' +
+  'fasi lavorative particolarmente rumorose sono stati effettuati rilievi a distanze differenti dalle macchine, al fine di ' +
+  'individuare la distanza oltre la quale il livello sonoro scende al di sotto di 85 dB(A).'
 
 export const ZONIZZAZIONE_PREDEFINITA: Partial<Record<TipoAmbito, string>> = {
   galleria_tbm:
@@ -64,6 +144,14 @@ export const ZONIZZAZIONE_PREDEFINITA: Partial<Record<TipoAmbito, string>> = {
   galleria_tradizionale:
     'Sono stati effettuati rilievi a distanze differenti durante le fasi lavorative particolarmente rumorose, al fine di ' +
     'verificare la distanza dal fronte oltre la quale il livello sonoro scende al di sotto di 85 dB(A).',
+  viadotto: ZONIZZAZIONE_ESTERNO,
+  opere_esterne: ZONIZZAZIONE_ESTERNO,
+}
+
+/** Zonizzazione predefinita: quella della galleria se c'è, altrimenti quella delle lavorazioni all'aperto. */
+export function zonizzazionePredefinita(tipi: readonly TipoAmbito[]): string | null {
+  const t = ORDINE_AMBITI.find((x) => tipi.includes(x) && ZONIZZAZIONE_PREDEFINITA[x])
+  return t ? ZONIZZAZIONE_PREDEFINITA[t]! : null
 }
 
 export const PIANO_INTRO =

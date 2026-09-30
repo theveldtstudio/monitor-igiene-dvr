@@ -4,16 +4,17 @@
  * nessun valore viene copiato a mano.
  */
 import { formattaIt } from '../comune/numeri'
-import { eGalleria, type AmbitoDvr, type AnagraficaDvr, type RevisioneDvr, type TaraturaDvr } from '../comune/tipi'
+import type { AmbitoDvr, AnagraficaDvr, RevisioneDvr, TaraturaDvr } from '../comune/tipi'
 import { INCERTEZZA_PREDEFINITA, type OpzioniCalcolo, type PeriodoEsposizione } from './calcolo'
 import { attenuazioneReale, ETICHETTE_PROTEZIONE, type DpiUdito } from './dpi'
 import {
-  CICLO_PREDEFINITO,
+  cicloPredefinito,
+  luoghiLavoro,
   PIANO_INTRO,
   PIANO_PUNTI,
   PUNTO_AREE_85,
   STUDIO_PREDEFINITO,
-  ZONIZZAZIONE_PREDEFINITA,
+  zonizzazionePredefinita,
   type BloccoTesto,
 } from './testiPredefiniti'
 import { valutaDvrRumore, type MansioneRumore, type ValutazioneDvrRumore } from './valutazione'
@@ -200,7 +201,6 @@ export function datiTemplateRumore(d: DatiDvrRumore) {
   const par = d.opzioni?.incertezza ?? INCERTEZZA_PREDEFINITA
   const a = d.anagrafica
   const tipi = d.ambiti.map((x) => x.tipo)
-  const tipoPrincipale = tipi.find(eGalleria) ?? tipi[0]
   const studio = { ...STUDIO_PREDEFINITO, ...d.studio }
   const revCodice = String(d.documento.revisione).padStart(2, '0')
 
@@ -247,13 +247,11 @@ export function datiTemplateRumore(d: DatiDvrRumore) {
           'nella classificazione delle mansioni esposte.')
     : 'Durante le misurazioni non sono stati rilevati eventi sonori impulsivi significativi.'
 
-  const ciclo = d.testi?.ciclo ?? (tipoPrincipale ? CICLO_PREDEFINITO[tipoPrincipale] : undefined) ?? []
+  const ciclo = d.testi?.ciclo ?? cicloPredefinito(tipi)
   const zonizzazione =
     d.testi?.zonizzazione !== undefined
       ? d.testi.zonizzazione
-      : tipoPrincipale
-        ? (ZONIZZAZIONE_PREDEFINITA[tipoPrincipale] ?? null)
-        : null
+      : zonizzazionePredefinita(tipi)
 
   const pianoPunti = [...(d.testi?.pianoPunti ?? PIANO_PUNTI)]
   if (v.perFascia[3].length > 0 && !pianoPunti.includes(PUNTO_AREE_85)) pianoPunti.splice(2, 0, PUNTO_AREE_85)
@@ -316,7 +314,8 @@ export function datiTemplateRumore(d: DatiDvrRumore) {
       intro1,
       intro2,
       testoEsecutore: `I rilievi fonometrici e la presente relazione sono stati eseguiti dalla società ${studio.esecutore}.`,
-      haZonizzazione: Boolean(zonizzazione) && tipi.some(eGalleria),
+      haZonizzazione: Boolean(zonizzazione),
+      luoghiLavoro: luoghiLavoro(tipi),
       testoZonizzazione: zonizzazione ?? '',
       cicloBlocchi: ciclo,
 

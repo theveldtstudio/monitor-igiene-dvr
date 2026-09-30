@@ -103,4 +103,10 @@ describe('DVR Rumore: generazione Word', () => {
     expect(testo).not.toContain('laboratorio SIT')
     expect(testo).not.toContain('Nessuna mansione appartiene a questa fascia.')
   })
+  it('luoghi di lavoro e ciclo secondo gli ambiti (niente TBM1 e piazzale fissi del modello)', () => {
+    expect(testo).toContain('i lavoratori operanti sulla TBM e sul piazzale.')
+    expect(testo).toContain('principali fasi lavorative svolte sulla TBM e sul piazzale.')
+    expect(testo).toContain('Sul piazzale di cantiere si svolgono le attività di supporto alle lavorazioni:')
+    expect(testo).not.toContain('TBM1 e sul piazzale antistante')
+  })
 })

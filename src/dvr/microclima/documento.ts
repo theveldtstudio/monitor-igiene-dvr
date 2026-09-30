@@ -5,9 +5,9 @@
  */
 import { datiCopertina, elenco, type DocumentoCopertina } from '../comune/copertina'
 import { formattaIt } from '../comune/numeri'
-import { eGalleria, type AmbitoDvr, type AnagraficaDvr } from '../comune/tipi'
+import type { AmbitoDvr, AnagraficaDvr } from '../comune/tipi'
 import { unibile } from '../comune/unisciCelle'
-import { CICLO_PREDEFINITO, type BloccoTesto } from '../rumore/testiPredefiniti'
+import { cicloPredefinito, type BloccoTesto } from '../rumore/testiPredefiniti'
 import { CATEGORIE_COMFORT, CLASSI_IREQ, limiteWbgt } from './indici'
 import { CLO_PREDEFINITO, galleria, misurePredefinite, pianoPredefinito, vestiarioPredefinito, type CapoVestiario, type VocePiano } from './testi'
 import {
@@ -72,8 +72,7 @@ export function datiTemplateMicroclima(d: DatiDvrMicroclima) {
   const mansioniDi = (l: LavorazioneMicroclima) => l.mansioni.map((id) => nomi.get(id)).filter((x): x is string => !!x)
   const mansioniTesto = (l: LavorazioneMicroclima) => mansioniDi(l).join('\n') || '-'
   const tipi = d.ambiti.map((x) => x.tipo)
-  const tipoPrincipale = tipi.find(eGalleria) ?? tipi[0]
-  const ciclo = d.testi?.ciclo ?? (tipoPrincipale ? CICLO_PREDEFINITO[tipoPrincipale] : undefined) ?? []
+  const ciclo = d.testi?.ciclo ?? cicloPredefinito(tipi)
   const inGalleria = galleria(s)
   const stagione = estivo(s) ? 'estivo' : 'invernale'
   const dove = inGalleria ? 'in galleria' : 'in esterno'

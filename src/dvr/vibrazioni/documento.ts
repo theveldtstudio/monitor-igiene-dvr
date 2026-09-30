@@ -3,8 +3,8 @@
  * Elenchi per fascia, conclusioni e tabelle derivano dal calcolo.
  */
 import { arrotonda } from '../comune/numeri'
-import { eGalleria, type AmbitoDvr, type AnagraficaDvr, type RevisioneDvr, type TaraturaDvr } from '../comune/tipi'
-import { CICLO_PREDEFINITO, STUDIO_PREDEFINITO, type BloccoTesto } from '../rumore/testiPredefiniti'
+import type { AmbitoDvr, AnagraficaDvr, RevisioneDvr, TaraturaDvr } from '../comune/tipi'
+import { cicloPredefinito, STUDIO_PREDEFINITO, type BloccoTesto } from '../rumore/testiPredefiniti'
 import {
   SOGLIE_VIBRAZIONI,
   valoriPerCalcolo,
@@ -112,8 +112,7 @@ export function datiTemplateVibrazioni(d: DatiDvrVibrazioni) {
   const studio = { ...STUDIO_PREDEFINITO, ...d.studio }
   const revCodice = String(d.documento.revisione).padStart(2, '0')
   const tipi = d.ambiti.map((x) => x.tipo)
-  const tipoPrincipale = tipi.find(eGalleria) ?? tipi[0]
-  const ciclo = d.testi?.ciclo ?? (tipoPrincipale ? CICLO_PREDEFINITO[tipoPrincipale] : undefined) ?? []
+  const ciclo = d.testi?.ciclo ?? cicloPredefinito(tipi)
 
   const valori = valoriPerCalcolo(d.rilievi)
   const rilieviWbv = d.rilievi.filter((r) => r.tipo === 'wbv')

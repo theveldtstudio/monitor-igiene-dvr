@@ -18,9 +18,8 @@ import { caricaIngresso, type Ingresso } from '../comune/ingresso'
 import { generaDvrRumore } from '../rumore/generaDvrRumore'
 import { DatiDocumento, Revisioni } from './comuni'
 import { esegui } from '../ui/esegui'
-import { CICLO_PREDEFINITO, PIANO_INTRO, PIANO_PUNTI, ZONIZZAZIONE_PREDEFINITA } from '../rumore/testiPredefiniti'
+import { cicloPredefinito, PIANO_INTRO, PIANO_PUNTI, zonizzazionePredefinita } from '../rumore/testiPredefiniti'
 import { valutaDvrRumore } from '../rumore/valutazione'
-import { eGalleria } from '../comune/tipi'
 import { AreaTesto, Bottone, Sezione } from '../ui/Kit'
 import { numeroDa, stili } from '../ui/stili'
 
@@ -287,9 +286,9 @@ function MatriceTempi({ ing, aggiorna }: { ing: Ingresso; aggiorna: () => Promis
 
 function Contenuti({ ing, aggiorna }: { ing: Ingresso; aggiorna: () => Promise<void> }) {
   const doc = ing.documento
-  const tipoPrincipale = ing.ambiti.filter((a) => doc.ambiti_ids.includes(a.id)).map((a) => a.tipo).find(eGalleria)
+  const tipi = ing.ambiti.filter((a) => doc.ambiti_ids.includes(a.id)).map((a) => a.tipo)
   const [c, setC] = useState<api.ContenutiRumore>(doc.contenuti ?? {})
-  const ciclo = c.ciclo ?? (tipoPrincipale ? CICLO_PREDEFINITO[tipoPrincipale] : undefined) ?? [{ testo: '', punti: [] }]
+  const ciclo = c.ciclo ?? (cicloPredefinito(tipi).length ? cicloPredefinito(tipi) : [{ testo: '', punti: [] }])
   const salva = () =>
     esegui(async () => {
       const { logoCliente: _l, ...resto } = c
@@ -342,8 +341,8 @@ function Contenuti({ ing, aggiorna }: { ing: Ingresso; aggiorna: () => Promise<v
         </div>
         <div style={{ marginTop: 10 }}>
           <AreaTesto
-            etichetta="Zonizzazione del rumore (solo in galleria)"
-            valore={c.zonizzazione ?? (tipoPrincipale ? (ZONIZZAZIONE_PREDEFINITA[tipoPrincipale] ?? '') : '')}
+            etichetta="Zonizzazione del rumore (vuota = capitolo omesso)"
+            valore={c.zonizzazione ?? zonizzazionePredefinita(tipi) ?? ''}
             onChange={(v) => setC({ ...c, zonizzazione: v })}
           />
         </div>

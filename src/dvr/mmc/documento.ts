@@ -5,9 +5,9 @@
  */
 import { datiCopertina, elenco, maiuscolo, type DocumentoCopertina } from '../comune/copertina'
 import { formattaIt } from '../comune/numeri'
-import { eGalleria, type AmbitoDvr, type AnagraficaDvr } from '../comune/tipi'
+import type { AmbitoDvr, AnagraficaDvr } from '../comune/tipi'
 import { unibile } from '../comune/unisciCelle'
-import { CICLO_PREDEFINITO, type BloccoTesto } from '../rumore/testiPredefiniti'
+import { cicloPredefinito, type BloccoTesto } from '../rumore/testiPredefiniti'
 import { ETICHETTE_NIOSH, type FasciaNiosh, type PresaNiosh } from './niosh'
 import { ETICHETTE_SNOOK, testoIntervallo } from './snook'
 import { ETICHETTE_METODO, valutaDvrMmc, type AttivitaMmc, type EsitoAttivitaMmc, type LivelloMmc, type MansioneMmc, type ValutazioneDvrMmc } from './valutazione'
@@ -207,8 +207,7 @@ export function datiTemplateMmc(d: DatiDvrMmc) {
   const v = valutaDvrMmc(d.mansioni, d.attivita)
   const a = d.anagrafica
   const tipi = d.ambiti.map((x) => x.tipo)
-  const tipoPrincipale = tipi.find(eGalleria) ?? tipi[0]
-  const ciclo = d.testi?.ciclo ?? (tipoPrincipale ? CICLO_PREDEFINITO[tipoPrincipale] : undefined) ?? []
+  const ciclo = d.testi?.ciclo ?? cicloPredefinito(tipi)
   const lavoratori = `lavoratori${a.impresa ? ` di ${a.impresa}` : ''} operanti nel cantiere ${a.denominazione ?? ''}`.trim()
   const nomi = new Map(d.mansioni.map((m) => [m.id, m.nome]))
 

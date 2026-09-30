@@ -77,6 +77,10 @@ Stato al 29 settembre 2026: **DVR Rumore**, **DVR Vibrazioni**, **DVR Posture in
 - Test sui DVR Chimico Castagnola 2026, Fumi di saldatura II sem. 2025 e Cancerogeno II sem. 2025 (segnalano le medie e i totali sbagliati dei modelli).
 - Template: `tools/dvr/costruisci_template_{chimico,fumi_saldatura,cancerogeno}.py` (parti comuni in `chimico_comune.py`) → `public/templates/dvr/*.docx`; didascalie con campi SEQ, titoli su un solo elenco numerato, piè di pagina degli allegati corretti.
 
+## Testi secondo gli ambiti
+
+`rumore/testiPredefiniti.ts`: il ciclo di lavoro predefinito ha un blocco per ogni tipo di ambito del documento (galleria TBM o tradizionale, viadotto, opere in esterno, piazzale, officina, campo base, uffici) nell'ordine delle lavorazioni (`cicloPredefinito`); la zonizzazione del rumore è quella della galleria o, per viadotti e opere in esterno, quella delle lavorazioni all'aperto (`zonizzazionePredefinita`); `luoghiLavoro` scrive dove operano i lavoratori ("sulla TBM, sul piazzale e in officina"). Tutti i testi restano modificabili nel documento.
+
 ## Template Word
 
 `tools/dvr/costruisci_template_rumore.py <DVR modello.docx> public/templates/dvr/rumore.docx` ricava il template dal DVR Rumore Xenia 2026. Correzioni applicate al modello: IEC 651/804 → IEC 61672, SIT → ACCREDIA, disuguaglianze delle fasce, sezione piè di pagina dell'Allegato 1, logo CTG nell'Allegato 3, firme scansionate tolte dalla copertina, numerazione tabelle automatica, art. 196 per la sorveglianza sanitaria.
@@ -86,5 +90,5 @@ Il logo del cliente si carica nel documento (riquadro 198,45 × 52,6 pt); il log
 ## Da fare
 
 - DVR mancanti da scrivere da zero (CEM, amianto, IPA, biologico, acqua).
-- Varianti dei testi per galleria tradizionale e viadotti da rivedere con Davide.
+- Rivedere con Davide i testi predefiniti per ambito (`rumore/testiPredefiniti.ts`).
 - Logo dello studio configurabile (per la vendita ad altri professionisti) e multi-tenancy (Fase K).

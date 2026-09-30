@@ -204,8 +204,13 @@ def trasforma_documento(doc):
     imposta_testo(atteso(B[42], 'Per la redazione'), '{intro2}')
     imposta_testo(atteso(B[44], 'Eco-Ter'), '{testoEsecutore}')
 
-    # --- 2 Metodologia: la zonizzazione esiste solo in galleria
-    prima(atteso(B[54], 'Zonizzazione'), '{#haZonizzazione}', '{/haZonizzazione}')
+    # --- 2 Metodologia: zonizzazione solo se c'è il testo (galleria, viadotti, opere in esterno)
+    sostituisci(atteso(B[54], 'Zonizzazione del rumore in galleria'), 'Zonizzazione del rumore in galleria', 'Zonizzazione del rumore')
+    prima(B[54], '{#haZonizzazione}', '{/haZonizzazione}')
+
+    # luoghi di lavoro del cantiere al posto di quelli del modello (TBM1 e piazzale)
+    sostituisci(atteso(B[141], 'TBM1 e sul piazzale antistante'), 'i lavoratori operanti sulla TBM1 e sul piazzale antistante', 'i lavoratori operanti {luoghiLavoro}')
+    sostituisci(atteso(B[278], 'svolte in galleria e nelle aree esterne di cantiere'), 'svolte in galleria e nelle aree esterne di cantiere', 'svolte {luoghiLavoro}')
 
     # --- 3 Acquisizione dati
     sostituisci(atteso(B[65], 'tabella 1'), 'tabella 1', 'Allegato 1')

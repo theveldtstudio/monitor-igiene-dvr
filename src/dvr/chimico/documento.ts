@@ -9,7 +9,7 @@ import { datiCopertina, elenco, type DocumentoCopertina } from '../comune/copert
 import { formattaIt } from '../comune/numeri'
 import { eGalleria, type AmbitoDvr, type AnagraficaDvr, type MacchinaDvr } from '../comune/tipi'
 import { unibile } from '../comune/unisciCelle'
-import { CICLO_PREDEFINITO, type BloccoTesto } from '../rumore/testiPredefiniti'
+import { cicloPredefinito, type BloccoTesto } from '../rumore/testiPredefiniti'
 import { AGENTI_PREDEFINITI, type AgenteChimico, type TipoDvrChimico } from './agenti'
 import { testiPredefiniti, type TestiChimico } from './testi'
 import {
@@ -157,8 +157,7 @@ export function datiTemplateChimico(d: DatiDvrChimico) {
   const a = d.anagrafica
   const tipi = d.ambiti.map((x) => x.tipo)
   const inGalleria = tipi.some(eGalleria)
-  const tipoPrincipale = tipi.find(eGalleria) ?? tipi[0]
-  const ciclo = d.testi?.ciclo ?? (d.tipo === 'fumi_saldatura' ? CICLO_SALDATURA : (tipoPrincipale ? CICLO_PREDEFINITO[tipoPrincipale] : undefined)) ?? []
+  const ciclo = d.testi?.ciclo ?? (d.tipo === 'fumi_saldatura' ? CICLO_SALDATURA : cicloPredefinito(tipi))
   const t = { ...testiPredefiniti(d.tipo, inGalleria), ...Object.fromEntries(Object.entries(d.testi ?? {}).filter(([, x]) => x != null && (!Array.isArray(x) || x.length))) } as Required<TestiChimico>
   const lavoratori = `lavoratori${a.impresa ? ` di ${a.impresa}` : ''} operanti nel cantiere ${a.denominazione ?? ''}`.trim()
   const periodo = d.documento.periodoRiferimento
