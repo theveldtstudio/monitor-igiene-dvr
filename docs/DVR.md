@@ -68,6 +68,15 @@ Stato al 29 settembre 2026: **DVR Rumore**, **DVR Vibrazioni**, **DVR Posture in
 - Conclusioni e piano proposti dal calcolo, modificabili. Test sul DVR ROA Castagnola 2026.
 - Template: `tools/dvr/costruisci_template_roa.py` → `public/templates/dvr/roa.docx`; le didascalie restano numerate con i campi SEQ del modello.
 
+## Agenti chimici, Fumi di saldatura, Agenti cancerogeni (src/dvr/chimico)
+
+- Tre rischi (`chimico`, `fumi_saldatura`, `cancerogeno`) con lo stesso motore e lo stesso editor; gli agenti (colonne delle tabelle) sono fissi per tipo, limiti TLV/STEL e gravità modificabili nel documento.
+- **Ambienti di lavoro** (fase + postazione) con le misure in `dvr_documenti.contenuti.chimico`, importabili dalle campagne polveri, gas e carbonio EC (raggruppate per fase e postazione); concentrazione = media delle misure, anche storiche (asterisco). Metalli e polveri inalabili si scrivono a mano.
+- **Modello Regione Piemonte** (chimico e fumi di saldatura): E dal rapporto C/TLV e dal numero di misure, D dai minuti nella matrice dei tempi (o scelto), P dalla matrice, IR = P × M, classi irrilevante … molto alto.
+- **Esposizione per mansione**: righe di `dvr_tempi` con `valori.ambiente` (concentrazioni dell'ambiente) o `valori.concentrazioni` (a mano); TWA sulle 8 ore (UNI EN 689), O₂ come minimo.
+- Test sui DVR Chimico Castagnola 2026, Fumi di saldatura II sem. 2025 e Cancerogeno II sem. 2025 (segnalano le medie e i totali sbagliati dei modelli).
+- Template: `tools/dvr/costruisci_template_{chimico,fumi_saldatura,cancerogeno}.py` (parti comuni in `chimico_comune.py`) → `public/templates/dvr/*.docx`; didascalie con campi SEQ, titoli su un solo elenco numerato, piè di pagina degli allegati corretti.
+
 ## Template Word
 
 `tools/dvr/costruisci_template_rumore.py <DVR modello.docx> public/templates/dvr/rumore.docx` ricava il template dal DVR Rumore Xenia 2026. Correzioni applicate al modello: IEC 651/804 → IEC 61672, SIT → ACCREDIA, disuguaglianze delle fasce, sezione piè di pagina dell'Allegato 1, logo CTG nell'Allegato 3, firme scansionate tolte dalla copertina, numerazione tabelle automatica, art. 196 per la sorveglianza sanitaria.
@@ -76,6 +85,6 @@ Il logo del cliente si carica nel documento (riquadro 198,45 × 52,6 pt); il log
 
 ## Da fare
 
-- Altri rischi: chimico/cancerogeno (servono i risultati di laboratorio); DVR mancanti da scrivere da zero (CEM, amianto, IPA, biologico, acqua).
+- DVR mancanti da scrivere da zero (CEM, amianto, IPA, biologico, acqua).
 - Varianti dei testi per galleria tradizionale e viadotti da rivedere con Davide.
 - Logo dello studio configurabile (per la vendita ad altri professionisti) e multi-tenancy (Fase K).

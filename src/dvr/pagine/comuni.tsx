@@ -7,7 +7,7 @@ import * as api from '../api'
 import type { Ingresso } from '../comune/ingresso'
 import { eGalleria } from '../comune/tipi'
 import { adattaLogo } from '../rumore/generaDvrRumore'
-import { CICLO_PREDEFINITO } from '../rumore/testiPredefiniti'
+import { CICLO_PREDEFINITO, type BloccoTesto } from '../rumore/testiPredefiniti'
 import { AreaTesto, Bottone, Campo, Sezione } from '../ui/Kit'
 import { esegui } from '../ui/esegui'
 import { numeroDa, stili } from '../ui/stili'
@@ -205,11 +205,11 @@ export function Revisioni({ ing, aggiorna }: { ing: Ingresso; aggiorna: () => Pr
 // ---------------------------------------------------------------- ciclo di lavoro
 
 /** Testo del ciclo di lavoro (paragrafi con elenco puntato), predefinito secondo il tipo di ambito. */
-export function CicloLavoro({ ing, aggiorna, titolo }: { ing: Ingresso; aggiorna: () => Promise<void>; titolo: string }) {
+export function CicloLavoro({ ing, aggiorna, titolo, predefinito }: { ing: Ingresso; aggiorna: () => Promise<void>; titolo: string; predefinito?: BloccoTesto[] }) {
   const doc = ing.documento
   const tipoPrincipale = ing.ambiti.filter((a) => doc.ambiti_ids.includes(a.id)).map((a) => a.tipo).find(eGalleria)
   const [c, setC] = useState<api.ContenutiRumore>(doc.contenuti ?? {})
-  const ciclo = c.ciclo ?? (tipoPrincipale ? CICLO_PREDEFINITO[tipoPrincipale] : undefined) ?? [{ testo: '', punti: [] }]
+  const ciclo = c.ciclo ?? predefinito ?? (tipoPrincipale ? CICLO_PREDEFINITO[tipoPrincipale] : undefined) ?? [{ testo: '', punti: [] }]
   const salva = () =>
     esegui(async () => {
       await api.aggiornaContenuti(doc.id, { ciclo: c.ciclo ?? null })

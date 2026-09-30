@@ -633,6 +633,9 @@ const RISCHI_DVR: Record<api.DocumentoDvr['rischio'], { titolo: string; campagne
   mmc: { titolo: 'DVR Movimentazione manuale dei carichi', campagne: ['mmc', 'movimenti_ripetitivi_ocra'] },
   microclima: { titolo: 'DVR Microclima', campagne: ['microclima'] },
   roa: { titolo: 'DVR Radiazioni ottiche artificiali', campagne: ['roa'] },
+  chimico: { titolo: 'DVR Agenti chimici (polveri e gas tossici)', campagne: ['polveri', 'gas'] },
+  fumi_saldatura: { titolo: 'DVR Fumi di saldatura', campagne: ['polveri', 'gas'] },
+  cancerogeno: { titolo: 'DVR Agenti cancerogeni (silice e carbonio elementare)', campagne: ['polveri', 'carbonio_ec'] },
 }
 
 function SezioneDocumenti({ cantiereId }: { cantiereId: string }) {
