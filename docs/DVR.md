@@ -109,7 +109,12 @@ Scritto senza DVR modello: struttura e testi sono una proposta da far rivedere a
 
 ## Testi secondo gli ambiti
 
-`rumore/testiPredefiniti.ts`: il ciclo di lavoro predefinito ha un blocco per ogni tipo di ambito del documento (galleria TBM o tradizionale, viadotto, opere in esterno, piazzale, officina, campo base, uffici) nell'ordine delle lavorazioni (`cicloPredefinito`); la zonizzazione del rumore è quella della galleria o, per viadotti e opere in esterno, quella delle lavorazioni all'aperto (`zonizzazionePredefinita`); `luoghiLavoro` scrive dove operano i lavoratori ("sulla TBM, sul piazzale e in officina"). Tutti i testi restano modificabili nel documento.
+`rumore/testiPredefiniti.ts`: il ciclo di lavoro predefinito ha un blocco per ogni tipo di ambito del documento (galleria TBM o tradizionale, viadotto, opere in esterno, piazzale, officina, campo base, uffici) nell'ordine delle lavorazioni (`cicloPredefinito`); la zonizzazione del rumore è quella della galleria o, per viadotti e opere in esterno, quella delle lavorazioni all'aperto (`zonizzazionePredefinita`); `luoghiLavoro` scrive dove operano i lavoratori ("sulla TBM, sul piazzale e in officina"). Negli altri DVR (`comune/ambiti.ts`, `contestoAmbiti`):
+- chimico, cancerogeno, amianto: misure adottate e piano distinti per scavo tradizionale (bagnatura del marino dopo la volata e del fronte, personale al fronte durante scavo, smarino e spritz), TBM (condizionamento del terreno nella camera di scavo, nastro bagnato o chiuso, depolverazione della TBM, personale nelle zone della testa e dei nastri) e opere all'aperto (piste, perforazioni per pali, gas di scarico dispersi all'aperto);
+- posture: luogo e "operazioni ordinarie" per galleria tradizionale (tubazioni, ventilazione, centine), TBM (nastro, pulizia del back-up, cambio utensili) o cantiere all'aperto (casseri, viabilità, segnaletica);
+- vibrazioni: sorgenti al corpo intero dell'analisi preliminare (mezzi, macchine di scavo in galleria tradizionale, TBM con lavoratori in piedi sulle piattaforme, sollevatori, rulli e macchine per pali all'aperto);
+- CEM, biologico e acque usano già gli ambiti (detonatori in galleria tradizionale, zecche nelle opere all'aperto, gestione delle acque di galleria).
+Tutti i testi restano modificabili nel documento.
 
 ## Template Word
 

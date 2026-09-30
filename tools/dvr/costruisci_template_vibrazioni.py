@@ -176,6 +176,11 @@ def trasforma_documento(doc):
 
     # --- Analisi preliminare
     imposta_testo(atteso(B[117], 'mano-braccio'), '{testoAnalisiHav}')
+    # sorgenti di vibrazioni al corpo intero secondo gli ambiti (il modello elenca solo mezzi e sollevatori)
+    imposta_testo(atteso(B[119], 'Macchine semoventi'), '{.}')
+    B[119].addprevious(paragrafo_tag(B[119], '{#sorgentiWbv}'))
+    B[119].addnext(paragrafo_tag(B[119], '{/sorgentiWbv}'))
+    rimuovi(atteso(B[120], 'Sollevatori'))
     imposta_testo(atteso(B[129], 'Mansioni esposte'), 'Tabella {tabEsposte}. Mansioni esposte e non esposte a vibrazioni.')
     rr = righe(B[130])
     for tc, nome in zip(celle(rr[1]), ['esposteHav', 'esposteWbv', 'nonEsposte']):

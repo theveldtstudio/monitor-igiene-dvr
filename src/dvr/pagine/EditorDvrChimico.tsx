@@ -20,7 +20,6 @@ import { CLASSI_PIEMONTE, valutaChimico, type AmbienteChimico, type ClassePiemon
 import { caricaIngresso, type Ingresso } from '../comune/ingresso'
 import { formattaIt } from '../comune/numeri'
 import { pianoDaTesto, pianoInTesto } from '../comune/piano'
-import { eGalleria } from '../comune/tipi'
 import { AreaTesto, Bottone, Campo, Sezione } from '../ui/Kit'
 import { esegui } from '../ui/esegui'
 import { numeroDa, stili } from '../ui/stili'
@@ -137,8 +136,9 @@ function EditorAmbiente({ a, agenti, cambia, togli }: { a: AmbienteChimico; agen
 function Valutazione({ ing, tipo, aggiorna }: { ing: Ingresso; tipo: TipoDvrChimico; aggiorna: () => Promise<void> }) {
   const [c, setC] = useState<ContenutiChimico>(() => contenutiChimico(ing))
   const [modificato, setModificato] = useState(false)
-  const galleria = ing.ambiti.filter((a) => ing.documento.ambiti_ids.includes(a.id)).some((a) => eGalleria(a.tipo))
-  const predefiniti = testiPredefiniti(tipo, galleria)
+  const ambitiDoc = ing.ambiti.filter((a) => ing.documento.ambiti_ids.includes(a.id))
+  const tipiAmbito = (ambitiDoc.length ? ambitiDoc : ing.ambiti).map((a) => a.tipo)
+  const predefiniti = testiPredefiniti(tipo, tipiAmbito)
   const t = c.testi ?? {}
   const agenti = useMemo(() => agentiDocumento(tipo, c.agenti), [tipo, c.agenti])
   const testoIniziale = (k: keyof Omit<TestiChimico, 'piano'>) => (t[k] ?? []).join('\n')

@@ -3,6 +3,8 @@
  * modello Castagnola e resi generici (senza riferimenti a un cantiere). Si modificano nel documento.
  */
 import type { VocePiano } from '../comune/piano'
+import { contestoAmbiti } from '../comune/ambiti'
+import type { TipoAmbito } from '../comune/tipi'
 import type { TipoDvrChimico } from './agenti'
 
 export interface TestiChimico {
@@ -19,12 +21,24 @@ const DPI_FACCIALI = [
   'In alternativa l’impresa mette a disposizione facciali filtranti a “media efficienza” del tipo FFP2 (perdita totale verso l’interno massima 8%), con fattore di protezione operativo pari a 10: sono adatti a concentrazioni fino a 10 volte il valore limite.',
 ]
 
-export function testiPredefiniti(tipo: TipoDvrChimico, galleria: boolean): Required<TestiChimico> {
+/** Testi predefiniti secondo il tipo di documento e gli ambiti (galleria tradizionale o TBM, opere all'aperto). */
+export function testiPredefiniti(tipo: TipoDvrChimico, tipi: readonly TipoAmbito[]): Required<TestiChimico> {
+  const amb = contestoAmbiti(tipi)
+  const galleria = amb.galleria
   const ventilazione = galleria ? ['impianto di ventilazione generale in galleria con portata regolabile;'] : []
   const cabine = 'cabine dei mezzi dotate di impianto di condizionamento, che permettono di lavorare con la cabina completamente chiusa;'
-  const bagnatura = galleria
-    ? ['bagnatura del marino subito dopo la volata, prima dell’inizio dello smarino;', 'bagnatura del tracciato delle gallerie e delle piste di cantiere;', 'bagnatura del fronte (tramite gli ugelli montati sul martello) durante le fasi di scavo e disgaggio;']
-    : ['bagnatura delle piste di cantiere e delle aree di lavoro polverose;']
+  const bagnatura = [
+    ...(amb.tradizionale ? ['bagnatura del marino subito dopo la volata, prima dell’inizio dello smarino;', 'bagnatura del fronte (tramite gli ugelli montati sul martello) durante le fasi di scavo e disgaggio;'] : []),
+    ...(amb.tbm
+      ? ['condizionamento del terreno con acqua e additivi nella camera di scavo della TBM e bagnatura del materiale lungo il nastro trasportatore;', 'sistema di depolverazione della TBM (aspirazione e filtrazione dell’aria dalla zona della testa di scavo), dove presente;']
+      : []),
+    galleria ? 'bagnatura del tracciato delle gallerie e delle piste di cantiere;' : 'bagnatura delle piste di cantiere e delle aree di lavoro polverose;',
+    ...(amb.viadotto ? ['bagnatura dei materiali durante demolizioni, perforazioni per pali e tagli di calcestruzzo;'] : []),
+  ]
+  const personaleGalleria = [
+    ...(amb.tradizionale ? ['limitare al minimo il personale presente al fronte durante scavo, smarino e spritz;'] : []),
+    ...(amb.tbm ? ['limitare al minimo il personale presente nelle zone della testa di scavo e dei nastri durante l’avanzamento della TBM e mantenere efficienti il sistema di depolverazione e le tenute dei nastri;'] : []),
+  ]
   const formazione = (art: string) =>
     `Formazione e informazione dei lavoratori e dei preposti (art. ${art} D.Lgs. 81/08) sul rischio specifico, sui risultati della valutazione e sulle misure da adottare, in particolare per i neoassunti prima che inizino le loro attività e ad ogni cambiamento delle lavorazioni che influisca sulla natura e sul grado dei rischi;`
 
@@ -74,7 +88,9 @@ export function testiPredefiniti(tipo: TipoDvrChimico, galleria: boolean): Requi
       ],
       misure: [
         ...ventilazione,
-        ...(galleria ? ['bagnatura del fronte di scavo e del marino durante lo scavo, lo smarino e il carico;'] : ['bagnatura dei materiali e delle aree di lavoro durante gli scavi e le movimentazioni;']),
+        ...(amb.tradizionale ? ['bagnatura del fronte di scavo e del marino durante lo scavo, lo smarino e il carico;'] : []),
+        ...(amb.tbm ? ['condizionamento del terreno nella camera di scavo della TBM e trasporto del marino su nastro chiuso o mantenuto bagnato;'] : []),
+        ...(!galleria || amb.esterno ? ['bagnatura dei materiali e delle aree di lavoro durante gli scavi e le movimentazioni;'] : []),
         'cabine dei mezzi chiuse, pressurizzate e con filtri ad alta efficienza (HEPA);',
         'delimitazione e segnalazione delle aree in cui è possibile la presenza di fibre di amianto e accesso limitato al personale indispensabile;',
         'unità di decontaminazione del personale e lavaggio dei mezzi in uscita dalle aree di lavoro;',
@@ -195,7 +211,8 @@ export function testiPredefiniti(tipo: TipoDvrChimico, galleria: boolean): Requi
         {
           testo: 'Misure tecniche e organizzative:',
           sotto: [
-            ...(galleria ? ['limitare al minimo il personale presente al fronte durante scavo, smarino e spritz e svolgere all’esterno le lavorazioni che non è necessario eseguire in galleria;', 'eseguire la manutenzione dell’impianto di ventilazione e verificare le portate rispetto al progetto;'] : []),
+            ...personaleGalleria,
+            ...(galleria ? ['svolgere all’esterno le lavorazioni che non è necessario eseguire in galleria;', 'eseguire la manutenzione dell’impianto di ventilazione e verificare le portate rispetto al progetto;'] : []),
             'tenere chiusi i finestrini dei mezzi durante le lavorazioni polverose e curare la manutenzione degli impianti di climatizzazione e dei filtri;',
             'tenere umide le piste e le aree di lavoro; spegnere i motori durante le attese e controllare periodicamente i gas di scarico dei mezzi.',
           ],
@@ -212,6 +229,9 @@ export function testiPredefiniti(tipo: TipoDvrChimico, galleria: boolean): Requi
       'Per le polveri in frazione respirabile sono stati effettuati campionamenti “d’area” in postazione fissa (concentrazioni nelle diverse aree di lavoro, fasi di breve durata, condizioni del sistema ambiente-processo) e campionamenti “personali” su alcune mansioni, per l’intera durata dell’attività.',
       'Per la determinazione di CO, CO₂, NO, NO₂, H₂S e O₂ si è utilizzata una strumentazione in grado di monitorare in continuo, con visualizzazione diretta del dato, posizionata in modo da ottenere dati rappresentativi della fase lavorativa. Tutte le misure sono state accompagnate dal rilievo della velocità dell’aria.',
       'Per le misure che non è stato possibile effettuare nel corso di questa campagna sono stati utilizzati dati di campagne precedenti, in condizioni lavorative e ambientali il più possibile simili.',
+      ...(amb.esterno && !galleria
+        ? ['Nelle lavorazioni all’aperto la dispersione naturale riduce rapidamente le concentrazioni dei gas di scarico: le misure si concentrano sulle polveri e, per le fasi senza misure di gas, si usano i valori di fondo o delle campagne precedenti indicati nelle tabelle.']
+        : []),
     ],
     strumenti: [
       'strumentazione per misure di temperatura e velocità dell’aria;',
@@ -229,6 +249,7 @@ export function testiPredefiniti(tipo: TipoDvrChimico, galleria: boolean): Requi
         sotto: [
           formazione('227'),
           ...(galleria ? ['limitare al minimo indispensabile il personale presente in galleria e svolgere nel piazzale esterno tutte le lavorazioni che non è necessario svolgere in galleria;', 'eseguire la manutenzione dell’impianto di ventilazione, riparare rapidamente le perdite della tubazione e controllare le portate rispetto al progetto;'] : []),
+          ...(amb.tbm ? ['mantenere efficienti il sistema di depolverazione della TBM, le tenute dei nastri e la ventilazione secondaria del back-up;'] : []),
           'effettuare la manutenzione periodica dei mezzi, in particolare degli impianti di climatizzazione, sostituendo i filtri secondo le indicazioni del fabbricante e annotando gli interventi in un registro;',
           'attivare la sorveglianza sanitaria (art. 229 D.Lgs. 81/08).',
         ],

@@ -145,7 +145,9 @@ def trasforma_documento(doc):
     # --- 5. Individuazione delle attività
     # i testi sulle operazioni ordinarie e sulle attività di servizio vanno prima delle tabelle
     sostituisci(atteso(B[241], 'in galleria vengono svolte'), 'in galleria vengono svolte', '{inLuogo} vengono svolte')
-    sostituisci(atteso(B[242], 'operazioni ordinarie in galleria'), 'operazioni ordinarie in galleria', 'operazioni ordinarie {inLuogo}')
+    imposta_testo(atteso(B[242], 'operazioni ordinarie in galleria'),
+                  'Si tratta di tutte quelle attività che generalmente indichiamo come “operazioni ordinarie {inLuogo}” e che possono '
+                  'essere {operazioniOrdinarie}.')
     sostituisci(atteso(B[246], 'in galleria e nei cantieri'), 'normalmente svolte in galleria e nei cantieri all’aperto', 'normalmente svolte {inLuogo}')
     ancora = atteso(B[206], 'Nelle tabelle che seguono')
     for e in (B[241], B[242], B[244], B[245], B[246], B[247]):

@@ -4,6 +4,7 @@
  */
 import { datiCopertina, elenco, maiuscolo, type DocumentoCopertina } from '../comune/copertina'
 import { arrotonda } from '../comune/numeri'
+import { contestoAmbiti } from '../comune/ambiti'
 import { eGalleria, type AmbitoDvr, type AnagraficaDvr } from '../comune/tipi'
 import { unibile } from '../comune/unisciCelle'
 import { numeroIt } from '../rumore/documento'
@@ -116,6 +117,19 @@ function puntiPiano(v: ValutazioneDvrPosture) {
   return punti
 }
 
+/** Luogo e operazioni ordinarie (attività non di ciclo) secondo gli ambiti: galleria tradizionale, TBM o all'aperto. */
+export function testiOperazioni(tipi: readonly AmbitoDvr['tipo'][]) {
+  const amb = contestoAmbiti(tipi)
+  const galleria = amb.galleria
+  const inLuogo = amb.tbm && !amb.tradizionale ? 'sulla TBM e in galleria' : galleria ? 'in galleria' : 'in cantiere'
+  const operazioniOrdinarie = amb.tradizionale
+    ? 'il prolungamento delle tubazioni di aria compressa ed acqua, l’allungamento del tubo di ventilazione, l’assemblaggio di armature e ferri (centine, ferri delle murette e dei marciapiedi, ecc.), la pulizia e la manutenzione ordinaria dei mezzi, il montaggio delle plafoniere, ecc'
+    : amb.tbm
+      ? 'l’allungamento del nastro trasportatore, delle tubazioni e del tubo di ventilazione, la pulizia della TBM e del back-up, la manutenzione ordinaria della testa di scavo e il cambio degli utensili, la movimentazione dei materiali di consumo, il montaggio delle plafoniere, ecc'
+      : 'la posa e il recupero di casseri e armature, la sistemazione della viabilità e delle aree di lavoro, la posa di delimitazioni e segnaletica, la pulizia e la manutenzione ordinaria dei mezzi, ecc'
+  return { inLuogo, operazioniOrdinarie }
+}
+
 export function datiTemplatePosture(d: DatiDvrPosture) {
   const v = valutaDvrPosture(d.mansioni, d.catalogo)
   const a = d.anagrafica
@@ -184,7 +198,7 @@ export function datiTemplatePosture(d: DatiDvrPosture) {
     nonUltima: n < valutate.length - 1,
   }))
 
-  const inLuogo = galleria ? 'in galleria' : 'in cantiere'
+  const { inLuogo, operazioniOrdinarie } = testiOperazioni(tipi)
   return {
     valutazione: v,
     dati: {
@@ -196,6 +210,7 @@ export function datiTemplatePosture(d: DatiDvrPosture) {
       tabMansioni: 1,
       mansioni: d.mansioni.map((m, i) => ({ numero: i + 1, nome: m.nome, attivita: m.attivita ?? '' })),
       inLuogo,
+      operazioniOrdinarie,
       gruppiAttivita,
       gruppiClassi,
       testoCalcoloMansioni:

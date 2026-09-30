@@ -3,6 +3,7 @@
  * Elenchi per fascia, conclusioni e tabelle derivano dal calcolo.
  */
 import { arrotonda } from '../comune/numeri'
+import { contestoAmbiti } from '../comune/ambiti'
 import type { AmbitoDvr, AnagraficaDvr, RevisioneDvr, TaraturaDvr } from '../comune/tipi'
 import { cicloPredefinito, STUDIO_PREDEFINITO, type BloccoTesto } from '../rumore/testiPredefiniti'
 import {
@@ -104,6 +105,20 @@ function conclusioni(v: ValutazioneDvrVibrazioni) {
     conclusioneFinale:
       'Le restanti mansioni presentano esposizioni inferiori ai valori d’azione; le mansioni che non utilizzano macchine o utensili vibranti hanno esposizione trascurabile.',
   }
+}
+
+/** Sorgenti di vibrazioni al corpo intero descritte nell'analisi preliminare, secondo gli ambiti. */
+export function sorgentiWbv(tipi: readonly AmbitoDvr['tipo'][]): string[] {
+  const a = contestoAmbiti(tipi)
+  return [
+    'Macchine semoventi su gomma o su cingoli (escavatori, pale, autocarri, dumper, ecc.). In questo caso le vibrazioni interessano i conducenti (seduti) e si trasmettono attraverso i sedili di guida.',
+    ...(a.tradizionale ? ['Macchine per lo scavo in galleria (jumbo di perforazione, escavatori con martellone, pale caricatrici e dumper per lo smarino, betonpompe per lo spritz-beton): le vibrazioni interessano gli operatori seduti ai posti di guida.'] : []),
+    ...(a.tbm
+      ? ['TBM e back-up: le vibrazioni interessano i lavoratori in piedi sulle piattaforme e sui pavimenti metallici della macchina; i mezzi del treno di servizio (locomotori, MSV per il trasporto dei conci) interessano i conducenti seduti.']
+      : []),
+    'Sollevatori. In questo caso le vibrazioni interessano i lavoratori (in piedi) e si trasmettono attraverso il pavimento o le piattaforme metalliche solidali alle macchine.',
+    ...(a.esterno ? ['Rulli compattatori, macchine per pali e micropali e piattaforme di lavoro elevabili nelle opere all’aperto: le vibrazioni interessano gli operatori seduti ai posti di guida o in piedi sulle piattaforme.'] : []),
+  ]
 }
 
 export function datiTemplateVibrazioni(d: DatiDvrVibrazioni) {
@@ -245,6 +260,7 @@ export function datiTemplateVibrazioni(d: DatiDvrVibrazioni) {
       tavWbv: tav('wbv'),
       tavHav: tav('hav'),
 
+      sorgentiWbv: sorgentiWbv(tipi),
       cantiereRilievi: [a.denominazione, ...d.ambiti.map((x) => x.nome)].filter(Boolean).join(' – '),
       rapportoWbv: d.documento.rapportoWbv ?? '',
       rapportoHav: d.documento.rapportoHav ?? '',

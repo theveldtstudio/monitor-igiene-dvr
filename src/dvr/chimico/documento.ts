@@ -204,7 +204,7 @@ export function datiTemplateChimico(d: DatiDvrChimico) {
   const tipi = d.ambiti.map((x) => x.tipo)
   const inGalleria = tipi.some(eGalleria)
   const ciclo = d.testi?.ciclo ?? (d.tipo === 'fumi_saldatura' ? CICLO_SALDATURA : cicloPredefinito(tipi))
-  const t = { ...testiPredefiniti(d.tipo, inGalleria), ...Object.fromEntries(Object.entries(d.testi ?? {}).filter(([, x]) => x != null && (!Array.isArray(x) || x.length))) } as Required<TestiChimico>
+  const t = { ...testiPredefiniti(d.tipo, tipi), ...Object.fromEntries(Object.entries(d.testi ?? {}).filter(([, x]) => x != null && (!Array.isArray(x) || x.length))) } as Required<TestiChimico>
   const lavoratori = `lavoratori${a.impresa ? ` di ${a.impresa}` : ''} operanti nel cantiere ${a.denominazione ?? ''}`.trim()
   const periodo = d.documento.periodoRiferimento
   const misurati = agenti.filter((ag) => ag.tlv != null)
