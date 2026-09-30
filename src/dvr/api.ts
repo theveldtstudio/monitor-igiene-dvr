@@ -178,7 +178,7 @@ export interface ContenutiRumore {
 export interface DocumentoDvr {
   id: string
   cantiere_id: string
-  rischio: 'rumore' | 'vibrazioni' | 'posture' | 'mmc' | 'microclima' | 'roa' | 'chimico' | 'fumi_saldatura' | 'cancerogeno' | 'cem'
+  rischio: 'rumore' | 'vibrazioni' | 'posture' | 'mmc' | 'microclima' | 'roa' | 'chimico' | 'fumi_saldatura' | 'cancerogeno' | 'cem' | 'amianto' | 'ipa'
   titolo: string | null
   periodo_riferimento: string | null
   ambiti_ids: string[]

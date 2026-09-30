@@ -1,6 +1,6 @@
 # Modulo DVR – pacchetto Monitoraggi + DVR
 
-Stato al 30 settembre 2026: completi (dati, calcolo, Word) i DVR Rumore, Vibrazioni, Posture incongrue, Movimentazione manuale dei carichi, Microclima, ROA, Agenti chimici, Fumi di saldatura, Agenti cancerogeni e Campi elettromagnetici. Mancano amianto, IPA, biologico e acqua. Il tipo di DVR si sceglie nella pagina DVR del cantiere (menu “Rischio del nuovo DVR”).
+Stato al 30 settembre 2026: completi (dati, calcolo, Word) i DVR Rumore, Vibrazioni, Posture incongrue, Movimentazione manuale dei carichi, Microclima, ROA, Agenti chimici, Fumi di saldatura, Agenti cancerogeni Campi elettromagnetici, Amianto e IPA. Mancano biologico e acqua. Il tipo di DVR si sceglie nella pagina DVR del cantiere (menu “Rischio del nuovo DVR”).
 
 ## Flusso d'uso
 
@@ -77,6 +77,14 @@ Stato al 30 settembre 2026: completi (dati, calcolo, Word) i DVR Rumore, Vibrazi
 - Test sui DVR Chimico Castagnola 2026, Fumi di saldatura II sem. 2025 e Cancerogeno II sem. 2025 (segnalano le medie e i totali sbagliati dei modelli).
 - Template: `tools/dvr/costruisci_template_{chimico,fumi_saldatura,cancerogeno}.py` (parti comuni in `chimico_comune.py`) → `public/templates/dvr/*.docx`; didascalie con campi SEQ, titoli su un solo elenco numerato, piè di pagina degli allegati corretti.
 
+## Amianto e IPA (src/dvr/chimico, senza modello)
+
+Due tipi in più della famiglia chimica (`amianto`, `ipa`): stesso motore ed editor (ambienti con le misure, giornata tipo, esposizione sulle 8 ore), senza il modello Regione Piemonte. Struttura e testi sono una proposta da far rivedere a Davide.
+
+- **Amianto** (Titolo IX, Capo III): fibre di amianto SEM (`conc_amianto`) e fibre aerodisperse totali MOCF (`conc_fibre_totali`, solo indicatore) in ff/L, importate dalla campagna amianto (se il valore è sotto il limite di rilevabilità si usa il limite e lo si scrive nelle note). Confronto con il valore limite dell'art. 254 (100 ff/L) e con il livello ESEDI di 10 ff/L (art. 249 c. 2): conclusioni per mansione ESEDI / esposti (notifica, sorveglianza, registro) / oltre il limite.
+- **IPA** (Titolo IX, Capo II): IPA totali, benzo[a]pirene e BaP equivalente (TEF Nisbet e LaGoy) in ng/m³, scritti a mano dai rapporti di prova (le misure della campagna IPA si importano senza valori). Nessun VLEP: riferimento indicativo TRGS 910 (70 ng/m³ accettazione, 700 tolleranza) e valore obiettivo per l'aria ambiente 1 ng/m³ (D.Lgs. 155/2010) come fondo.
+- Template: `tools/dvr/costruisci_template_amianto_ipa.py public/templates/dvr/cancerogeno.docx public/templates/dvr` (parte dal template Agenti cancerogeni; va rigenerato se cambia quello).
+
 ## Campi elettromagnetici (src/dvr/cem)
 
 Scritto senza DVR modello: struttura e testi sono una proposta da far rivedere a Davide.
@@ -99,7 +107,7 @@ Il logo del cliente si carica nel documento (riquadro 198,45 × 52,6 pt); il log
 
 ## Da fare
 
-- DVR mancanti da scrivere da zero (amianto, IPA, biologico, acqua).
-- Rivedere con Davide struttura e testi del DVR CEM (nessun modello ECO-TER).
+- DVR mancanti da scrivere da zero (biologico, acqua).
+- Rivedere con Davide struttura, testi e soglie dei DVR CEM, Amianto e IPA (nessun modello ECO-TER).
 - Rivedere con Davide i testi predefiniti per ambito (`rumore/testiPredefiniti.ts`).
 - Logo dello studio configurabile (per la vendita ad altri professionisti) e multi-tenancy (Fase K).

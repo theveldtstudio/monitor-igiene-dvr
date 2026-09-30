@@ -23,7 +23,7 @@ export interface ContenutiChimico {
   testi?: TestiChimico
 }
 
-export const RISCHI_CHIMICI = ['chimico', 'fumi_saldatura', 'cancerogeno'] as const
+export const RISCHI_CHIMICI = ['chimico', 'fumi_saldatura', 'cancerogeno', 'amianto', 'ipa'] as const
 export const eRischioChimico = (r: string): r is TipoDvrChimico => (RISCHI_CHIMICI as readonly string[]).includes(r)
 
 const num = (x: unknown): number | null => (typeof x === 'number' && Number.isFinite(x) ? x : null)
@@ -44,16 +44,20 @@ export function misuraAmbiente(m: MisuraCampagna, tipo: TipoDvrChimico): MisuraA
     const v = num(d[ag.campo])
     if (v !== null) valori[ag.id] = v
   }
-  if (!Object.keys(valori).length) return null
+  // IPA: i risultati arrivano dal laboratorio e si scrivono nel DVR; la misura si importa comunque
+  const daLaboratorio = !AGENTI_PREDEFINITI[tipo].some((ag) => ag.campo)
+  if (!Object.keys(valori).length && !daLaboratorio) return null
   const durata = num(d.durata_prelievo)
+  const codice = tipo === 'amianto' || tipo === 'ipa' ? testo(d.codice_campione) || testo(d.codice_filtro) : ''
+  const note = [codice ? `Campione ${codice}` : '', d.conc_amianto_sotto_soglia === true ? 'Amianto sotto il limite di rilevabilità (usato il limite)' : '', (m.misura.note ?? '').trim()].filter(Boolean).join('. ')
   return {
     id: nuovoId('mis'),
     misuraId: m.misura.id,
     fronte: testo(d.fronte),
     data: m.campagna.data_ora ? new Date(m.campagna.data_ora).toLocaleDateString('it-IT') : '',
-    tipo: TIPO_MISURA[testo(d.tipo_misura) || testo(d.tipo_prelievo)] ?? '',
+    tipo: TIPO_MISURA[(testo(d.tipo_misura) || testo(d.tipo_prelievo)).toLocaleLowerCase('it-IT')] ?? '',
     macchine: testo(d.macchine_nomi),
-    note: (m.misura.note ?? '').trim(),
+    note,
     temperatura: num(d.temperatura),
     velocita: num(d.velocita_aria),
     tempo: testo(d.tempo_prelievo) || (durata !== null ? `${durata} min` : ''),

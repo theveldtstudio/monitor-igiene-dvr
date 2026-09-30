@@ -637,6 +637,8 @@ const RISCHI_DVR: Record<api.DocumentoDvr['rischio'], { titolo: string; campagne
   fumi_saldatura: { titolo: 'DVR Fumi di saldatura', campagne: ['polveri', 'gas'] },
   cancerogeno: { titolo: 'DVR Agenti cancerogeni (silice e carbonio elementare)', campagne: ['polveri', 'carbonio_ec'] },
   cem: { titolo: 'DVR Campi elettromagnetici', campagne: ['cem'] },
+  amianto: { titolo: 'DVR Amianto', campagne: ['amianto'] },
+  ipa: { titolo: 'DVR Idrocarburi policiclici aromatici (IPA)', campagne: ['ipa'] },
 }
 
 function SezioneDocumenti({ cantiereId }: { cantiereId: string }) {

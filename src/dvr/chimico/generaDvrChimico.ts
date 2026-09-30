@@ -10,6 +10,8 @@ export const URL_TEMPLATE_CHIMICO: Record<TipoDvrChimico, string> = {
   chimico: '/templates/dvr/chimico.docx',
   fumi_saldatura: '/templates/dvr/fumi_saldatura.docx',
   cancerogeno: '/templates/dvr/cancerogeno.docx',
+  amianto: '/templates/dvr/amianto.docx',
+  ipa: '/templates/dvr/ipa.docx',
 }
 
 export async function generaDvrChimico(cantiereId: string, documentoId: string, tipo: TipoDvrChimico) {

@@ -11,7 +11,7 @@ import ConfirmDialog from '../../components/ConfirmDialog'
 import { humanizeError } from '../../lib/humanizeError'
 import { saveBlob } from '../../lib/saveBlob'
 import * as api from '../api'
-import { CAMPAGNE_PER_TIPO, TITOLI_TIPO, type AgenteChimico, type TipoDvrChimico } from '../chimico/agenti'
+import { CAMPAGNE_PER_TIPO, conPiemonte, TITOLI_TIPO, type AgenteChimico, type TipoDvrChimico } from '../chimico/agenti'
 import { contenutiChimico, datiChimicoDaDatabase, eRischioChimico, importaMisure, nuovoId, periodiDaTempi, type ContenutiChimico } from '../chimico/daDatabase'
 import { agentiDocumento, CICLO_SALDATURA } from '../chimico/documento'
 import { generaDvrChimico } from '../chimico/generaDvrChimico'
@@ -220,7 +220,7 @@ function Valutazione({ ing, tipo, aggiorna }: { ing: Ingresso; tipo: TipoDvrChim
         <table style={stili.tabella}>
           <thead>
             <tr>
-              {['Agente', 'Unità', 'TLV-TWA / VLEP', 'TLV-STEL', ...(tipo === 'cancerogeno' ? [] : ['Gravità M (1–5)']), 'Fonte'].map((h) => (
+              {['Agente', 'Unità', 'TLV-TWA / VLEP', 'TLV-STEL', ...(conPiemonte(tipo) ? ['Gravità M (1–5)'] : []), 'Fonte'].map((h) => (
                 <th key={h} style={stili.th}>
                   {h}
                 </th>
@@ -234,7 +234,7 @@ function Valutazione({ ing, tipo, aggiorna }: { ing: Ingresso; tipo: TipoDvrChim
                 <td style={stili.td}>{g.unita}</td>
                 <td style={stili.td}>{g.minimo != null ? `minimo ${formattaIt(g.minimo, 0)}` : <NumeroCella etichetta={`TLV ${g.sigla}`} valore={g.tlv} onChange={(x) => cambiaAgente(g.id, { tlv: x })} />}</td>
                 <td style={stili.td}>{g.minimo != null ? '–' : <NumeroCella etichetta={`STEL ${g.sigla}`} valore={g.stel} onChange={(x) => cambiaAgente(g.id, { stel: x })} />}</td>
-                {tipo !== 'cancerogeno' && (
+                {conPiemonte(tipo) && (
                   <td style={stili.td}>{g.minimo != null ? '–' : <NumeroCella etichetta={`Gravità ${g.sigla}`} valore={g.gravita} onChange={(x) => cambiaAgente(g.id, { gravita: x })} />}</td>
                 )}
                 <td style={stili.td}>{g.fonte ?? ''}</td>
@@ -501,7 +501,7 @@ function Riepilogo({ ing, tipo }: { ing: Ingresso; tipo: TipoDvrChimico }) {
         agenti,
         dati.ambienti,
         dati.tempi.filter((t) => t.periodi.length).map((t) => ({ mansione: { id: t.mansioneId, nome: nomi.get(t.mansioneId) ?? '' }, periodi: t.periodi })),
-        { piemonte: tipo !== 'cancerogeno' },
+        { piemonte: conPiemonte(tipo) },
       ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [agenti, dati],
@@ -548,7 +548,7 @@ function Riepilogo({ ing, tipo }: { ing: Ingresso; tipo: TipoDvrChimico }) {
         {dati.ambienti.length} ambienti · {v.mansioni.length} mansioni con giornata tipo
         {v.mansioni.length ? ` · ${conSuperamenti.length ? `${conSuperamenti.length} con esposizioni oltre il limite` : 'esposizioni entro i limiti'}` : ''}
       </p>
-      {tipo !== 'cancerogeno' && v.ambienti.some((e) => e.indici.length) && (
+      {conPiemonte(tipo) && v.ambienti.some((e) => e.indici.length) && (
         <div style={{ overflowX: 'auto' }}>
           <table style={{ ...stili.tabella, marginTop: 8 }}>
             <thead>
@@ -619,6 +619,16 @@ const NORME: Record<TipoDvrChimico, string> = {
   chimico: 'D.Lgs. 81/08, Titolo IX Capo I – UNI EN 689, modello Regione Piemonte',
   fumi_saldatura: 'D.Lgs. 81/08, Titolo IX Capo I – UNI EN ISO 10882, UNI EN 689, modello Regione Piemonte',
   cancerogeno: 'D.Lgs. 81/08, Titolo IX Capo II – allegato XLIII, UNI EN 689',
+  amianto: 'D.Lgs. 81/08, Titolo IX Capo III – art. 254 (0,1 ff/cm³), D.M. 6/9/1994, UNI EN 689',
+  ipa: 'D.Lgs. 81/08, Titolo IX Capo II – nessun VLEP; riferimenti indicativi, UNI EN 689',
+}
+
+const ETICHETTA_CAMPAGNE: Record<TipoDvrChimico, string> = {
+  chimico: 'polveri e gas',
+  fumi_saldatura: 'polveri e gas',
+  cancerogeno: 'polveri e carbonio elementare',
+  amianto: 'amianto',
+  ipa: 'IPA',
 }
 
 export default function EditorDvrChimico() {
@@ -650,7 +660,7 @@ export default function EditorDvrChimico() {
       {q.data && (
         <div>
           <Riepilogo ing={q.data} tipo={tipo} />
-          <DatiDocumento ing={q.data} aggiorna={aggiorna} tipiCampagna={CAMPAGNE_PER_TIPO[tipo]} etichettaCampagne={tipo === 'cancerogeno' ? 'polveri e carbonio elementare' : 'polveri e gas'} conTarature={false} />
+          <DatiDocumento ing={q.data} aggiorna={aggiorna} tipiCampagna={CAMPAGNE_PER_TIPO[tipo]} etichettaCampagne={ETICHETTA_CAMPAGNE[tipo]} conTarature={false} />
           <Valutazione key={`val-${q.data.documento.updated_at}`} ing={q.data} tipo={tipo} aggiorna={aggiorna} />
           <MatriceTempi ing={q.data} tipo={tipo} aggiorna={aggiorna} />
           <CicloLavoro ing={q.data} aggiorna={aggiorna} titolo={tipo === 'fumi_saldatura' ? 'Aspetti organizzativi e cicli lavorativi' : 'Ciclo di lavoro'} predefinito={tipo === 'fumi_saldatura' ? CICLO_SALDATURA : undefined} />

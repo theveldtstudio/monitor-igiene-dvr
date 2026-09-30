@@ -5,6 +5,7 @@ import { useParams } from 'react-router-dom'
 import Spinner from '../../components/Spinner'
 import { humanizeError } from '../../lib/humanizeError'
 import * as api from '../api'
+import { eRischioChimico } from '../chimico/daDatabase'
 import { stili } from '../ui/stili'
 
 const EditorDvrRumore = lazy(() => import('./EditorDvrRumore'))
@@ -35,7 +36,7 @@ export default function EditorDvr() {
         <EditorDvrRoa />
       ) : q.data.rischio === 'cem' ? (
         <EditorDvrCem />
-      ) : q.data.rischio === 'chimico' || q.data.rischio === 'fumi_saldatura' || q.data.rischio === 'cancerogeno' ? (
+      ) : eRischioChimico(q.data.rischio) ? (
         <EditorDvrChimico />
       ) : (
         <EditorDvrRumore />

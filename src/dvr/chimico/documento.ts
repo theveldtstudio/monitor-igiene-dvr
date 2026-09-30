@@ -10,7 +10,7 @@ import { formattaIt } from '../comune/numeri'
 import { eGalleria, type AmbitoDvr, type AnagraficaDvr, type MacchinaDvr } from '../comune/tipi'
 import { unibile } from '../comune/unisciCelle'
 import { cicloPredefinito, type BloccoTesto } from '../rumore/testiPredefiniti'
-import { AGENTI_PREDEFINITI, type AgenteChimico, type TipoDvrChimico } from './agenti'
+import { AGENTI_PREDEFINITI, conPiemonte, type AgenteChimico, type TipoDvrChimico } from './agenti'
 import { testiPredefiniti, type TestiChimico } from './testi'
 import {
   CLASSI_PIEMONTE,
@@ -50,11 +50,16 @@ export const CICLO_SALDATURA: BloccoTesto[] = [
 
 /** Gruppo dell'agente nelle tabelle: polveri e metalli (frazione respirabile o inalabile) o gas. */
 export function gruppoAgente(a: AgenteChimico): 'respirabile' | 'inalabile' | 'gas' {
-  if (a.unita !== 'mg/m³') return 'gas'
+  if (a.unita === 'ppm' || a.unita === '%') return 'gas'
   return a.id.endsWith('_inal') ? 'inalabile' : 'respirabile'
 }
 
-const FILE: Record<TipoDvrChimico, string> = { chimico: 'Chimico', fumi_saldatura: 'Fumi_saldatura', cancerogeno: 'Cancerogeno' }
+const FILE: Record<TipoDvrChimico, string> = { chimico: 'Chimico', fumi_saldatura: 'Fumi_saldatura', cancerogeno: 'Cancerogeno', amianto: 'Amianto', ipa: 'IPA' }
+
+/** Amianto: soglia delle esposizioni sporadiche e di debole intensità (ESEDI, art. 249 c. 2) su 8 ore. */
+export const SOGLIA_ESEDI = 10
+/** IPA: valore obiettivo del benzo[a]pirene nell'aria ambiente (D.Lgs. 155/2010, media annua). */
+export const BAP_ARIA_AMBIENTE = 1
 
 /** Numero con virgola: le concentrazioni con i decimali dell'agente, il resto senza zeri inutili. */
 const num = (x: number | null | undefined, decimali?: number) => {
@@ -91,13 +96,13 @@ function conclusioniAgenti(agenti: AgenteChimico[], v: ValutazioneChimica): stri
   return out
 }
 
-function conclusioniMansioni(agenti: AgenteChimico[], v: ValutazioneChimica): string[] {
+function conclusioniMansioni(agenti: AgenteChimico[], v: ValutazioneChimica, articolo = '235'): string[] {
   const out: string[] = []
   const conSuperamenti = v.mansioni.filter((m) => m.superamenti.length)
   if (!v.mansioni.length) return ['Non è stata compilata la matrice dei tempi: l’esposizione per mansione non è stata calcolata.']
   if (!conSuperamenti.length) {
     out.push(
-      `Dal confronto dei livelli di esposizione giornaliera con i valori limite emerge che per tutte le ${v.mansioni.length} mansioni valutate le esposizioni sono inferiori ai limiti di riferimento${agenti.some((a) => a.cancerogeno) ? '; per gli agenti cancerogeni l’esposizione deve comunque essere ridotta al livello più basso tecnicamente possibile (art. 235 D.Lgs. 81/08)' : ''}.`,
+      `Dal confronto dei livelli di esposizione giornaliera con i valori limite emerge che per tutte le ${v.mansioni.length} mansioni valutate le esposizioni sono inferiori ai limiti di riferimento${agenti.some((a) => a.cancerogeno) ? `; per gli agenti cancerogeni l’esposizione deve comunque essere ridotta al livello più basso tecnicamente possibile (art. ${articolo} D.Lgs. 81/08)` : ''}.`,
     )
     return out
   }
@@ -115,6 +120,43 @@ function conclusioniMansioni(agenti: AgenteChimico[], v: ValutazioneChimica): st
   return out
 }
 
+/** Amianto: ESEDI, esposti e superamenti; IPA: confronto con il fondo dell'aria ambiente. */
+function conclusioniSpecifiche(tipo: TipoDvrChimico, agenti: AgenteChimico[], v: ValutazioneChimica): string[] {
+  const conValore = (id: string) => v.mansioni.filter((m) => m.twa[id] != null)
+  const nomi = (ms: ValutazioneChimica['mansioni'], id: string, dec: number, u: string) => elenco(ms.map((m) => `${m.mansione.nome} (${num(m.twa[id], dec)} ${u})`))
+  if (tipo === 'amianto') {
+    const ag = agenti.find((a) => a.id === 'amianto')
+    const ms = conValore('amianto')
+    if (!ag || !ms.length) return []
+    const limite = ag.tlv ?? 100
+    const esedi = ms.filter((m) => m.twa.amianto! <= SOGLIA_ESEDI)
+    const esposti = ms.filter((m) => m.twa.amianto! > SOGLIA_ESEDI && m.twa.amianto! <= limite)
+    const out: string[] = []
+    if (esedi.length)
+      out.push(
+        `Esposizione non superiore a ${num(SOGLIA_ESEDI)} ff/L (8 ore): ${nomi(esedi, 'amianto', ag.decimali, 'ff/L')}. Il livello è compatibile con le esposizioni sporadiche e di debole intensità (ESEDI, art. 249 c. 2 D.Lgs. 81/08), se anche la frequenza e la durata degli interventi rientrano nei criteri ESEDI.`,
+      )
+    if (esposti.length)
+      out.push(
+        `Esposizione superiore a ${num(SOGLIA_ESEDI)} ff/L ma entro il valore limite: ${nomi(esposti, 'amianto', ag.decimali, 'ff/L')}. Questi lavoratori sono esposti ai sensi del Capo III: notifica (art. 250), misure di prevenzione (art. 251), sorveglianza sanitaria (art. 259) e registro di esposizione (art. 260).`,
+      )
+    return out
+  }
+  if (tipo === 'ipa') {
+    const ag = agenti.find((a) => a.id === 'bap')
+    const ms = conValore('bap')
+    if (!ag || !ms.length) return []
+    const oltreFondo = ms.filter((m) => m.twa.bap! > BAP_ARIA_AMBIENTE)
+    return [
+      oltreFondo.length
+        ? `Benzo[a]pirene superiore al valore obiettivo per l’aria ambiente (${num(BAP_ARIA_AMBIENTE)} ng/m³, D.Lgs. 155/2010) per ${nomi(oltreFondo, 'bap', ag.decimali, 'ng/m³')}: l’esposizione è di origine professionale; questi lavoratori vanno considerati esposti ai fini della sorveglianza sanitaria (art. 242) e del registro di esposizione (art. 243).`
+        : `Per tutte le mansioni il benzo[a]pirene non supera il valore obiettivo per l’aria ambiente (${num(BAP_ARIA_AMBIENTE)} ng/m³, D.Lgs. 155/2010): l’esposizione professionale non si distingue dal fondo.`,
+      `Per gli IPA il D.Lgs. 81/08 non fissa un valore limite: il riferimento usato per il benzo[a]pirene (${num(ag.tlv)} ng/m³, ${ag.fonte}) è indicativo.`,
+    ]
+  }
+  return []
+}
+
 /** Sintesi dei valori medi per ambiente: agenti oltre il limite, massimi, quota di silice nelle polveri. */
 function analisiPerAmbiente(agenti: AgenteChimico[], v: ValutazioneChimica): string[] {
   const out: string[] = []
@@ -125,6 +167,10 @@ function analisiPerAmbiente(agenti: AgenteChimico[], v: ValutazioneChimica): str
     const max = conValore.reduce((x, y) => (y.concentrazioni[ag.id].valore! > x.concentrazioni[ag.id].valore! ? y : x))
     const oltre = ag.tlv != null ? conValore.filter((e) => e.concentrazioni[ag.id].valore! > ag.tlv!) : []
     const valoreMax = `${num(max.concentrazioni[ag.id].valore, ag.decimali)} ${ag.unita}`
+    if (ag.tlv == null) {
+      out.push(`${ag.nome}: misurato in ${conValore.length} ${conValore.length === 1 ? 'ambiente' : 'ambienti'}; il valore medio più alto è ${valoreMax} (${nome(max)}).`)
+      continue
+    }
     out.push(
       oltre.length
         ? `${ag.nome}: la concentrazione media supera il valore limite (${num(ag.tlv)} ${ag.unita}) in ${oltre.length} ${oltre.length === 1 ? 'ambiente' : 'ambienti'} su ${conValore.length} (${elenco(oltre.map(nome).slice(0, 6))}); il valore più alto è ${valoreMax} (${nome(max)}).`
@@ -147,7 +193,7 @@ function analisiPerAmbiente(agenti: AgenteChimico[], v: ValutazioneChimica): str
 export function datiTemplateChimico(d: DatiDvrChimico) {
   const agenti = agentiDocumento(d.tipo, d.agenti)
   const nomi = new Map(d.mansioni.map((m) => [m.id, m.nome]))
-  const piemonte = d.tipo !== 'cancerogeno'
+  const piemonte = conPiemonte(d.tipo)
   const v = valutaChimico(
     agenti,
     d.ambienti,
@@ -162,8 +208,14 @@ export function datiTemplateChimico(d: DatiDvrChimico) {
   const lavoratori = `lavoratori${a.impresa ? ` di ${a.impresa}` : ''} operanti nel cantiere ${a.denominazione ?? ''}`.trim()
   const periodo = d.documento.periodoRiferimento
   const misurati = agenti.filter((ag) => ag.tlv != null)
-  const oggetto = { chimico: 'polveri e gas tossici', fumi_saldatura: 'fumi di saldatura (polveri, metalli e gas)', cancerogeno: 'silice libera cristallina e carbonio elementare (gas di scarico dei motori diesel)' }[d.tipo]
-  const capo = d.tipo === 'cancerogeno' ? 'Titolo IX, Capo II' : 'Titolo IX, Capo I'
+  const oggetto = {
+    chimico: 'polveri e gas tossici',
+    fumi_saldatura: 'fumi di saldatura (polveri, metalli e gas)',
+    cancerogeno: 'silice libera cristallina e carbonio elementare (gas di scarico dei motori diesel)',
+    amianto: 'fibre di amianto',
+    ipa: 'idrocarburi policiclici aromatici (IPA)',
+  }[d.tipo]
+  const capo = { chimico: 'Titolo IX, Capo I', fumi_saldatura: 'Titolo IX, Capo I', cancerogeno: 'Titolo IX, Capo II', amianto: 'Titolo IX, Capo III', ipa: 'Titolo IX, Capo II' }[d.tipo]
 
   // dati rilevati per ambiente (una riga per misura, medie unite in verticale)
   const misureAmbienti = d.ambienti.flatMap((amb, i) => {
@@ -302,8 +354,8 @@ export function datiTemplateChimico(d: DatiDvrChimico) {
     }),
   }))
   const analisiAmbienti = analisiPerAmbiente(agenti, v)
-  const gas = agenti.filter((ag) => ag.unita !== 'mg/m³').map((ag) => ag.id)
-  const polveri = agenti.filter((ag) => ag.unita === 'mg/m³').map((ag) => ag.id)
+  const gas = agenti.filter((ag) => gruppoAgente(ag) === 'gas').map((ag) => ag.id)
+  const polveri = agenti.filter((ag) => gruppoAgente(ag) !== 'gas').map((ag) => ag.id)
   const allegatoGas = allegato1.filter((r) => gas.some((id) => r[`c_${id}`] !== '\\'))
   const allegatoPolveri = allegato1.filter((r) => polveri.some((id) => r[`c_${id}`] !== '\\'))
 
@@ -352,7 +404,7 @@ export function datiTemplateChimico(d: DatiDvrChimico) {
       conclusioniAgenti: piemonte ? conclusioniAgenti(misurati, v) : [],
       esposizioni,
       ...limiti,
-      conclusioniMansioni: conclusioniMansioni(agenti, v),
+      conclusioniMansioni: [...conclusioniMansioni(agenti, v, d.tipo === 'amianto' ? '251' : '235'), ...conclusioniSpecifiche(d.tipo, agenti, v)],
       piano: (t.piano as VocePiano[]).map((x) => ({ testo: x.testo, sotto: x.sotto ?? [] })),
       pianoTabelle: (t.piano as VocePiano[]).map((x, i) => ({ testo: x.testo, righe: (x.sotto ?? []).map((s, j) => ({ n: `${i + 1}.${j + 1}`, testo: s })) })),
       medieAmbienti,

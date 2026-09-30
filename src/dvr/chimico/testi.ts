@@ -66,6 +66,110 @@ export function testiPredefiniti(tipo: TipoDvrChimico, galleria: boolean): Requi
     }
   }
 
+  if (tipo === 'amianto') {
+    return {
+      dpi: [
+        'Nelle aree e nelle fasi con possibile esposizione a fibre di amianto i lavoratori utilizzano DPI delle vie respiratorie con fattore di protezione operativo adeguato alla concentrazione misurata: la concentrazione nell’aria filtrata (concentrazione ambiente divisa per il fattore di protezione operativo) deve essere non superiore a un decimo del valore limite (art. 251 c. 1 lett. b D.Lgs. 81/08).',
+        'Sono messi a disposizione facciali filtranti FFP3 (UNI EN 149) e, dove le concentrazioni sono più elevate, maschere intere con filtri P3 (UNI EN 136 e UNI EN 143) o elettrorespiratori a ventilazione assistita (UNI EN 12941), scelti secondo la UNI 11719; per le lavorazioni a contatto con il materiale si usano tute monouso di tipo 5 (UNI EN ISO 13982-1).',
+      ],
+      misure: [
+        ...ventilazione,
+        ...(galleria ? ['bagnatura del fronte di scavo e del marino durante lo scavo, lo smarino e il carico;'] : ['bagnatura dei materiali e delle aree di lavoro durante gli scavi e le movimentazioni;']),
+        'cabine dei mezzi chiuse, pressurizzate e con filtri ad alta efficienza (HEPA);',
+        'delimitazione e segnalazione delle aree in cui è possibile la presenza di fibre di amianto e accesso limitato al personale indispensabile;',
+        'unità di decontaminazione del personale e lavaggio dei mezzi in uscita dalle aree di lavoro;',
+        'monitoraggi periodici delle fibre aerodisperse (art. 253 D.Lgs. 81/08) e valutazione del rischio;',
+        'dotazione degli adeguati DPI delle vie respiratorie e degli indumenti di protezione.',
+      ],
+      campionamento: [
+        'Le misure sono state effettuate nelle principali postazioni di lavoro in cui è possibile la presenza di fibre di amianto (terreni e rocce che possono contenere amianto di origine naturale, materiali contenenti amianto), con campionamenti “d’area” in postazione fissa e campionamenti “personali” su alcune mansioni.',
+        'L’aria è aspirata con pompe a flusso costante e le fibre sono raccolte su membrana; la concentrazione delle fibre aerodisperse totali è determinata in microscopia ottica in contrasto di fase (MOCF) e quella delle fibre di amianto in microscopia elettronica a scansione con microanalisi (SEM-EDS), secondo il D.M. 6 settembre 1994. Sono conteggiate le fibre con lunghezza superiore a 5 µm, diametro inferiore a 3 µm e rapporto lunghezza/diametro superiore a 3.',
+        'Quando sul filtro non sono individuate fibre di amianto, si usa la concentrazione corrispondente al limite di rilevabilità del campione (condizione più gravosa).',
+      ],
+      strumenti: [
+        'strumentazione per misure di temperatura e velocità dell’aria;',
+        'pompe a flusso costante con calibratore di portata;',
+        'membrane in esteri misti di cellulosa o in policarbonato con portafiltri a cappuccio aperto;',
+        'microscopio ottico in contrasto di fase e microscopio elettronico a scansione con microanalisi a dispersione di energia (SEM-EDS) per le determinazioni di laboratorio.',
+      ],
+      tempi: [
+        'I risultati dei rilievi sono stati associati alle fasi lavorative durante le quali sono stati eseguiti i campionamenti; considerando la durata media di ciascuna fase è calcolata l’esposizione media ponderata sulle 8 ore per ciascuna mansione (UNI EN 689).',
+        'L’esposizione alle fibre di amianto è confrontata con il valore limite di 0,1 fibre per centimetro cubo (100 ff/L) dell’art. 254 del D.Lgs. 81/08 e con il livello di 10 ff/L usato per individuare le esposizioni sporadiche e di debole intensità (ESEDI, art. 249 c. 2). Le fibre aerodisperse totali sono riportate come indicatore della polverosità fibrosa dell’ambiente.',
+      ],
+      piano: [
+        {
+          testo: 'Controllo e informazione:',
+          sotto: [
+            formazione('258'),
+            'proseguire i monitoraggi delle fibre aerodisperse con frequenza adeguata alle lavorazioni (art. 253 D.Lgs. 81/08) e aggiornare la valutazione a ogni variazione delle lavorazioni o dei materiali scavati;',
+            'per i lavoratori esposti oltre il livello delle ESEDI: notifica all’organo di vigilanza (art. 250), sorveglianza sanitaria (art. 259) e registro di esposizione (art. 260).',
+          ],
+        },
+        {
+          testo: 'Misure tecniche e organizzative (art. 251 D.Lgs. 81/08):',
+          sotto: [
+            'ridurre al minimo il numero dei lavoratori esposti e la durata dell’esposizione;',
+            'mantenere bagnati i materiali durante scavo, carico e trasporto e le piste di cantiere;',
+            ...(galleria ? ['verificare le portate dell’impianto di ventilazione rispetto al progetto ed eseguirne la manutenzione;'] : []),
+            'lavorare con le cabine dei mezzi chiuse e pressurizzate, sostituendo i filtri secondo le indicazioni del fabbricante;',
+            'delimitare e segnalare le aree a rischio, vietare l’accesso ai non addetti e il consumo di cibi e bevande;',
+            'usare l’unità di decontaminazione all’uscita e non portare a casa gli indumenti di lavoro.',
+          ],
+        },
+        { testo: 'Protezione individuale:', sotto: ['utilizzare i DPI delle vie respiratorie previsti per l’area di lavoro, con prova di tenuta del facciale, e gli indumenti di protezione monouso.'] },
+      ],
+    }
+  }
+
+  if (tipo === 'ipa') {
+    return {
+      dpi: [
+        'Nelle fasi con esposizione a IPA (gas di scarico dei motori diesel, fumi di bitume e di catrame) i lavoratori utilizzano facciali filtranti FFP3 (UNI EN 149) o, in presenza di vapori organici, semimaschere con filtri combinati A2P3 (UNI EN 14387); per le lavorazioni a contatto con prodotti bituminosi si usano guanti in nitrile e indumenti a maniche lunghe, perché alcuni IPA sono assorbiti anche attraverso la pelle.',
+      ],
+      misure: [
+        ...ventilazione,
+        cabine,
+        'mezzi e motori diesel con manutenzione periodica e, dove disponibili, filtri antiparticolato;',
+        'spegnimento dei motori durante le attese;',
+        'stesa dei conglomerati bituminosi alle temperature più basse compatibili con il prodotto;',
+        'monitoraggi ambientali periodici e valutazione del rischio;',
+        'dotazione degli adeguati DPI delle vie respiratorie e della pelle.',
+      ],
+      campionamento: [
+        'Le misure sono state effettuate nelle postazioni di lavoro in cui è possibile la presenza di idrocarburi policiclici aromatici (IPA), con campionamenti “d’area” in postazione fissa e campionamenti “personali” su alcune mansioni.',
+        'La frazione particellare è raccolta su membrana e la frazione in fase vapore su fiala adsorbente, con pompe a flusso costante; gli IPA sono determinati in laboratorio per gascromatografia con spettrometria di massa o cromatografia liquida (metodi NIOSH 5515 e 5506). Il benzo[a]pirene equivalente è calcolato come somma delle concentrazioni dei singoli IPA moltiplicate per i fattori di tossicità equivalente (TEF) di Nisbet e LaGoy.',
+        'Quando un IPA è inferiore al limite di rilevabilità, si usa la concentrazione corrispondente al limite di rilevabilità (condizione più gravosa).',
+      ],
+      strumenti: [
+        'strumentazione per misure di temperatura e velocità dell’aria;',
+        'pompe a flusso costante con calibratore di portata;',
+        'membrane in fibra di vetro o PTFE e fiale adsorbenti per la fase vapore;',
+        'gascromatografo con spettrometro di massa (GC-MS) o cromatografo liquido (HPLC) per le determinazioni di laboratorio.',
+      ],
+      tempi: [
+        'I risultati dei rapporti di prova sono stati associati alle fasi lavorative durante le quali sono stati eseguiti i campionamenti; considerando la durata media di ciascuna fase è calcolata l’esposizione media ponderata sulle 8 ore per ciascuna mansione (UNI EN 689).',
+        'Il D.Lgs. 81/08 non fissa un valore limite per gli IPA: il benzo[a]pirene (marcatore degli IPA cancerogeni) e il benzo[a]pirene equivalente sono confrontati con la concentrazione di accettazione della TRGS 910 tedesca (70 ng/m³; concentrazione di tolleranza 700 ng/m³) e con il valore obiettivo per l’aria ambiente (1 ng/m³, D.Lgs. 155/2010), che indica il fondo non professionale.',
+      ],
+      piano: [
+        {
+          testo: 'Controllo e informazione:',
+          sotto: [formazione('239'), 'proseguire i monitoraggi ambientali periodici degli IPA e aggiornare la valutazione; per i lavoratori esposti attivare la sorveglianza sanitaria (art. 242) e tenere il registro di esposizione (art. 243).'],
+        },
+        {
+          testo: 'Misure tecniche e organizzative (artt. 235–237 D.Lgs. 81/08):',
+          sotto: [
+            ...(galleria ? ['verificare le portate dell’impianto di ventilazione rispetto al progetto ed eseguirne la manutenzione;'] : []),
+            'mantenere in efficienza i motori dei mezzi, preferire mezzi con filtri antiparticolato e spegnere i motori durante le attese;',
+            'lavorare con le cabine dei mezzi chiuse; nelle asfaltature stare sopravvento rispetto alla vibrofinitrice e limitare le temperature di stesa;',
+            'separare le aree di lavoro dalle aree di ristoro e vietare di mangiare, bere e fumare nelle zone di lavoro;',
+            'lavare le mani e il viso prima delle pause e a fine turno.',
+          ],
+        },
+        { testo: 'Protezione individuale:', sotto: ['utilizzare i DPI delle vie respiratorie e i guanti previsti nelle fasi con esposizione a fumi di bitume o gas di scarico.'] },
+      ],
+    }
+  }
+
   if (tipo === 'cancerogeno') {
     return {
       dpi: DPI_FACCIALI,
